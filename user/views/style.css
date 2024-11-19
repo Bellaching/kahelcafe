@@ -1,0 +1,200 @@
+.account-text {
+    font-size: 2rem;
+    font-weight: bold;
+}
+
+.management-underline {
+    position: relative;
+}
+.management-underline::after {
+    content: '';
+    position: absolute;
+    bottom: -10px; 
+    left: 0;
+    width: 100%;
+    height: 5px; 
+    background-color: #FC8E29;
+    border-radius: 3px;
+}
+.menu-card {
+    border: 1px solid #e0e0e0;
+    border-radius: 0.5rem;
+    margin-bottom: 20px;
+    transition: transform 0.2s;
+}
+.menu-card:hover {
+    transform: scale(1.05);
+}
+.btn-sm {
+    background-color: #FF902B !important;
+    border-radius: 3rem !important;
+    color: #ffff !important;
+    
+}
+
+
+
+
+#search-icon {
+position: absolute; /* Positions the icon absolutely */
+left: 10px; /* Adjusts the icon's position inside the input */
+top: 50%; /* Centers the icon vertically */
+transform: translateY(-50%); /* Adjusts vertical alignment */
+pointer-events: none; /* Allows clicks to pass through to the input */
+}
+
+.input-group {
+position: relative; /* Makes the input group a positioning context */
+}
+.menu-card-wrapper {
+    margin: 0.5rem;
+}
+
+
+
+.dropdown{
+    display: flex;
+    flex-direction: row;
+}
+
+.btn-delete{
+    border-radius: 3rem !important;
+    padding: 0.5rem;
+}
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .category-list {
+        display: none !important; /* Force hiding */
+    }
+    #categoryFilter {
+        display: block !important; /* Force showing */
+    }
+}
+@media (min-width: 769px) {
+    .category-list {
+        display: block !important; /* Force showing */
+    }
+    #categoryFilter {
+        display: none !important; /* Force hiding */
+    }
+}
+
+
+.btn-light {
+    border: none;
+    background-color: #ffff !important; /* Remove background color */
+    color: #000; /* Set default text color */
+}
+.btn-light.active {
+    color: #FF902B !important; /* Active button color */
+
+}
+    .btn-update{
+       background-color: #FF902B important;
+}
+
+.menu-card{  
+    margin: 0.5rem;
+    
+}
+
+.add-menu{
+      border-radius: 6rem !important;
+}
+
+.search-box{
+    background-color: #F1F1F1 !important;
+    border-radius: 6rem !important;
+    padding: 1.3rem !important;
+}
+
+.container-s_add{
+    width: 4rem;
+}
+
+.btn-add-item{
+    background-color: #FF902B !important;
+    border-radius: 7rem;
+    border: 1px solid #FF902B;
+    padding: 0.5rem;
+}
+
+.close-add{
+    border-radius: 7rem;
+    background:none !important;
+    border: 1px solid #FF902B;
+    padding: 0.5rem;
+    color: #FF902B ;
+}
+
+#quantityValue,
+#priceValue{
+    border-radius: 7rem;
+    border: 1px solid #616161;
+    color: #616161;
+    padding: 0.5rem;
+}
+
+
+ /* Customizing the range slider color */
+ #quantity {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 5px;
+    background: #FF902B;
+    border-radius: 5px;
+    outline: none;
+    transition: background 0.3s ease;
+}
+
+#quantity::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 15px;
+    height: 15px;
+    background: #FF902B;
+    border-radius: 50%;
+    cursor: pointer;
+}
+
+.full-height {
+    height: 100vh; /* 100% of the viewport height */
+  }
+
+#quantity::-moz-range-thumb {
+    width: 15px;
+    height: 15px;
+    background: #FF902B;
+    border-radius: 50%;
+    cursor: pointer;
+}
+
+/* Style for the Cancel button */
+.btn-secondary[data-bs-dismiss="modal"] {
+    border-radius: 15px; /* Rounded border */
+    border: 2px solid #FF902B; /* Border color */
+    color: #FF902B; /* Text color */
+    background-color: transparent; /* No background */
+}
+
+/* Style for the Add to Cart button */
+.btn-primary[type="submit"][name="add_to_cart"] {
+    border-radius: 15px; /* Rounded border */
+    color: white; /* Text color */
+    background-color: #FF902B; /* Background color */
+    border: none; /* Remove border */
+}
+
+.me-3{
+    background: none;
+}
+
+       /* Style for active category */
+    
+ 
+
+    .desc-modal{
+        color: #333333;
+    }
+    

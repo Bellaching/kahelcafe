@@ -1,0 +1,208 @@
+.account-text {
+    font-size: 2rem;
+    font-weight: bold;
+}
+
+.management-underline {
+    position: relative;
+}
+.management-underline::after {
+    content: '';
+    position: absolute;
+    bottom: -10px; 
+    left: 0;
+    width: 100%;
+    height: 5px; 
+    background-color: #FC8E29;
+    border-radius: 3px;
+}
+.menu-card {
+    border: 1px solid #e0e0e0;
+    border-radius: 0.5rem;
+    margin-bottom: 20px;
+    transition: transform 0.2s;
+}
+.menu-card:hover {
+    transform: scale(1.05);
+}
+.btn-sm {
+    background-color: #FF902B !important;
+    border-radius: 3rem !important;
+    color: #ffff !important;
+    
+}
+
+
+
+#search-icon {
+position: absolute; /* Positions the icon absolutely */
+left: 10px; /* Adjusts the icon's position inside the input */
+top: 50%; /* Centers the icon vertically */
+transform: translateY(-50%); /* Adjusts vertical alignment */
+pointer-events: none; /* Allows clicks to pass through to the input */
+}
+
+.input-group {
+position: relative; /* Makes the input group a positioning context */
+}
+
+
+
+
+.dropdown{
+    display: flex;
+    flex-direction: row;
+}
+
+.btn-delete{
+    border-radius: 3rem !important;
+    padding: 0.5rem;
+}
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .category-list {
+        display: none; /* Hide category list by default */
+    }
+    #categoryFilter {
+        display: block; /* Show select in mobile */
+    }
+}
+@media (min-width: 769px) {
+    .category-list {
+        display: block; /* Show category list in larger screens */
+    }
+    #categoryFilter {
+        display: none; /* Hide select in larger screens */
+    }
+}
+
+.btn-light {
+    border: none;
+    background-color: #ffff !important; /* Remove background color */
+    color: #000; /* Set default text color */
+}
+.btn-light.active {
+    color: #FF902B !important; /* Active button color */
+
+}
+    .btn-update{
+       background-color: #FF902B important;
+}
+
+.menu-card{  
+    margin: 0.5rem;
+    
+}
+
+.add-menu{
+      border-radius: 6rem !important;
+}
+
+.search-box{
+    background-color: #F1F1F1 !important;
+    border-radius: 6rem !important;
+    padding: 1.3rem !important;
+}
+
+.container-s_add{
+    width: 4rem;
+}
+
+.btn-add-item{
+    background-color: #FF902B !important;
+    border-radius: 7rem;
+    border: 1px solid #FF902B;
+    padding: 0.5rem;
+}
+
+.close-add{
+    border-radius: 7rem;
+    background:none !important;
+    border: 1px solid #FF902B;
+    padding: 0.5rem;
+    color: #FF902B ;
+}
+
+#quantityValue,
+#priceValue{
+    border-radius: 7rem;
+    border: 1px solid #616161;
+    color: #616161;
+    padding: 0.5rem;
+}
+
+.modal-body {
+    display: flex;
+    flex-wrap: wrap;
+}
+.modal-body .form-left {
+    flex: 1;
+    margin-right: 20px;
+}
+.modal-body .form-right {
+    flex: 1;
+}
+.price-range, .quantity-input {
+    display: none !important;
+}
+
+.pagination .page-link {
+    border-radius: 50px;
+    font-size: 1rem;
+    padding: 10px 20px;
+}
+
+.pagination .page-item.active .page-link {
+    background-color: #FF902B !important;
+    color: #FFFFFF !important;
+}
+
+.pagination .page-item.disabled .page-link {
+    background-color: #FF902B;
+    color: #FFFFFF;
+    cursor: not-allowed;
+}
+
+.category-title {
+    font-size: 1.2rem;
+    font-weight: bold;
+}
+.menu-item-container {
+    display: flex;
+    justify-content: space-between;
+}
+.menu-item-container .category-title {
+    flex: 1;
+}
+
+
+.hidden {
+  display: none !important;
+}
+
+.modal-body {
+    display: flex;
+    flex-wrap: wrap;
+}
+.modal-body .form-left {
+    flex: 1;
+    margin-right: 20px;
+}
+.modal-body .form-right {
+    flex: 1;
+}
+
+.category-title {
+    font-size: 1.2rem;
+    font-weight: bold;
+}
+.menu-item-container {
+    display: flex;
+    justify-content: space-between;
+}
+.menu-item-container .category-title {
+    flex: 1;
+}
+.menu-item-container .price-info {
+    flex: 1;
+}

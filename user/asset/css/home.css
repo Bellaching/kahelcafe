@@ -1,0 +1,585 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+.banner {
+    width: 100%; 
+    height: 50vh; 
+    overflow: hidden; 
+}
+
+.banner-img {
+    width: 100%; 
+    height: 50vh;
+    display: block; 
+}
+
+
+.title-text {
+    font-family: 'Poppins', sans-serif;
+    font-weight: 600;
+    margin-left: 70px;
+    margin-top: 45px;
+    position: relative;
+}
+
+.orange-line {
+    position: relative;
+    margin: -35px 0px 120px;
+}
+
+.orange-line-img {
+    display: inline-block;
+    margin-top: 30px;
+    margin-left: 170px;
+    width: 50px;
+}
+
+
+
+.special-offers-container {
+    display: flex;
+    justify-content: space-evenly;
+    align-items: center;
+    flex-wrap: wrap;
+    background-color: #ffcea4;
+    margin-left: 8px;
+    margin-bottom: 70px;
+    padding: 30px;
+    gap: 20px;
+    border-radius: 30px;
+    width: 100%;
+    height: 350px;
+    position: relative;
+}
+
+.special-offers-image-container {
+    background-color: white;
+    border-radius: 15px;
+    overflow: hidden;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+    margin-top: -180px;
+    margin-left: 5px;
+    width: 345px;
+    height: 100%;
+    padding: 0;
+    padding-top: 24px;
+}
+
+.rating {
+    display: inline-flex;
+    font-family: 'Poppins', sans-serif;
+    font-weight: bold;
+    font-size: 18px;
+    position: absolute;
+    background-color: white;
+    color: black;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+    margin-top: -215px;
+    margin-left: 30px;
+    padding: 1px 10px;
+    border-radius: 15px;
+    align-items: center;
+}
+
+.star {
+    width: 20px;
+    margin-left: 20px;
+}
+
+.special-offers-image-container img {
+    display: block;
+    margin: auto;
+    border-radius: 15px;
+}
+
+.special-offers-details h3 {
+    font-family: 'Poppins', sans-serif;
+    font-weight: 600;
+    font-size: 20.89px;
+    margin-top: 10px;
+    margin-left: 30px;
+}
+
+.special-offers-details p {
+    font-family: 'Poppins', sans-serif;
+    font-size: 20.89px;
+    font-weight: bold;
+    color: #018241;
+    margin-left: 280px;
+    margin-top: -32px;
+    margin-bottom: 20px;
+}
+
+.special-offers-btn {
+    display: flex;
+    background-color: #ff902b;
+    color: white;
+    font-family: 'Poppins', sans-serif;
+    border: none;
+    padding: 10px 110px;
+    border-radius: 25px;
+    cursor: pointer;
+    margin: auto;
+    margin-bottom: 20px;
+    gap: 8px;
+}
+
+.cart {
+    width: 15px;
+    height: auto;
+}
+
+.special-offers-btn:hover {
+    background-color: black;
+}
+
+.virtual-tour {
+    position: relative;
+    width: 100%;
+    max-width: 100%;
+    height: 70vh;
+    overflow: hidden;
+    background-color: #f0f0f0;
+}
+
+.slide {
+    display: none;
+    width: 100%;
+    height: 100%;
+}
+
+.slide img {
+    height: 100%;
+    object-fit: cover;
+    top: 0;
+    left: 0;
+    z-index: 0;
+}
+
+.slide::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 700px;
+    background-image: linear-gradient(to left, rgba(0, 0, 0, 0.6) 40%, rgba(0, 0, 0, 0) 100%);
+    z-index: 1;
+}
+
+.prev, .next {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background-color: rgba(255, 255, 255, 0.8);
+    border: none;
+    cursor: pointer;
+    padding: 10px;
+    z-index: 2;
+}
+
+.prev {
+    left: 10px; /* Position for previous button */
+    border-radius: 50%;
+    width: 45px;
+    padding: 15px;
+}
+
+.next {
+    right: 10px; /* Position for next button */
+    border-radius: 50%;
+    width: 45px;
+    padding: 15px;
+}
+
+
+
+.active {
+    display: block; /* Show active slide */
+}
+
+.dots {
+    text-align: center; /* Center the dots */
+    position: absolute; /* Position relative to the virtual tour */
+    bottom: 10px; /* Position at the bottom */
+    left: 50%; /* Center horizontally */
+    transform: translateX(-50%); /* Offset to truly center */
+    z-index: 3;
+}
+
+.dot {
+    height: 15px; /* Height of the dot */
+    width: 15px; /* Width of the dot */
+    margin: 0 5px; /* Spacing between dots */
+    background-color: white; /* Default dot color */
+    border-radius: 50%; /* Make them round */
+    display: inline-block; /* Allow them to sit in a row */
+    cursor: pointer; /* Change cursor to pointer on hover */
+    opacity: 0.5; /* Slightly transparent by default */
+    transition: opacity 0.2s; /* Smooth transition on hover */
+}
+
+.dot.active {
+    background-color: orangered; /* Color for the active dot */
+    opacity: 1; /* Fully opaque for active dot */
+}
+
+.dot:hover {
+    opacity: 1; /* Fully opaque on hover */
+    background-color: orangered;
+}
+
+.slide-text {
+    position: absolute;
+    font-family: 'Poppins', sans-serif;
+    bottom: 50px;
+    left: 20px;
+    top: 215px;
+    color: white;
+    margin-top: 50px;
+    margin-left: 810px;
+    z-index: 2;
+}
+
+.slide-text {
+    margin-left: 775px;
+}
+
+.slide-text h2 {
+    color: #F5963F;
+    font-weight: 900;
+    font-size: 64px;
+    text-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+    margin-top: -130px;
+}
+
+.text-1 {
+    font-size: 18px;
+    font-weight: 400;
+    margin-left: 65px;
+    text-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+}
+
+.text-2 {
+    font-size: 18px;
+    font-weight: 400;
+    margin-left: 304px;
+    text-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+}
+
+.text-3 {
+    font-size: 18px;
+    font-weight: 400;
+    margin-left: 236px;
+    text-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+}
+
+.order-and-reserve {
+
+    font-family: 'Poppins', sans-serif;
+    text-align: center;
+    color: #C55F00;
+  
+}
+
+
+
+
+
+.arrow-1 {
+    position: absolute;
+    margin-top: 50px;
+    margin-left: 25px;
+}
+.order {
+    position: absolute;
+    margin-left: 163px;
+}
+
+.arrow-2 {
+    position: absolute;
+    margin-top: 50px;
+    margin-left: 460px;
+}
+
+.receive {
+    position: absolute;
+    margin-top: -3px;
+    margin-left: 608px;
+}
+
+.sched-reservation {
+    width: 100%;
+    height: 100%;
+    margin-bottom: 1280px;
+}
+
+.sched-banner {
+    position: absolute;
+    width: 100%;
+    height: 732px;
+    margin-top: 150px;
+}
+
+.sched-banner-img {
+    position: absolute;
+    width: 100%;
+    height: 732px;
+    margin-top: 150px;
+}
+
+.calendar {
+    position: absolute;
+    margin: 365px 60px 69px;
+}
+
+.sched-res-text {
+    position: absolute;
+    font-family: 'Poppins', sans-serif;
+    margin-top: 550px;
+    margin-left: 750px;
+}
+
+.sched-res-text h2 {
+    color: #FF912C;
+    font-size: 40px;
+    font-weight: 900;
+}
+
+.sched-res-text-1 {
+    color: white;
+    font-size: 20px;
+    font-weight: 400;
+    margin-left: 130px;
+}
+
+.sched-res-text-2 {
+    color: white;
+    font-size: 20px;
+    font-weight: 400;
+    margin-left: 436px;
+}
+
+.sched-res-btn {
+    display: flex;
+    position: absolute;
+    margin-top: 700px;
+    margin-left: 910px;
+    gap: 27px;
+}
+
+.reserve-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #FF902B;
+    color: white;
+    font-family: 'Poppins', sans-serif;
+    font-size: 17.4px;
+    font-weight: 500;
+    border: none;
+    border-radius: 20px;
+    padding: 20px;
+    cursor: pointer;
+    width: 181px;
+    height: 64px;
+    gap: 10px;
+}
+
+.order-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #FF902B;
+    color: white;
+    font-family: 'Poppins', sans-serif;
+    font-size: 20px;
+    font-weight: 500;
+    border: none;
+    border-radius: 20px;
+    padding: 20px;
+    cursor: pointer;
+    width: 181px;
+    height: 64px;
+}
+
+.order-btn {
+    background-color: white;
+    color: #FF902B;
+    border: none;
+    gap: 10px;
+}
+
+.reserve-btn:hover, .order-btn:hover {
+    background-color: black;
+}
+
+.reserve-img, .order-now-img {
+    width: 20px;
+    height: 20px;
+}
+
+.footer-container {
+    width: 100%;
+    height: 181px;
+    background-color: #1F2020;
+}
+
+.follow-text {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 18px;
+}
+
+.follow-text p {
+    font-family: 'Poppins', sans-serif;
+    font-size: 20px;
+    font-weight: 400;
+    color: white;
+    margin-top: 22px;
+}
+
+.follow-text img {
+    margin-top: 22px;
+}
+
+.socmed {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 33px;
+}
+
+@media (min-width: 320px) and (max-width: 425px) {
+    body, html {
+        margin: 0;
+    }
+    
+    .banner {
+        height: 100%;
+        width: 1000px;
+    }
+
+    .special-offers-container {
+        display: flex;
+        padding: auto;
+        align-items: center;
+        width: 1000px;
+    }
+
+    .menu {
+        width: 225px;
+    }
+
+    .special-offers-menu {
+        display: flex;
+        width: 280px;
+    }
+
+    .special-offers-details h3 {
+        font-size: 15px;
+    }
+
+    .special-offers-details p {
+        margin-left: 220px;
+        margin-top: -24px;
+        font-size: 15px;
+    }
+
+    .special-offers-btn {
+        display: flex;
+        width: 230px;
+        padding: 5px 69px;
+    }
+
+    .virtual-tour {
+        width: 1000px; /* Ensure full width */
+        max-width: none; /* Remove max width */
+    }
+
+    .slide-text h2 {
+        display: flex;
+        font-size: 2rem;
+        margin-left: -3em;
+    }
+
+    .text-1 {
+        font-size: 0.8rem;
+        margin: 2em -10.2em;
+    }
+
+    .text-2 {
+        font-size: 0.8rem;
+        margin: -1.7em 3.15em 0;
+    }
+
+    .text-3 {
+        font-size: 0.8rem;
+        margin: 0.3em -0.72em 0;
+    }
+
+
+
+    .order-and-reserve img {
+        max-width: 100%; /* Ensures images do not exceed their container */
+        height: auto; /* Maintains aspect ratio */
+    }
+    
+
+    .calendar {
+        width: 500px;
+        margin-top: 420px;
+    }
+
+    .sched-banner {
+        width: 1000px;
+    }
+
+    .sched-res-text {
+        margin-top: 38em;
+    }
+
+    .sched-res-text h2 {
+        margin-left: -5.9em;
+        font-size: 1.7rem;
+    }
+
+    .sched-res-text-1 {
+        margin-left: -8em;
+        font-size: 1rem;
+    }
+
+    .sched-res-text-2 {
+        width: 100%;
+        margin-left: 0;
+        padding-left: 7.15em;
+        padding-right: 4em;
+        font-size: 1rem;
+        white-space: nowrap;
+    }
+
+    .reserve-btn {
+        margin-left: -300px;
+        margin-top: 25px;
+        width: 170px;
+        height: 20px;
+        font-size: 15px;
+        border-radius: 13px;
+    }
+
+    .order-btn {
+        margin-top: 25px;
+        width: 170px;
+        height: 20px;
+        font-size: 15px;
+        border-radius: 13px;
+    }
+
+    .footer-container {
+        width: 1000px ;
+    }
+}
