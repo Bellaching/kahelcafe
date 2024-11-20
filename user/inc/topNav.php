@@ -12,9 +12,19 @@ if (isset($_GET['logout'])) {
 include './../../connection/connection.php';
 
 
-
+if (isset($_SESSION['user_id'])) {
+    $userId = $_SESSION['user_id'];
+    $sql = "SELECT firstname, lastname, email, contact_number FROM client WHERE id = ?";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("i", $userId);
+    $stmt->execute();
+    $stmt->bind_result($firstName, $lastName, $email, $contactNumber);
+    $stmt->fetch();
+    $stmt->close();
+}
 
 include '../views/change_profile.php';
+
 
 
 
