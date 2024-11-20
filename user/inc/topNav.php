@@ -83,6 +83,9 @@ include '../views/change_profile.php';
                     <a class="nav-link" href="./../../user/views/reservation.php">Reservation</a>
                 </li>
                 <li class="nav-item">
+                    <a class="nav-link" href="./../../user/views/try.php">Order-now</a>
+                </li>
+                <li class="nav-item">
                     <a class="nav-link" href="./../../user/views/cart.php"><i class="fa-solid fa-cart-shopping"></i></a>
                 </li>
                 <?php if ($firstName): ?>
