@@ -134,9 +134,7 @@ ob_end_flush();
                                     <strong>₱' . $price . '</strong>
                                 </p>
                             </div>
-                            <button class="btn btn-sm p-2" onclick="openUpdateMenuModal(' . $id . ')">
-                                <i class="fa-solid fa-cart-shopping"></i> Update Menu
-                            </button>
+                       
                             <button class="btn btn-delete btn-danger" onclick="confirmDelete(' . $id . ')">
                                 <i class="fa-solid fa-trash"></i> Delete
                             </button>

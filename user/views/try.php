@@ -21,6 +21,22 @@ $itemsPerPage = 6;
 $current_page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
 $offset = ($current_page - 1) * $itemsPerPage;
 
+
+if (isset($_SESSION['user_id'])) {
+    $userId = $_SESSION['user_id'];
+    $sql = "SELECT firstname, lastname, email, contact_number FROM client WHERE id = ?";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("i", $userId);
+    $stmt->execute();
+    $stmt->bind_result($firstName, $lastName, $email, $contactNumber);
+    $stmt->fetch();
+    $stmt->close();
+}
+
+$userVerified = isset($_SESSION['user_id']) ? 1 : 0;
+
+
+
 // Initialize filter variables
 $selectedCategory = isset($_GET['category']) ? $conn->real_escape_string($_GET['category']) : '';
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['add_to_cart'])) {
@@ -75,6 +91,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['add_to_cart'])) {
     }
 }
 
+if (!isset($_SESSION['user_id'])) {
+    $_SESSION['cart_error'] = "You need to log in to add items to the cart.";
+    header("Location: /login.php");
+    exit();
+}
+
+
 $totalItemsResult = $conn->query("SELECT COUNT(*) as count FROM menu1" . ($selectedCategory ? " WHERE category = '$selectedCategory'" : ""));
 $totalItems = $totalItemsResult->fetch_assoc()['count'];
 $totalPages = ceil($totalItems / $itemsPerPage);
@@ -118,16 +141,36 @@ ob_end_flush();
         </div>
     </div>
     <!-- Full-width button with margin for mobile and small screens -->
-    <button class="btn btn-sm btn-primary p-2 mt-2 border-0 w-100" 
-        data-bs-toggle="modal" 
-        data-bs-target="#itemModal<?php echo $item['id']; ?>" 
-        onclick="checkVerification('<?php echo $userVerified; ?>')">
+    <button 
+    class="btn btn-sm btn-primary p-2 mt-2 border-0 w-100" 
+    data-bs-toggle="modal" 
+    data-bs-target="#itemModal<?php echo $item['id']; ?>" 
+    onclick="checkVerification('<?php echo $userVerified; ?>')">
     <i class="fa-solid fa-cart-shopping"></i> Add to cart
 </button>
+
 
 </div>
     </div>
 </div>
+
+<div class="modal fade" id="verificationModal" tabindex="-1" aria-labelledby="verificationModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="verificationModalLabel">Verification Required</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body text-center">
+        <p>Please log in to add items to your cart.</p>
+        <a href="/login.php" class="btn btn-primary">Log In</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+
 <div class="modal fade" id="itemModal<?php echo $item['id']; ?>" tabindex="-1" aria-labelledby="itemModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content">
@@ -243,6 +286,8 @@ ob_end_flush();
         </div>
     </div>
 </div>
+
+
 <div class="modal fade" id="verificationModal" tabindex="-1" aria-labelledby="verificationModalLabel" aria-hidden="true">
   <div class="modal-dialog">
     <div class="modal-content">
@@ -296,6 +341,14 @@ function toggleButton(button) {
         tempInput.value = value;
     }
 }
+
+function checkVerification(isVerified) {
+    if (!isVerified) {
+        const verificationModal = new bootstrap.Modal(document.getElementById('verificationModal'));
+        verificationModal.show();
+    }
+}
+
 
 // Update quantity dynamically based on the range input
 document.querySelectorAll('.form-range').forEach(range => {
