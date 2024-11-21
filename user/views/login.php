@@ -61,72 +61,57 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['login'])) {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="./../styles.css">
     <title>Login</title>
-    <style>
-        /* Add your custom styles here */
-        .login{
-            background-color: #F2F4F7;
-        }
-        .form-container {
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<style>
+     .form-container {
             background-color: #FFFFFF;
             border-radius: 15px;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
         }
-        .header-title {
-            font-size: 2.5rem;
+
+        .btn-login{
+            background-color: #FF902B;
         }
-        .form-control {
-            border: 1px solid #ADADAD;
-            border-radius: 8px;
-            padding: 15px;
-            position: relative;
-        }
-        .btn-custom {
-            background-color: #E48700;
-            color: #fff;
-            border-radius: 8px;
-            padding: 12px;
-        }
-        .btn-custom:hover {
-            background-color: #D47600;
-        }
-    </style>
+
+        
+</style>
 </head>
-<body>
-    <div class="container d-flex justify-content-center align-items-center min-vh-100">
-        <div class="col-md-8 col-lg-6 form-container p-5">
-            <div class="header mb-3 d-flex justify-content-between align-items-center">
-                <h1 class="modal-title header-title">Login</h1>
-                <div class="text-end">
-                    <small>No account?</small><br>
-                    <a href="./../../user/views/register.php">Sign up</a>
+<body class="bg-light d-flex justify-content-center align-items-center vh-100">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-6 col-lg-4">
+                <div class="card shadow-sm">
+                    <div class="card-body p-4">
+                        <h1 class="h4 text-center mb-4">Login</h1>
+                        <form method="POST" action="login.php" class="border-0">
+                            <div class="mb-3">
+                                <label for="email" class="form-label">Email</label>
+                                <input type="email" class="form-control" id="email" name="email" placeholder="Enter email" required>
+                                <?php if (isset($errors['email'])): ?>
+                                    <div class="text-danger small"><?php echo $errors['email']; ?></div>
+                                <?php endif; ?>
+                            </div>
+                            <div class="mb-3">
+                                <label for="password" class="form-label">Password</label>
+                                <input type="password" class="form-control" id="password" name="password" placeholder="Enter password" required>
+                                <?php if (isset($errors['password'])): ?>
+                                    <div class="text-danger small"><?php echo $errors['password']; ?></div>
+                                <?php endif; ?>
+                            </div>
+                            <div class="d-grid">
+                                <button type="submit" name="login" class="btn btn-warning btn-login text-light">Login</button>
+                            </div>
+                        </form>
+                        <div class="text-center mt-3">
+                            <small>No account? <a href="./../../user/views/register.php">Sign up</a></small>
+                        </div>
+                    </div>
                 </div>
-            </div>
-            <div class="form-section p-4">
-                <form method="POST" action="login.php">
-                    <div class="form-group m-3">
-                        <label for="email">Email</label>
-                        <input type="email" class="form-control" id="email" name="email" placeholder="Enter email" required>
-                        <?php if (isset($errors['email'])): ?>
-                            <p class="error text-danger"><?php echo $errors['email']; ?></p>
-                        <?php endif; ?>
-                    </div>
-                    <div class="form-group m-3">
-                        <label for="password">Password</label>
-                        <input type="password" class="form-control" id="password" name="password" placeholder="Enter password" required>
-                        <?php if (isset($errors['password'])): ?>
-                            <p class="error text-danger"><?php echo $errors['password']; ?></p>
-                        <?php endif; ?>
-                    </div>
-                    <div class="form-group m-3">
-                        <button type="submit" name="login" class="btn btn-custom container-fluid">Login</button>
-                    </div>
-                </form>
             </div>
         </div>
     </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
