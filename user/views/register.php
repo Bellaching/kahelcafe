@@ -72,6 +72,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['register'])) {
     // Validate password
     if (empty($password)) {
         $errors['password'] = "Password is required.";
+    }elseif (strlen($password) < 8) {
+        $errors['password'] = "Password must be at least 8 characters long.";
     }
 
     // Validate confirm password
@@ -186,74 +188,79 @@ function generateVerificationCode() {
 
         <!-- Registration Form -->
         <div class="form-section p-4">
-            <?php if (!$registrationSuccess): ?>
-                <form action="" method="POST" id="createUserForm" class="form-register">
-                    <div class="row g-3">
-                        <div class="col-12">
-                            <label for="email" class="form-label">Email</label>
-                            <input type="email" class="form-control" id="email" name="email" placeholder="Enter your email">
-                            <?php if (isset($errors['email'])): ?>
-                                <p class="error text-danger"><?php echo $errors['email']; ?></p>
-                            <?php endif; ?>
-                        </div>
+    <?php if (!$registrationSuccess): ?>
+        <form action="" method="POST" id="createUserForm" class="form-register">
+            <div class="row g-3">
+                <div class="col-12">
+                    <label for="email" class="form-label">Email</label>
+                    <input type="email" class="form-control" id="email" name="email" placeholder="Enter your email" 
+                           value="<?php echo isset($email) ? $email : ''; ?>">
+                    <?php if (isset($errors['email'])): ?>
+                        <p class="error text-danger"><?php echo $errors['email']; ?></p>
+                    <?php endif; ?>
+                </div>
 
-                        <div class="col-12 col-md-6">
-                            <label for="firstname" class="form-label">First Name</label>
-                            <input type="text" class="form-control" id="firstname" name="firstname" placeholder="Enter first name">
-                            <?php if (isset($errors['firstname'])): ?>
-                                <p class="error text-danger"><?php echo $errors['firstname']; ?></p>
-                            <?php endif; ?>
-                        </div>
+                <div class="col-12 col-md-6">
+                    <label for="firstname" class="form-label">First Name</label>
+                    <input type="text" class="form-control" id="firstname" name="firstname" placeholder="Enter first name" 
+                           value="<?php echo isset($firstname) ? $firstname : ''; ?>">
+                    <?php if (isset($errors['firstname'])): ?>
+                        <p class="error text-danger"><?php echo $errors['firstname']; ?></p>
+                    <?php endif; ?>
+                </div>
 
-                        <div class="col-12 col-md-6">
-                            <label for="lastname" class="form-label">Last Name</label>
-                            <input type="text" class="form-control" id="lastname" name="lastname" placeholder="Enter last name">
-                            <?php if (isset($errors['lastname'])): ?>
-                                <p class="error text-danger"><?php echo $errors['lastname']; ?></p>
-                            <?php endif; ?>
-                        </div>
+                <div class="col-12 col-md-6">
+                    <label for="lastname" class="form-label">Last Name</label>
+                    <input type="text" class="form-control" id="lastname" name="lastname" placeholder="Enter last name" 
+                           value="<?php echo isset($lastname) ? $lastname : ''; ?>">
+                    <?php if (isset($errors['lastname'])): ?>
+                        <p class="error text-danger"><?php echo $errors['lastname']; ?></p>
+                    <?php endif; ?>
+                </div>
 
-                        <div class="col-12">
-                            <label for="contact_number" class="form-label">Contact Number</label>
-                            <input type="text" class="form-control" id="contact_number" name="contact_number" placeholder="Enter contact number">
-                            <?php if (isset($errors['contact_number'])): ?>
-                                <p class="error text-danger"><?php echo $errors['contact_number']; ?></p>
-                            <?php endif; ?>
-                        </div>
+                <div class="col-12">
+                    <label for="contact_number" class="form-label">Contact Number</label>
+                    <input type="text" class="form-control" id="contact_number" name="contact_number" placeholder="Enter contact number" 
+                           value="<?php echo isset($contact_number) ? $contact_number : ''; ?>">
+                    <?php if (isset($errors['contact_number'])): ?>
+                        <p class="error text-danger"><?php echo $errors['contact_number']; ?></p>
+                    <?php endif; ?>
+                </div>
 
-                        <div class="col-12">
-                            <label for="password" class="form-label">Password</label>
-                            <div class="password-container">
-                                <input type="password" class="form-control" id="password" name="password" placeholder="Enter password">
-                                <i class="fas fa-eye eye-icon" id="togglePassword"></i>
-                            </div>
-                            <span id="password-strength" style="font-size: 12px;"></span>
-                            <?php if (isset($errors['password'])): ?>
-                                <p class="error text-danger"><?php echo $errors['password']; ?></p>
-                            <?php endif; ?>
-                        </div>
-
-                        <div class="col-12">
-                            <label for="confirm_password" class="form-label">Confirm Password</label>
-                            <div class="password-container">
-                                <input type="password" class="form-control" id="confirm_password" name="confirm_password" placeholder="Confirm password">
-                                <i class="fas fa-eye eye-icon" id="toggleConfirmPassword"></i>
-                            </div>
-                            <?php if (isset($errors['confirm_password'])): ?>
-                                <p class="error text-danger"><?php echo $errors['confirm_password']; ?></p>
-                            <?php endif; ?>
-                        </div>
-
-                        <div class="col-12">
-                            <button type="submit" name="register" class="btn btn-custom container-fluid">Register</button>
-                        </div>
+                <div class="col-12">
+                    <label for="password" class="form-label">Password</label>
+                    <div class="password-container">
+                        <input type="password" class="form-control" id="password" name="password" placeholder="Enter password">
+                        <i class="fas fa-eye eye-icon" id="togglePassword"></i>
                     </div>
-                </form>
-            <?php else: ?>
-                <div class="alert alert-success">Registration successful! Please check your email to verify your account.</div>
-                <a href="verification.php?email=<?php echo urlencode($email); ?>">Go to Verification</a>
-            <?php endif; ?>
-        </div>
+                    <span id="password-strength" style="font-size: 12px;"></span>
+                    <?php if (isset($errors['password'])): ?>
+                        <p class="error text-danger"><?php echo $errors['password']; ?></p>
+                    <?php endif; ?>
+                </div>
+
+                <div class="col-12">
+                    <label for="confirm_password" class="form-label">Confirm Password</label>
+                    <div class="password-container">
+                        <input type="password" class="form-control" id="confirm_password" name="confirm_password" placeholder="Confirm password">
+                        <i class="fas fa-eye eye-icon" id="toggleConfirmPassword"></i>
+                    </div>
+                    <?php if (isset($errors['confirm_password'])): ?>
+                        <p class="error text-danger"><?php echo $errors['confirm_password']; ?></p>
+                    <?php endif; ?>
+                </div>
+
+                <div class="col-12">
+                    <button type="submit" name="register" class="btn btn-custom container-fluid">Register</button>
+                </div>
+            </div>
+        </form>
+    <?php else: ?>
+        <div class="alert alert-success">Registration successful! Please check your email to verify your account.</div>
+        <a href="verification.php?email=<?php echo urlencode($email); ?>">Go to Verification</a>
+    <?php endif; ?>
+</div>
+
     </div>
 </div>
 
