@@ -51,7 +51,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['addMenuItem'])) {
 
     // Execute query
     if ($conn->query($sql) === TRUE) {
-        header("Location: "); // Redirect after success
+        header("Location: menuManagement.php"); // Redirect after success
         exit();
     } else {
         // Show detailed error message if insertion fails
@@ -201,19 +201,29 @@ ob_end_flush();
                                 </select>
                             </div>
                             <div class="mb-3 container-fluid">
-                                <label for="menuSize" class="form-label">Size</label>
-                                <div class="container-fluid">
-                                    <input type="checkbox" name="menuSize[]" value="Small"> Small
-                                    <input type="checkbox" name="menuSize[]" value="Medium"> Medium
-                                    <input type="checkbox" name="menuSize[]" value="Large"> Large
-                                </div>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">Temperature</label>
-                                <div>
-                                    <input type="checkbox" id="temperatureHot" name="menuTemperature[]" value="Hot"><label for="temperatureHot">Hot</label><input type="checkbox" id="temperatureWarm" name="menuTemperature[]" value="Warm"><label for="temperatureWarm">Warm</label><input type="checkbox" id="temperatureCold" name="menuTemperature[]" value="Cold"><label for="temperatureCold">Cold</label>
-                                </div>
-                            </div>
+    <label for="menuSize" class="form-label">Size</label>
+    <div class="container-fluid">
+        <input type="checkbox" name="menuSize[]" value="Small" id="sizeSmall">
+        <label for="sizeSmall" class="me-3">Small</label>
+        <input type="checkbox" name="menuSize[]" value="Medium" id="sizeMedium">
+        <label for="sizeMedium" class="me-3">Medium</label>
+        <input type="checkbox" name="menuSize[]" value="Large" id="sizeLarge">
+        <label for="sizeLarge">Large</label>
+    </div>
+</div>
+
+<div class="mb-3 container-fluid">
+    <label for="menuTemperature" class="form-label">Temperature</label>
+    <div class="container-fluid">
+        <input type="checkbox" name="menuTemperature[]" value="Hot" id="temperatureHot">
+        <label for="temperatureHot" class="me-3">Hot</label>
+        <input type="checkbox" name="menuTemperature[]" value="Warm" id="temperatureWarm">
+        <label for="temperatureWarm" class="me-3">Warm</label>
+        <input type="checkbox" name="menuTemperature[]" value="Cold" id="temperatureCold">
+        <label for="temperatureCold">Cold</label>
+    </div>
+</div>
+
                             <div class="mb-3">
     <label for="menuQuantity" class="form-label">Quantity</label>
     <div class="d-flex align-items-center">
@@ -231,25 +241,18 @@ ob_end_flush();
     </div>
 </div>
 <div class="mb-3">
-    <label class="form-label">Product Status</label>
-    <div class="d-flex">
-        <div class="form-check me-3">
-            <input class="form-check-input" type="radio" id="statusAvailable" name="productStatus" value="Available" required>
-            <label class="form-check-label" for="statusAvailable">
-                Available
-            </label>
-        </div>
-        <div class="form-check">
-            <input class="form-check-input" type="radio" id="statusUnavailable" name="productStatus" value="Unavailable" required>
-            <label class="form-check-label" for="statusUnavailable">
-                Unavailable</label></div></div></div>            </div>        <div class="container">
+  
+  </div>            </div>        <div class="container">
     <div class="row">
         <div class="col-6">
             <button type="button" class=" container-fluid close-add" data-bs-dismiss="modal" aria-label="Close">Close</button>
         </div>
         <div class="col-6">
             <button type="submit" name="addMenuItem" class=" btn-add-item container-fluid text-light">Add Menu Item</button>
-        </div></div></div></div></form></div></div></div></div>
+        </div>
+    </div>
+</div>
+</div></form></div></div></div></div>
 <div class="modal fade" id="updateMenuModal" tabindex="-1" aria-labelledby="updateMenuModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -309,8 +312,7 @@ ob_end_flush();
         </div>
     </div>
 
-        <!-- Pagination Controls -->
-         <!-- Pagination -->
+         <!-- Pagination
          <div class="pagination-container" style="text-align: center; margin-top: 30px;">
     <nav>
         <ul class="pagination justify-content-center">
@@ -331,7 +333,7 @@ ob_end_flush();
             <?php endif; ?>
         </ul>
     </nav>
-</div>
+</div> -->
 
 
 
