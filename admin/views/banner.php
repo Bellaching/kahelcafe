@@ -131,8 +131,9 @@ $result = $conn->query("SELECT * FROM banners");
                         <span aria-hidden="true">&times;</span>
                     </button>
                 </div>
+                <h5 class="mt-3 mx-3">Uploaded Images</h5>
                 <div class="modal-body">
-                    <h5 class="mt-3">Uploaded Images</h5>
+                  
                     <div id="uploadedImages">
                         <?php
                         // Fetch images again to display in the modal
@@ -155,11 +156,11 @@ $result = $conn->query("SELECT * FROM banners");
                             <label for="description">Description</label> Change label to 'Description' 
                             <textarea id="summernote" name="description"></textarea>  Change 'content' to 'description' 
                         </div> -->
-                        <button type="submit" class="btn btn-primary">Upload</button>
+                       
                     </form>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button> <button type="submit" class="btn btn-primary">Upload</button>
                 </div>
             </div>
         </div>
