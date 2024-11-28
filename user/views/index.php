@@ -12,10 +12,20 @@ include './../inc/topNav.php';
 
 <!-- Banner -->
 <div class="banner">
+    
     <img src="./../asset/img/kahel-cafe-banner-hd.jpg" class="banner-img" alt="kahel cafe banner"/>
+    <h1 id="banner_title">Kahel Cafe</h1>
 </div>
 
 <!-- Special Offers -->
+<!-- <div class="special-offers">
+    <h2 class="title-text">Popular Now</h2>
+    
+    <div class="orange-line">
+        <img src="./../asset/img/special-offers/orange-line.png" class="orange-line-img" alt="orange line"/>
+    </div> -->
+
+    <!-- Special Offers -->
 <div class="special-offers">
     <h2 class="title-text">Popular Now</h2>
     
@@ -54,7 +64,7 @@ include './../inc/topNav.php';
                     <span class="rating">4.8<span>
                     <img src="./../asset/img/special-offers/star.png" class="star" alt="star"/>
                 </div>
-
+                
                 <div class="special-offers-details">
                     <h3>Espresso</h3>
                     <p>P140</p>
@@ -89,6 +99,48 @@ include './../inc/topNav.php';
         </div>
     </div>
 </div>
+
+        <!-- <div class="special-offers-menu">
+            <script>
+                document.addEventListener("DOMContentLoaded", () => {
+    fetch('../user/top-menus.php')
+        .then(response => response.json())
+        .then(data => {
+            const container = document.querySelector('.special-offers-container');
+            container.innerHTML = ''; // Clear existing items
+
+            data.forEach(menu => {
+                const menuHtml = `
+                    <div class="special-offers-menu">
+                        <div class="special-offers-image-container">
+                            <img src="./../asset/img/special-offers/${menu.image}" class="menu" alt="${menu.name}" width="309.42px" height="226px"/>
+                            
+                            <div class="special-offers-rating">
+                                <span class="rating">${menu.avg_rating.toFixed(1)}</span>
+                                <img src="./../asset/img/special-offers/star.png" class="star" alt="star"/>
+                            </div>
+                            
+                            <div class="special-offers-details">
+                                <h3>${menu.name}</h3>
+                                <p>P${menu.price.toFixed(2)}</p>
+                                <button class="special-offers-btn">
+                                    <img src="./../asset/img/special-offers/cart.png" class="cart" alt="cart"/>
+                                    Add Order
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.innerHTML += menuHtml;
+            });
+        })
+        .catch(error => console.error('Error fetching top menus:', error));
+});
+
+            </script>
+        </div> -->
+        
+
 
 <!-- Virtual Tour -->
 <div class="virtual-tour">
@@ -153,7 +205,9 @@ include './../inc/topNav.php';
         <img src="./../asset/img/sched-reservation/sched-banner.png" class="sched-banner-img" alt="sched-reservation-banner">
     </div>
     
-    <img src="./../asset/img/sched-reservation/calendar.png" class="calendar" alt="calendar">
+    <div class="calendar">
+                <iframe src="../inc/calendar.php"></iframe>
+            </div>
 
     <div class="sched-res-text">
         <h2>Schedule your reservation</h2>
@@ -162,12 +216,12 @@ include './../inc/topNav.php';
     </div>
 
     <div class="sched-res-btn">
-        <button class="reserve-btn">
+        <button class="reserve-btn" onclick="window.location.href='./Reservation.php'">
             <img src="./../asset/img/sched-reservation/Reserve.png" class="reserve-img" alt="cart"/>    
             Reserve now
         </button>
 
-        <button class="order-btn">
+        <button class="order-btn" onclick="window.location.href='./try.php'">
             <img src="./../asset/img/sched-reservation/Add Shopping Cart.png" class="order-now-img" alt="cart"/>    
             Order now
         </button>

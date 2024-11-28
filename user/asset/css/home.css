@@ -16,6 +16,18 @@
     display: block; 
 }
 
+#banner_title {
+    position: absolute;
+    top: 30%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: orange;
+    font-size: 7rem;
+    font-family:fantasy;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7); 
+    z-index: 2; 
+}
+
 
 .title-text {
     font-family: 'Poppins', sans-serif;
@@ -152,11 +164,10 @@
 }
 
 .slide img {
-    height: 100%;
-    object-fit: cover;
-    top: 0;
-    left: 0;
-    z-index: 0;
+        width: 100%; 
+        height: 100%;
+        display: block; 
+    
 }
 
 .slide::before {
@@ -334,6 +345,16 @@
 .calendar {
     position: absolute;
     margin: 365px 60px 69px;
+    width: 45%;
+    height: 50rem;
+}
+
+.calendar iframe {
+    width: 100%;           
+    height: 80%;          
+    border: none;            
+    object-fit: contain;    
+    background-color: transparent;
 }
 
 .sched-res-text {

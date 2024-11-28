@@ -1,0 +1,237 @@
+
+/* Your CSS styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Poppins', sans-serif;
+}
+
+.reservation {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    font-family: 'Poppins', sans-serif;
+}
+
+.header {
+    height: 9%;
+    width: 100%;
+}
+
+.res-body {
+    display: flex;
+    height: 85%;
+    width: 100%;
+}
+
+/* Left section of the body */
+.reservation-left {
+    width: 60%;
+    height: 100%;
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+}
+
+.left-header {
+    height: 15%; 
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+    gap: 0.8rem;
+}
+
+#title { 
+    text-decoration: underline;
+    text-decoration-color: #FF902A;
+}
+
+.calendar {
+    width: 100%;               
+    height: 100%;              
+    display: flex;             
+    justify-content: center;   
+    align-items: center;       
+    overflow: hidden;        
+}
+
+.calendar iframe {
+    width: 100%;           
+    height: 100%;          
+    border: none;            
+    object-fit: contain;    
+}
+
+.note {
+    height: 30%; 
+    width: 100%;
+    padding: 1rem;
+}
+
+#note-area{
+    border-radius: 1rem;
+    height: 100%;
+    width: 100%;
+    padding: 0.5rem;
+    resize: none;
+}
+
+/* Right section of the body */
+.reservation-right {
+    width: 40%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between; /* Evenly spaces sections */
+padding: 1%; /* Add some padding for better visual separation */
+}
+
+.cart-right-header1
+{
+    font-size: 1.5rem;
+}
+
+.seat-reservation {
+    width: 100%;
+    height: 25%;
+    margin-top: 0.8rem;
+    flex-direction: column;
+}
+
+.reservation-color {
+    display: grid;
+    width: 100%;
+    gap: .01rem;
+    margin: .05rem;
+}
+
+.color-coding {
+    border-radius: 0.4rem;
+    display: flex;
+    justify-content: center;
+    padding: 0.5rem;
+    width: 90%;
+    height: 2rem;
+}
+
+ /* Style for the Available-Time container */
+ .Available-Time {
+    max-width: 90%;
+    height: 27%;
+    justify-content: center;
+    padding: 0.2;
+    width: 90%;
+}
+
+/* Grid layout for buttons */
+.Available-Time-show {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr); 
+    grid-template-rows: repeat(5, 1fr); 
+    gap: .5rem; 
+    /* margin-top: 1rem; */
+    width: 100%;
+    font-size: .6rem;
+    margin: auto;
+    /* margin-left: auto; */
+}
+
+/* Style for each button */
+.available-time-btn {
+    padding: 10px;
+    color: white;
+    border: none;
+    border-radius: 0.4rem;
+    cursor: pointer;
+    text-align: center;
+    height:1.5rem;
+}
+
+.available-time-btn:hover {
+    opacity: 0.8;
+}
+
+.party-size {
+display: flex; /* Use flexbox for layout */
+justify-content: space-between; /* Space between items */
+align-items: center; /* Vertically center items */
+margin-top: 1rem;
+margin-bottom: 1rem;
+margin-left: 0;
+height: 7%; /* Adjust as needed */
+width: 90%; /* Adjust width based on your layout */
+padding: 1rem; /* Optional: Add padding inside the container */
+border-top: 2px solid orange; /* Orange border at the top */
+border-bottom: 2px solid orange; /* Orange border at the bottom */
+}
+
+
+.party-size small {
+font-size: 0.9rem;
+margin-right: 0.5rem; /* Add spacing to separate it from the input group */
+}
+
+.input-group.scale-size {
+display: flex;
+align-items: center;
+width: 30%;
+}
+
+#button-minus,
+#button-plus {
+display: flex;
+justify-content: center;
+align-items: center;
+background-color: #616161;
+color: white;
+border: none;
+height: 1.6rem; /* Slightly larger for better alignment */
+width: 2rem; /* Add width for consistency */
+margin: 0; /* Remove extra margin to align with the input */
+border-radius: 0.4rem;
+}
+
+#number-input {
+text-align: center;
+border: solid #212529 1px;
+height: 1.6rem; /* Match button height */
+width: 3rem; /* Fixed width for consistency */
+border-radius: 0.4rem;
+color: black;
+font-weight: bold;
+margin: 0 0.4rem; /* Add spacing between buttons */
+}
+
+
+.btn-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.order-summary-container {
+    height: 50%;
+    font-size: .8rem;
+}
+
+.reservation-info {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+}
+
+.result-sum {
+    color: #616161;
+}
+
+#confirm-order {
+    width: 90%;
+    background: #FF902A;
+    border: none;
+    color: #ffffff;
+    padding: 0.5rem;
+    border-radius: 1.2rem;
+}
+
+#reservation-info-total-price p {
+    font-weight: bold;
+}
