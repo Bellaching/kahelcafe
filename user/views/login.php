@@ -38,14 +38,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['login'])) {
             if ($user['verified'] == 1) { // Assuming 'verified' is the column name
                 // Check the password (plain text)
                 if ($password == $user['password']) {
+                    $errors['password'] = "Invalid password.";
+                } else {
+                 
+
                     $_SESSION['user_id'] = $user['id'];
                     $_SESSION['email'] = $user['email'];
                     $_SESSION['verified'] = $user['verified']; // Store verification status
                     $loginSuccess = true;
                     header("Location: index.php"); // Redirect to a secure page after login
                     exit();
-                } else {
-                    $errors['password'] = "Invalid password.";
                 }
             } else {
                 $errors['email'] = "Your email is not verified. <a href='verification.php'>Click here to verify.</a>";

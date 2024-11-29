@@ -11,7 +11,6 @@ if (isset($_GET['logout'])) {
 
 include './../../connection/connection.php';
 
-
 if (isset($_SESSION['user_id'])) {
     $userId = $_SESSION['user_id'];
     $sql = "SELECT firstname, lastname, email, contact_number FROM client WHERE id = ?";
@@ -24,10 +23,6 @@ if (isset($_SESSION['user_id'])) {
 }
 
 include '../views/change_profile.php';
-
-
-
-
 ?>
 
 <!DOCTYPE html>
@@ -60,7 +55,6 @@ include '../views/change_profile.php';
         .dropdown-menu {
             min-width: 200px;
         }
-  
     </style>
     <title>Change Profile</title>
 </head>
@@ -83,7 +77,7 @@ include '../views/change_profile.php';
                     <a class="nav-link" href="./../../user/views/reservation.php">Reservation</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="./../../user/views/try.php">Order-now</a>
+                    <a class="nav-link" href="./../../user/views/order-now.php">Order-now</a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" href="./../../user/views/cart.php"><i class="fa-solid fa-cart-shopping"></i></a>
@@ -108,16 +102,24 @@ include '../views/change_profile.php';
     </div>
 </nav>
 
+<!-- Modal for Changing Profile -->
+<div class="modal fade" id="changeProfileModal" tabindex="-1" aria-labelledby="changeProfileModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="changeProfileModalLabel">Change Your Profile</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Profile Form (Can be included from change_profile.php) -->
+                <?php include '../views/change_profile.php'; ?>
+            </div>
+        </div>
+    </div>
+</div>
 
-
-<!-- Optional: Add script to toggle password fields visibility -->
-<script>
-    document.getElementById("changePassword").addEventListener("change", function() {
-        var passwordFields = document.querySelector(".password-fields");
-        passwordFields.style.display = this.checked ? "block" : "none";
-    });
-</script>
-
+<!-- Bootstrap JS Bundle -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
 </body>
 </html>

@@ -1,9 +1,6 @@
 <?php
 session_start();
 
-
-
-
 // If there is no transaction ID in the session, generate one
 if (!isset($_SESSION['transaction_id'])) {
     $_SESSION['transaction_id'] = uniqid('txn_', true); // Generate a unique transaction ID
@@ -34,7 +31,6 @@ if (isset($_POST['remove_item'])) {
         }
     }
     echo json_encode(['success' => true]);
-
 }
 
 // Check if the cart is empty
@@ -99,6 +95,10 @@ $cartEmpty = empty($_SESSION['cart']);
         .back-to-order a, i{
             color: #FF902B;
         }
+
+        .alert-dismissible {
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -120,7 +120,6 @@ $cartEmpty = empty($_SESSION['cart']);
                     <thead>
                         <tr>
                             <th>Item</th>
-                           
                             <th>Price</th>
                             <th>Quantity</th>
                         </tr>
@@ -134,11 +133,8 @@ $cartEmpty = empty($_SESSION['cart']);
     ?>
         <tr class="cart-item" data-id="<?php echo $item['id']; ?>">
             <td>
-                
-
                 <?php echo htmlspecialchars($item['name']); ?>
             </td>
-          
             <td>$<?php echo number_format($item['price'], 2); ?></td>
             <td>
                 <div class="input-group quantity-buttons">
@@ -168,6 +164,12 @@ $cartEmpty = empty($_SESSION['cart']);
             </div>
         </div>
     <?php endif; ?>
+</div>
+
+<!-- Alert for Item Removed -->
+<div id="alert" class="alert alert-danger alert-dismissible fade show" role="alert">
+  Item removed from cart.
+  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
 </div>
 
 <!-- Modal HTML -->
@@ -228,6 +230,11 @@ $(document).ready(function() {
             // Remove the item row from the table
             $(`.cart-item[data-id="${itemId}"]`).remove();
             $('#deleteModal').modal('hide');
+            // Show alert for 5 seconds
+            $('#alert').show();
+            setTimeout(function() {
+                $('#alert').fadeOut();
+            }, 5000);
         }, 'json');
     });
 });
