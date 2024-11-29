@@ -1,5 +1,6 @@
 <?php
 session_start();
+include './../../connection/connection.php';
 
 // If there is no transaction ID in the session, generate one
 if (!isset($_SESSION['transaction_id'])) {
@@ -23,14 +24,33 @@ if (isset($_POST['update_quantity'])) {
 // Handle item removal
 if (isset($_POST['remove_item'])) {
     $item_id = intval($_POST['item_id']);
-    // Find the item in the cart and remove it
+    
+   
+    
+    $stmt = $conn->prepare("DELETE FROM cart WHERE item_id = ?");
+    $stmt->bind_param("i", $item_id); // Bind the item_id to the query
+    $stmt->execute();
+    $stmt->close();
+    $conn->close();
+    
+    // Remove item from the session cart
     foreach ($_SESSION['cart'] as $key => $item) {
         if ($item['id'] == $item_id) {
-            unset($_SESSION['cart'][$key]); // Remove item from cart
+            unset($_SESSION['cart'][$key]); // Remove item from cart session
             break;
         }
     }
+
     echo json_encode(['success' => true]);
+}
+
+
+// Initialize totalPrice
+$totalPrice = 0;
+
+// Loop through the cart items and calculate the total price
+foreach ($_SESSION['cart'] as $item) {
+    $totalPrice += $item['price'] * $item['quantity'];
 }
 
 // Check if the cart is empty
@@ -104,64 +124,60 @@ $cartEmpty = empty($_SESSION['cart']);
 <body>
     
 <div class="container-fluid con-cart">
-<div class="back-to-order mb-5">
-        <a href="try.php" class="text-decoration-none text-dark "><i class="fa-solid fa-arrow-left"></i>  <i class="fa-solid fa-mug-saucer"></i></a>
+    <div class="back-to-order mb-5">
+        <a href="order-now.php" class="text-decoration-none text-dark "><i class="fa-solid fa-arrow-left"></i>  <i class="fa-solid fa-mug-saucer"></i></a>
     </div>
 
     <h1>Your Shopping Cart</h1>
 
     <?php if ($cartEmpty): ?>
-        <p>Your cart is empty. <a href="try.php">Start shopping</a></p>
+        <p>Your cart is empty. <a href="order-now.php">Start shopping</a></p>
     <?php else: ?>
         <div class="row">
             <!-- Cart Table Section -->
             <div class="col-lg-8">
-                <table class="table cart-table table-striped table-responsive">
-                    <thead>
-                        <tr>
-                            <th>Item</th>
-                            <th>Price</th>
-                            <th>Quantity</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-    <?php
-    $totalPrice = 0;
-    foreach ($_SESSION['cart'] as $item):
-        $itemTotal = $item['price'] * $item['quantity'];
-        $totalPrice += $itemTotal;
-    ?>
-        <tr class="cart-item" data-id="<?php echo $item['id']; ?>">
-            <td>
-                <?php echo htmlspecialchars($item['name']); ?>
-            </td>
-            <td>$<?php echo number_format($item['price'], 2); ?></td>
-            <td>
-                <div class="input-group quantity-buttons">
-                    <button class="btn btn-secondary btn-sm btn-decrease" data-id="<?php echo $item['id']; ?>">-</button>
-                    <input type="text" class="form-control quantity-input text-center" 
-                           value="<?php echo $item['quantity']; ?>" data-id="<?php echo $item['id']; ?>" readonly>
-                    <button class="btn btn-secondary btn-sm btn-increase" data-id="<?php echo $item['id']; ?>">+</button>
-                </div>
-            </td>
-        </tr>
-    <?php endforeach; ?>
-</tbody>
-                </table>
-            </div>
-
-            <!-- Cart Items List Above the Total -->
-            <div class="col-lg-4">
-                <!-- Total Section -->
-                <div class="card mt-3">
-                    <div class="card-body">
-                        <strong>Transaction ID:</strong> <?php echo $_SESSION['transaction_id']; ?>
-                        <h5 class="card-title">Total</h5>
-                        <p class="card-text" id="totalAmount">$<?php echo number_format($totalPrice, 2); ?></p>
-                        <a href="checkout.php" class="btn btn-success">Proceed to Checkout</a>
+    <table class="table cart-table table-striped table-responsive">
+        <thead>
+            <tr>
+                <th>Item</th>
+                <th>Price</th>
+                <th>Size</th>
+                <th>Temperature</th>
+                <th>Quantity</th>
+            </tr>
+        </thead>
+        <tbody>
+        <?php foreach ($_SESSION['cart'] as $item): ?>
+            <tr class="cart-item" data-id="<?php echo $item['id']; ?>">
+                <td><?php echo htmlspecialchars($item['name']); ?></td>
+                <td>₱<?php echo number_format($item['price'], 2); ?></td>
+                <td><?php echo isset($item['size']) ? $item['size'] : ''; ?></td>
+                <td><?php echo isset($item['temperature']) ? $item['temperature'] : ''; ?></td>
+                <td>
+                    <div class="input-group quantity-buttons">
+                        <button class="btn btn-secondary btn-sm btn-decrease" data-id="<?php echo $item['id']; ?>">-</button>
+                        <input type="text" class="form-control quantity-input text-center" value="<?php echo $item['quantity']; ?>" data-id="<?php echo $item['id']; ?>" readonly>
+                        <button class="btn btn-secondary btn-sm btn-increase" data-id="<?php echo $item['id']; ?>">+</button>
                     </div>
-                </div>
-            </div>
+                </td>
+            </tr>
+        <?php endforeach; ?>
+        </tbody>
+    </table>
+</div>
+
+<!-- Cart Items List Above the Total -->
+<div class="col-lg-4">
+    <!-- Total Section -->
+    <div class="card mt-3">
+        <div class="card-body">
+            <strong>Transaction ID:</strong> <?php echo $_SESSION['transaction_id']; ?>
+            <h5 class="card-title">Total</h5>
+            <p class="card-text" id="totalAmount">₱<?php echo number_format($totalPrice, 2); ?></p>
+            <a href="checkout.php" class="btn btn-success">Proceed to Checkout</a>
+        </div>
+    </div>
+</div>
         </div>
     <?php endif; ?>
 </div>
@@ -225,19 +241,16 @@ $(document).ready(function() {
     $('#deleteBtn').click(function() {
         let itemId = $(this).data('id');
         
-        // Remove the item from session (you can use AJAX to actually remove from the cart in your backend)
-        $.post("cart.php", { remove_item: true, item_id: itemId }, function() {
-            // Remove the item row from the table
-            $(`.cart-item[data-id="${itemId}"]`).remove();
-            $('#deleteModal').modal('hide');
-            // Show alert for 5 seconds
-            $('#alert').show();
-            setTimeout(function() {
-                $('#alert').fadeOut();
-            }, 5000);
+        $.post("cart.php", { remove_item: true, item_id: itemId }, function(response) {
+            if (response.success) {
+                $(`.cart-item[data-id="${itemId}"]`).remove();
+                $('#alert').fadeIn().delay(3000).fadeOut();  // Show alert
+                $('#deleteModal').modal('hide');
+            }
         }, 'json');
     });
 });
 </script>
+
 </body>
 </html>

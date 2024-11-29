@@ -1,6 +1,12 @@
 <?php
 session_start();
 
+// Initialize variables
+$firstName = ''; // Default value if not logged in
+$lastName = '';
+$email = '';
+$contactNumber = '';
+
 // Check if the user is logged in and if they clicked the logout link
 if (isset($_GET['logout'])) {
     session_unset();
@@ -20,6 +26,17 @@ if (isset($_SESSION['user_id'])) {
     $stmt->bind_result($firstName, $lastName, $email, $contactNumber);
     $stmt->fetch();
     $stmt->close();
+
+    // Fetch the cart count specific to the logged-in user
+    $sql = "SELECT COUNT(*) FROM cart WHERE user_id = ?";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("i", $userId);
+    $stmt->execute();
+    $stmt->bind_result($cartCount);
+    $stmt->fetch();
+    $stmt->close();
+} else {
+    $cartCount = 0; // Default if the user is not logged in
 }
 
 include '../views/change_profile.php';
@@ -55,6 +72,33 @@ include '../views/change_profile.php';
         .dropdown-menu {
             min-width: 200px;
         }
+        
+        /* Cart count styling */
+        .cart-count {
+            position: absolute;
+            top: -5px;
+            right: -10px;
+            background-color: #FF902B;
+            color: white;
+            border-radius: 50%;
+            padding: 3px 8px; /* Adjusted padding */
+            font-weight: bold;
+            font-size: 12px; /* Reduced font size */
+            animation: bounce 0.5s ease-in-out;
+        }
+
+        /* Animation for cart count */
+        @keyframes bounce {
+            0% {
+                transform: scale(0.5);
+            }
+            50% {
+                transform: scale(1.2);
+            }
+            100% {
+                transform: scale(1);
+            }
+        }
     </style>
     <title>Change Profile</title>
 </head>
@@ -79,8 +123,13 @@ include '../views/change_profile.php';
                 <li class="nav-item">
                     <a class="nav-link" href="./../../user/views/order-now.php">Order-now</a>
                 </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="./../../user/views/cart.php"><i class="fa-solid fa-cart-shopping"></i></a>
+                <li class="nav-item position-relative">
+                    <a class="nav-link" href="./../../user/views/cart.php">
+                        <i class="fa-solid fa-cart-shopping"></i>
+                        <?php if ($cartCount > 0): ?>
+                            <span class="cart-count"><?= $cartCount; ?></span>
+                        <?php endif; ?>
+                    </a>
                 </li>
                 <?php if ($firstName): ?>
                     <li class="nav-item dropdown">

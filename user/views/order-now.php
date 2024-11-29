@@ -46,7 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['add_to_cart'])) {
     $item = $result->fetch_assoc();
 
     if ($item) {
-        $user_id = $_SESSION['user_id']; // Replace with actual user ID from session
+        $user_id = $_SESSION['user_id'];
 
         // Insert into cart
         $insertSql = "INSERT INTO cart (user_id, item_id, quantity, size, temperature, price) 
@@ -87,11 +87,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['add_to_cart'])) {
 }
 
 // Redirect if not logged in
-if (!isset($_SESSION['user_id'])) {
-    $_SESSION['cart_error'] = "You need to log in to add items to the cart.";
-    header("Location: /login.php");
-    exit();
-}
+// if (!isset($_SESSION['user_id'])) {
+//     $_SESSION['cart_error'] = "You need to log in to add items to the cart.";
+//     header("Location: /login.php");
+//     exit();
+// }
 
 // Pagination logic
 $totalItemsResult = $conn->query("SELECT COUNT(*) as count FROM menu1" . ($selectedCategory ? " WHERE category = '$selectedCategory'" : ""));
@@ -122,103 +122,71 @@ ob_end_flush();
             <?php while ($item = $result->fetch_assoc()) { ?>
 
                 <div class="col-12 col-sm-6 col-md-4 col-lg-2 menu-card shadow-sm">
-    <div class="card p-2 rounded-1 border-0">
-        <div class="img-container"  style="overflow: hidden; height: 150px;">
-            <img src="<?php echo $item['image']; ?>" class="card-img-top" alt="<?php echo $item['name']; ?>" style="max-height: 100%; max-width: 100%; object-fit: contain;">
-        </div>
-        <div class="card-body text-center p-3">
-    <div class="menu-item-container d-flex flex-row gap-3 flex-nowrap align-items-center justify-content-between">
-        <div class="category-title text-truncate">
-            <h5 class="mb-0"><?php echo $item['name']; ?></h5>
-        </div>
-        <div class="price-info text-success">
-            <p class="mb-0"><strong><?php echo $item['price']; ?></strong></p>
-        </div>
-    </div>
-    <button 
-    class="btn btn-sm btn-primary p-2 mt-2 border-0 w-100" 
-    data-bs-toggle="modal" 
-    data-bs-target="#itemModal<?php echo $item['id']; ?>" 
-    onclick="checkVerification('<?php echo $userVerified; ?>')">
-    <i class="fa-solid fa-cart-shopping"></i> Add to cart
-</button>
-</div>
-    </div>
-</div>
-<div class="modal fade" id="verificationModal" tabindex="-1" aria-labelledby="verificationModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="verificationModalLabel">Verification Required</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body text-center">
-        <p>Please log in to add items to your cart.</p>
-        <a href="/login.php" class="btn btn-primary">Log In</a>
-      </div>
-    </div>
-  </div>
-</div>
-<div class="modal fade" id="itemModal<?php echo $item['id']; ?>" tabindex="-1" aria-labelledby="itemModalLabel" aria-hidden="true">
+                    <div class="card p-2 rounded-1 border-0">
+                        <div class="img-container"  style="overflow: hidden; height: 150px;">
+                            <img src="<?php echo $item['image']; ?>" class="card-img-top" alt="<?php echo $item['name']; ?>" style="max-height: 100%; max-width: 100%; object-fit: contain;">
+                        </div>
+                        <div class="card-body text-center p-3">
+                            <div class="menu-item-container d-flex flex-row gap-3 flex-nowrap align-items-center justify-content-between">
+                                <div class="category-title text-truncate">
+                                    <h5 class="mb-0"><?php echo $item['name']; ?></h5>
+                                </div>
+                                <div class="price-info text-success">
+                                    <p class="mb-0"><strong><?php echo $item['price']; ?></strong></p>
+                                </div>
+                            </div>
+                            <button 
+                                class="btn btn-sm btn-primary p-2 mt-2 border-0 w-100" 
+                                onclick="checkVerification(<?php echo $userVerified; ?>, '<?php echo $item['id']; ?>')">
+                                <i class="fa-solid fa-cart-shopping"></i> Add to cart
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal fade" id="itemModal<?php echo $item['id']; ?>" tabindex="-1" aria-labelledby="itemModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title text-light" id="itemModalLabel"><?php echo $item['name']; ?></h5>
+                <h5 class="modal-title text-light" id="itemModalLabel"> <?php echo $item['name']; ?> </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <div class="row">
                     <div class="col-md-6">
-                        <img src="<?php echo $item['image']; ?>" class="img-fluid mb-3" alt="<?php echo $item['name']; ?>">
+                        <img src="<?php echo $item['image']; ?>" class="img-fluid" alt="<?php echo $item['name']; ?>">
                         <p><?php echo $item['description']; ?></p>
                     </div>
                     <div class="col-md-6">
-                        <?php 
-                        if (in_array($item['category'], ['Coffee', 'Non-Coffee'])) {
-                            if (!empty($item['size'])) {
-                                $sizes = explode(',', $item['size']); // Assume sizes are stored as a comma-separated string
-                                echo '<div class="mb-5 mt-5"><strong><label for="size">Size</label></strong><br>';
-                                echo '<div class="d-flex gap-2">';
-                                foreach ($sizes as $size) {
-                                    echo '<input 
-                                            type="radio" 
-                                            name="size" 
-                                            value="' . $size . '" 
-                                            id="size' . $item['id'] . '_' . $size . '" 
-                                            class="btn-check" 
-                                            onclick="toggleButton(this)">
-                                          <label for="size' . $item['id'] . '_' . $size . '" class="btn btn-outline-warning px-3 py-2 rounded-pill">
-                                            ' . ucfirst(trim($size)) . '
-                                          </label>';
-                                }
-                                echo '</div></div>';
-                            }
-                            if (!empty($item['temperature'])) {
-                                $temperatures = explode(',', $item['temperature']); // Assume temperatures are stored as a comma-separated string
-                                echo '<div class="mb-5"><strong><label for="temperature">Temperature</label></strong><br>';
-                                echo '<div class="d-flex gap-2">';
-                                foreach ($temperatures as $temperature) {
-                                    echo '<input 
-                                            type="radio" 
-                                            name="temperature" 
-                                            value="' . $temperature . '" 
-                                            id="temperature' . $item['id'] . '_' . $temperature . '" 
-                                            class="btn-check" 
-                                            onclick="toggleButton(this)">
-                                          <label for="temperature' . $item['id'] . '_' . $temperature . '" class="btn btn-outline-warning px-3 py-2 rounded-pill">
-                                            ' . ucfirst(trim($temperature)) . '
-                                          </label>';
-                                }
-                                echo '</div></div>';
-                            }   
-                        } else {
-                            echo '<script>
-                                document.getElementById("sizeSection' . $item['id'] . '").style.display = "none";
-                                document.getElementById("temperatureSection' . $item['id'] . '").style.display = "none";
-                              </script>';
-                        }
-                        ?>
-                        <strong><label for="quantity<?php echo $item['id']; ?>">Quantity</label></strong> <br>
+                        <form method="post" action="<?php echo $_SERVER['REQUEST_URI']; ?>">
+                            <input type="hidden" name="item_id" value="<?php echo $item['id']; ?>">
+
+                            <?php if (in_array($item['category'], ['Coffee', 'Non-Coffee'])): ?>
+                                <div class="mb-3">
+                                    <label for="size" class="form-label">Size</label>
+                                    <select class="form-select" name="size" id="size">
+                                        <?php
+                                        $sizes = explode(',', $item['size']); // Assuming sizes are stored as a comma-separated string in DB
+                                        foreach ($sizes as $size) {
+                                            echo "<option value='" . trim($size) . "'>" . trim($size) . "</option>";
+                                        }
+                                        ?>
+                                    </select>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="temperature" class="form-label">Temperature</label>
+                                    <select class="form-select" name="temperature" id="temperature">
+                                        <?php
+                                        $temperatures = explode(',', $item['temperature']); // Assuming temperatures are stored as a comma-separated string in DB
+                                        foreach ($temperatures as $temp) {
+                                            echo "<option value='" . trim($temp) . "'>" . trim($temp) . "</option>";
+                                        }
+                                        ?>
+                                    </select>
+                                </div>
+                            <?php endif; ?>
+
+                            <strong><label for="quantity<?php echo $item['id']; ?>">Quantity</label></strong> <br>
                         <div class="mb-3 d-flex align-items-center">
                             <span 
                                 id="quantityLabel<?php echo $item['id']; ?>" 
@@ -226,6 +194,7 @@ ob_end_flush();
                                 style="width: 50px; height: 50px; background-color: #f8f9fa; font-weight: bold;">
                                 1
                             </span>
+
                             <input 
                                 type="range" 
                                 class="form-range flex-grow-1 " 
@@ -235,85 +204,42 @@ ob_end_flush();
                                 id="quantity<?php echo $item['id']; ?>" 
                                 name="quantity">
                         </div>
-                        <div class="mb-3" style="position: absolute; bottom: 10px; right: 15px; display: flex; align-items: center;">
+
+                         <div class="mb-3" >
                             <span style="color: green; font-weight: bold; margin-right: 5px;">Price:</span>
                             <span id="price" style="color: green; font-weight: bold;"><?php echo $item['price']; ?></span>
                         </div>
+
+                            <button type="submit" name="add_to_cart" class="btn btn-primary w-100 mt-5">Add to Cart</button>
+                        </form>
                     </div>
                 </div>
-            </div>
-            <div class="modal-footer container-fluid d-flex flex-row border-0">
-                <button type="button" class="btn btn-secondary flex-fill" data-bs-dismiss="modal">Close</button>
-                <form method="POST" class="d-flex flex-row flex-fill">
-    <input type="hidden" name="item_id" value="<?php echo $item['id']; ?>">
-    <input type="hidden" name="quantity" id="quantityInput<?php echo $item['id']; ?>" value="1">
-    <input type="hidden" name="size" id="sizeInput<?php echo $item['id']; ?>" value="">
-    <input type="hidden" name="temperature" id="temperatureInput<?php echo $item['id']; ?>" value="">
-    <input type="hidden" name="price" value="<?php echo $item['price']; ?>"> 
-    <button type="submit" name="add_to_cart" class="btn btn-primary w-100">Add to Cart</button>
-</form>
             </div>
         </div>
     </div>
 </div>
-<div class="modal fade" id="verificationModal" tabindex="-1" aria-labelledby="verificationModalLabel" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="verificationModalLabel">Verification Required</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        You need to verify your account before adding items to the cart.
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-        <a href="verification-page.php" class="btn btn-primary">Go to Verification</a>
-      </div>
+
+
+            <?php } ?>
+        </div>
     </div>
-  </div>
 </div>
-<script>
-    function checkVerification(isVerified) {
-    if (isVerified === 'false') {
-        const modal = new bootstrap.Modal(document.getElementById('verificationModal'));
-        modal.show();
-    } else {
-    }
-}
-function toggleButton(button) {
-    const isActive = button.classList.contains('btn-warning');
-    const buttons = button.closest('.d-flex').querySelectorAll('.btn');
-    buttons.forEach(btn => btn.classList.remove('btn-warning', 'text-white'));
-    if (!isActive) {
-        button.classList.add('btn-warning', 'text-white');
-    }
-    const inputName = button.closest('.modal-body').querySelector('input[type="radio"]').name;
-    const value = button.textContent.trim();
-    if (inputName === 'size') {
-        const sizeInput = document.getElementById('sizeInput' + button.closest('.modal').id.replace('itemModal', ''));
-        sizeInput.value = value;
-    }
-    if (inputName === 'temperature') {
-        const tempInput = document.getElementById('temperatureInput' + button.closest('.modal').id.replace('itemModal', ''));
-        tempInput.value = value;
-    }
-}
-function checkVerification(isVerified) {
-    if (!isVerified) {
-        const verificationModal = new bootstrap.Modal(document.getElementById('verificationModal'));
-        verificationModal.show();
-    }
-}
-document.querySelectorAll('.form-range').forEach(range => {
-    range.addEventListener('input', (e) => {
-        const quantityLabel = document.getElementById('quantityLabel' + e.target.id.replace('quantity', ''));
-        quantityLabel.textContent = e.target.value;
-        const hiddenQuantityInput = document.getElementById('quantityInput' + e.target.id.replace('quantity', ''));
-        hiddenQuantityInput.value = e.target.value;
-    });
-});
-</script>
+
+<!-- Verification Modal -->
+<div class="modal fade" id="verificationModal" tabindex="-1" aria-labelledby="verificationModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="verificationModalLabel">Verification Required</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center">
+                <p>Please log in to add items to your cart.</p>
+                <a href="./../../user/views//login.php" class="btn btn-primary">Log In</a>
+            </div>
+        </div>
+    </div>
+</div>
 <script>
     <?php if (isset($_SESSION['cart_success'])): ?>
         let alertBox = document.createElement('div');
@@ -334,6 +260,7 @@ document.querySelectorAll('.form-range').forEach(range => {
         setTimeout(() => { alertBox.style.opacity = '0'; setTimeout(() => { alertBox.remove(); }, 500); }, 4500);
         <?php unset($_SESSION['cart_success']); ?>
     <?php endif; ?>
+
     <?php if (isset($_SESSION['cart_error'])): ?>
         let alertBox = document.createElement('div');
         alertBox.textContent = '<?php echo $_SESSION['cart_error']; ?>';
@@ -354,93 +281,31 @@ document.querySelectorAll('.form-range').forEach(range => {
         <?php unset($_SESSION['cart_error']); ?>
     <?php endif; ?>
 </script>
-<script>
-document.getElementById('quantity<?php echo $item['id']; ?>').addEventListener('input', function() {
-    var quantity = this.value;
-    document.getElementById('quantityLabel<?php echo $item['id']; ?>').textContent = quantity;
-    document.getElementById('quantityInput<?php echo $item['id']; ?>').value = quantity;
-});
-</script>
-<script>
-document.getElementById('quantity<?php echo $item['id']; ?>').addEventListener('input', function() {
-    var quantity = this.value;
-    document.getElementById('quantityLabel<?php echo $item['id']; ?>').textContent = quantity;
-    document.getElementById('quantityInput<?php echo $item['id']; ?>').value = quantity;
-});
-</script>
-<script>
-document.getElementById('quantity<?php echo $item['id']; ?>').addEventListener('input', function() {
-    var quantity = this.value;
-    document.getElementById('quantityLabel<?php echo $item['id']; ?>').textContent = quantity;
-    document.getElementById('quantityInput<?php echo $item['id']; ?>').value = quantity;
-});
-</script>
-            <?php } ?>
-        </div>
-    </div>
-    <div class="pagination-container d-flex justify-content-center my-4">
-    <nav>
-        <ul class="pagination">
-            <?php if ($current_page > 1): ?>
-                <li class="page-item">
-                    <a class="page-link" href="?page=<?= $current_page - 1 ?>&category=<?= $selectedCategory ?>" style="background-color: #FF902B; color: #FFFFFF;">Previous</a>
-                </li>
-            <?php else: ?>
-                <li class="page-item disabled">
-                    <span class="page-link" style="background-color: #FF902B; color: #FFFFFF;">Previous</span>
-                </li>
-            <?php endif; ?>
-            <?php for ($i = 1; $i <= $totalPages; $i++): ?>
-                <li class="page-item <?= $i == $current_page ? 'active' : '' ?>">
-                    <a class="page-link" href="?page=<?= $i ?>&category=<?= $selectedCategory ?>" style="background-color: #FF902B; color: #FFFFFF;"><?= $i ?></a>
-                </li>
-            <?php endfor; ?>
-            <?php if ($current_page < $totalPages): ?>
-                <li class="page-item">
-                    <a class="page-link" href="?page=<?= $current_page + 1 ?>&category=<?= $selectedCategory ?>" style="background-color: #FF902B; color: #FFFFFF;">Next</a>
-                </li>
-            <?php else: ?>
-                <li class="page-item disabled">
-                    <span class="page-link" style="background-color: #FF902B; color: #FFFFFF;">Next</span>
-                </li>
-            <?php endif; ?>
-        </ul>
-    </nav>
-</div>
-</div>
-<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
+<script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.7/dist/umd/popper.min.js"></script>
 <script src="https://stackpath.bootstrapcdn.com/bootstrap/5.3.3/js/bootstrap.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-bs4.min.js"></script>
 <script>
-    document.getElementById("search").addEventListener("input", function () {
-    const searchText = this.value.toLowerCase();
-    const menuItems = document.querySelectorAll(".menu-card");
-    menuItems.forEach(item => {
-        const itemName = item.querySelector("h5").innerText.toLowerCase();
-        if (itemName.includes(searchText)) {
-            item.style.display = "block";
-        } else {
-            item.style.display = "none";
-        }
+function checkVerification(isLoggedIn, itemId) {
+    if (isLoggedIn) {
+        const itemModal = new bootstrap.Modal(document.getElementById(`itemModal${itemId}`));
+        itemModal.show();
+    } else {
+        const verificationModal = new bootstrap.Modal(document.getElementById('verificationModal'));
+        verificationModal.show();
+    }
+}
+
+document.querySelectorAll('.form-range').forEach(range => {
+    range.addEventListener('input', (e) => {
+        const quantityLabel = document.getElementById('quantityLabel' + e.target.id.replace('quantity', ''));
+        quantityLabel.textContent = e.target.value;
+        const hiddenQuantityInput = document.getElementById('quantityInput' + e.target.id.replace('quantity', ''));
+        hiddenQuantityInput.value = e.target.value;
     });
-});
-document.querySelectorAll('[name="size"]').forEach(button => {
-    button.addEventListener('click', function() {
-        const size = this.value; // Get the selected size
-        const itemId = this.closest('form').querySelector('input[name="item_id"]').value; // Get the item ID
-        document.getElementById('sizeInput' + itemId).value = size;
-    });
-});
-document.querySelectorAll('[name="temperature"]').forEach(button => {
-    button.addEventListener('click', function() {
-        const temperature = this.value; // Get the selected temperature
-        const itemId = this.closest('form').querySelector('input[name="item_id"]').value; // Get the item ID
-        document.getElementById('temperatureInput' + itemId).value = temperature;
-    });
+
 });
 </script>
+
 </body>
 </html>
-
- 
