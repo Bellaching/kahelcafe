@@ -200,7 +200,7 @@ ob_end_flush();
                                 <select class="form-select" id="menuCategory" name="menuCategory" required><option value="Coffee">Coffee</option><option value="Non-Coffee">Non-Coffee</option><option value="Signature Frappe">Signature Frappe</option><option value="Starters">Starters</option><option value="Pasta">Pasta</option><option value="Sandwich">Sandwich</option><option value="Rice Meal">Rice Meal</option><option value="All Day Breakfast">All Day Breakfast</option>
                                 </select>
                             </div>
-                            <div class="mb-3 container-fluid">
+                            <div class="mb-3 container-fluid" id="menuSizeContainer">
     <label for="menuSize" class="form-label">Size</label>
     <div class="container-fluid">
         <input type="checkbox" name="menuSize[]" value="Small" id="sizeSmall">
@@ -212,7 +212,7 @@ ob_end_flush();
     </div>
 </div>
 
-<div class="mb-3 container-fluid">
+<div class="mb-3 container-fluid" id="menuTemperatureContainer">
     <label for="menuTemperature" class="form-label">Temperature</label>
     <div class="container-fluid">
         <input type="checkbox" name="menuTemperature[]" value="Hot" id="temperatureHot">
@@ -223,6 +223,7 @@ ob_end_flush();
         <label for="temperatureCold">Cold</label>
     </div>
 </div>
+
 
                             <div class="mb-3">
     <label for="menuQuantity" class="form-label">Quantity</label>
@@ -311,34 +312,7 @@ ob_end_flush();
             </div>
         </div>
     </div>
-
-         <!-- Pagination
-         <div class="pagination-container" style="text-align: center; margin-top: 30px;">
-    <nav>
-        <ul class="pagination justify-content-center">
-            <?php if ($current_page > 1): ?>
-                <li class="page-item">
-                    <a class="page-link" href="?page=<?= $current_page - 1 ?>&category=<?= $selectedCategory ?>" style="background-color: #FF902B; color: #FFFFFF;">Previous</a>
-                </li>
-            <?php endif; ?>
-            <?php for ($page = 1; $page <= $totalPages; $page++): ?>
-                <li class="page-item <?= $current_page == $page ? 'active' : '' ?>">
-                    <a class="page-link" href="?page=<?= $page ?>&category=<?= $selectedCategory ?>" style="background-color: #FF902B; color: #FFFFFF;"><?= $page ?></a>
-                </li>
-            <?php endfor; ?>
-            <?php if ($current_page < $totalPages): ?>
-                <li class="page-item">
-                    <a class="page-link" href="?page=<?= $current_page + 1 ?>&category=<?= $selectedCategory ?>" style="background-color: #FF902B; color: #FFFFFF;">Next</a>
-                </li>
-            <?php endif; ?>
-        </ul>
-    </nav>
-</div> -->
-
-
-
 </div>
-
 <div class="pagination-container d-flex justify-content-center my-4">
     <nav>
         <ul class="pagination">
@@ -370,11 +344,35 @@ ob_end_flush();
         </ul>
     </nav>
 </div>
-
-
 <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
 <script src="https://stackpath.bootstrapcdn.com/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/summernote/0.8.18/summernote.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // Get the category select element
+        const categorySelect = document.getElementById('menuCategory');
+        const sizeContainer = document.getElementById('menuSizeContainer');
+        const temperatureContainer = document.getElementById('menuTemperatureContainer');
+
+        // Function to check the category and toggle the size and temperature fields
+        function toggleFields() {
+            const selectedCategory = categorySelect.value;
+            if (selectedCategory !== 'Coffee' && selectedCategory !== 'Non-Coffee') {
+                sizeContainer.style.display = 'none';
+                temperatureContainer.style.display = 'none';
+            } else {
+                sizeContainer.style.display = 'block';
+                temperatureContainer.style.display = 'block';
+            }
+        }
+
+        // Run the function on page load to check the initial state
+        toggleFields();
+
+        // Add an event listener to run the function whenever the category changes
+        categorySelect.addEventListener('change', toggleFields);
+    });
+</script>
 
 <script>
 function openUpdateMenuModal(menuId) {
@@ -416,10 +414,7 @@ document.getElementById('updateMenuForm').addEventListener('submit', function(ev
     });
     let menuIdToDelete;
     function confirmDelete(menuId) {
-    // Open the confirmation modal
     $('#confirmDeleteModal').modal('show');
-    
-    // Set up the event listener for the delete button in the modal
     $('#confirmDeleteButton').off('click').on('click', function() {
         // Send the delete request using AJAX or form submission
         $.ajax({
@@ -430,7 +425,6 @@ document.getElementById('updateMenuForm').addEventListener('submit', function(ev
                 menuId: menuId 
             },
             success: function(response) {
-                // If the deletion was successful, reload the page or update the UI
                 window.location.reload();
             },
             error: function(xhr, status, error) {
@@ -442,7 +436,6 @@ document.getElementById('updateMenuForm').addEventListener('submit', function(ev
         $('#confirmDeleteModal').modal('hide');
     });
 }
-
 function confirmDelete(menuId) {
         document.getElementById("deleteMenuId").value = menuId;
         var deleteModal = new bootstrap.Modal(document.getElementById("deleteModal"));

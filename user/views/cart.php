@@ -2,10 +2,7 @@
 session_start();
 include './../../connection/connection.php';
 
-// If there is no transaction ID in the session, generate one
-if (!isset($_SESSION['transaction_id'])) {
-    $_SESSION['transaction_id'] = uniqid('txn_', true); // Generate a unique transaction ID
-}
+
 
 // Handle quantity update without reload (AJAX)
 if (isset($_POST['update_quantity'])) {
@@ -45,16 +42,13 @@ if (isset($_POST['remove_item'])) {
 }
 
 
-// Initialize totalPrice
-$totalPrice = 0;
-
-// Loop through the cart items and calculate the total price
-foreach ($_SESSION['cart'] as $item) {
-    $totalPrice += $item['price'] * $item['quantity'];
-}
 
 // Check if the cart is empty
 $cartEmpty = empty($_SESSION['cart']);
+
+
+
+
 ?>
 
 <!DOCTYPE html>
@@ -164,20 +158,26 @@ $cartEmpty = empty($_SESSION['cart']);
         <?php endforeach; ?>
         </tbody>
     </table>
+
+    <!-- Note Form Section -->
+
+<div class="note-section mt-4">
+    <label for="user-note">Note</label>
+    <textarea id="user-note" class="form-control" placeholder="Enter your note here" 
+              style="border-color: #B3B3B3; border-radius: 10px; height: 150px; resize: none;"></textarea>
+</div>
+
+
+
+
 </div>
 
 <!-- Cart Items List Above the Total -->
-<div class="col-lg-4">
-    <!-- Total Section -->
-    <div class="card mt-3">
-        <div class="card-body">
-            <strong>Transaction ID:</strong> <?php echo $_SESSION['transaction_id']; ?>
-            <h5 class="card-title">Total</h5>
-            <p class="card-text" id="totalAmount">₱<?php echo number_format($totalPrice, 2); ?></p>
-            <a href="checkout.php" class="btn btn-success">Proceed to Checkout</a>
-        </div>
-    </div>
-</div>
+<?php  
+
+include './cart-right.php';
+
+?>
         </div>
     <?php endif; ?>
 </div>
