@@ -1,7 +1,7 @@
 <?php
-session_start();
-include './../../connection/connection.php';
 
+include './../../connection/connection.php';
+include './../inc/topNav.php'; 
 
 
 // Handle quantity update without reload (AJAX)
@@ -46,95 +46,12 @@ if (isset($_POST['remove_item'])) {
 // Check if the cart is empty
 $cartEmpty = empty($_SESSION['cart']);
 
-
-
-// Initialize totalPrice
-$totalPrice = 0;
-
-// Loop through the cart items and calculate the total price
-if (isset($_SESSION['cart']) && is_array($_SESSION['cart'])) {
-    foreach ($_SESSION['cart'] as $item) {
-        $totalPrice += $item['price'] * $item['quantity'];
-    }
+// Redirect if not logged in
+if (!isset($_SESSION['user_id'])) {
+    $_SESSION['cart_error'] = "You need to log in to add items to the cart.";
+    header("Location: /login.php");
+    exit();
 }
-
-
-// Check if the cart is empty
-$cartEmpty = empty($_SESSION['cart']);
-
-// Retrieve client details
-$clientFullName = 'Unknown';
-$clientId = $_SESSION['user_id'];
-
-$query = "SELECT firstname, lastname FROM client WHERE id = ?";
-$stmt = $conn->prepare($query);
-$stmt->bind_param("i", $clientId);
-$stmt->execute();
-$result = $stmt->get_result();
-
-if ($result->num_rows > 0) {
-    $row = $result->fetch_assoc();
-    $clientFullName = " " . htmlspecialchars($row['firstname'] . ' ' . $row['lastname']);
-}
-
-function generateTransactionId($conn) {
-    do {
-        $transactionId = strtoupper(bin2hex(random_bytes(6))); // 12-character random ID
-        // Check if the transaction ID already exists in the database
-        $stmt = $conn->prepare("SELECT COUNT(*) FROM orders WHERE transaction_id = ?");
-        $stmt->bind_param("s", $transactionId);
-        $stmt->execute();
-        $stmt->bind_result($count);
-        $stmt->fetch();
-        $stmt->close();
-
-        if (!isset($count)) {
-            $count = 0; // Default to 0 if not set, to avoid unassigned variable usage
-        }
-    } while ($count > 0); // If exists, regenerate the transaction ID
-
-    return $transactionId;
-}
-
-if (isset($_POST['checkout'])) {
-    // Collect note and reservation type from the form
-    $userNote = isset($_POST['note']) ? $_POST['note'] : '';
-    $reservationType = isset($_POST['reservation_type']) ? $_POST['reservation_type'] : '';
-
-    // Generate a single unique transaction ID for this checkout
-    $transactionId = generateTransactionId($conn);
-
-    // Insert each cart item into the orders table with the same transaction ID
-    foreach ($_SESSION['cart'] as $item) {
-        $itemName = $item['name'];
-        $itemSize = isset($item['size']) ? $item['size'] : '';
-        $itemTemperature = isset($item['temperature']) ? $item['temperature'] : '';
-        $itemQuantity = $item['quantity'];
-        $itemPrice = $item['price'];
-        $totalItemPrice = $itemPrice * $itemQuantity;
-
-        // Prepare and execute the insert statement with the shared transaction ID
-        $stmt = $conn->prepare("INSERT INTO orders (user_id, item_name, size, temperature, quantity, note, total_price, transaction_id, reservation_type, client_full_name) 
-                                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        $stmt->bind_param("isssiissss", $clientId, $itemName, $itemSize, $itemTemperature, $itemQuantity, $userNote, $totalItemPrice, $transactionId, $reservationType, $clientFullName);
-        $stmt->execute();
-    }
-
-    // Delete all items from the cart table for the current user
-    $stmt = $conn->prepare("DELETE FROM cart WHERE user_id = ?");
-    $stmt->bind_param("i", $clientId);
-    $stmt->execute();
-    $stmt->close();
-
-    // Clear the cart session after successful checkout
-    unset($_SESSION['cart']);
-
-    // Respond with a success message
-    echo json_encode(['success' => true, 'message' => 'Order placed successfully and cart cleared.', 'transaction_id' => $transactionId]);
-    exit;
-}
-
-
 
 
 ?>
@@ -145,9 +62,11 @@ if (isset($_POST['checkout'])) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Shopping Cart</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css" integrity="sha512-Kc323vGBEqzTmouAECnVceyQqyqdsSiqLQISBL29aUW4U/M7pSPA/gEUZQqv1cwx4OnYxTxve5UMg5GT6L4JJg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <link href="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-bs4.min.css" rel="stylesheet">
+    
+   
     <style>
         .con-cart{
             padding: 5%;
@@ -210,16 +129,9 @@ if (isset($_POST['checkout'])) {
 
 }
 
-.proceedBtn{
-        background-color: #FF902A;
-        border: none;
-        border-radius: 15px;
-    }
-
-    .order-h4{
-        color: #FF902A;
-        font-weight: bold;
-    }
+.thead{
+    background-color: #FF902A;
+}
 
 
     </style>
@@ -285,77 +197,11 @@ if (isset($_POST['checkout'])) {
 </div>
 
 <!-- Cart Items List Above the Total -->
+<?php  
 
-<div class="col-lg-4">
-   
-<div class="card ">
-       <!-- Seat Reservation -->
-       <strong><h4 class="m-3 order-h4">Seat Reservation</h4></strong> 
-        <div class="card-body">
-        <div class="card-body">
-          <div class="row">
-            <div class="col-md-6 mb-3">
-              <div class="p-1 text-white text-center" style="background-color: #17A1FA; border-radius: 5px;">
-                No Slots
-              </div>
-            </div>
-            <div class="col-md-6 mb-3">
-              <div class="p-1 text-white text-center" style="background-color: #07D090; border-radius: 5px;">
-                Available
-              </div>
-            </div>
-            <div class="col-md-6 mb-3">
-              <div class="p-1 text-white text-center" style="background-color: #E60000; border-radius: 5px;">
-                Fully Booked
-              </div>
-            </div>
-            <div class="col-md-6 mb-3">
-              <div class="p-1 text-white text-center" style="background-color: #9647FF; border-radius: 5px;">
-                Your Reservation
-              </div>
-            </div>
-          </div>
-        </div>
+include './cart-right.php';
 
-        <p class="card-text d-flex justify-content-between align-items-center flex-wrap">
-    <label for="reservation-type" class="form-label mb-2 mb-md-0">
-        <strong class="fs-6 text-dark">Reservation Type:</strong>
-    </label>
-    <select id="reservation-type" class="form-control w-auto" required>
-        <option value="dine-in">Over the counter</option>
-        <option value="take-out">Pickup</option>
-    </select>
-</p>
-
-
-
-
-
-    <!-- Order Summary Card -->
- 
-       <strong><h4 class="m-3 order-h4">Order Summary</h4></strong> 
-        <div class="card-body">
-  
-        <p class="d-flex justify-content-between">
-    <strong>Name:</strong>
-    <span><?php echo $clientFullName; ?></span>
-</p>
-<!-- <p class="d-flex justify-content-between">
-    <strong>Transaction ID:</strong>
-    <span><?php echo htmlspecialchars($_SESSION['transaction_id']); ?></span>
-</p> -->
-
-            <p class="card-text" id="totalAmount">
-            <strong class="fs-5" style="color: #616161;">Total:</strong>
-
-            <strong> <span class="float-end fs-5" style="color: #FF902B;">₱<?php echo number_format($totalPrice, 2); ?></span></strong> 
-            </p>
-            <div class="text-end">
-            <button class="btn btn-primary proceedBtn float-end mt-3 container-fluid" id="proceed-btn">Proceed to Checkout</button>
-            </div>
-        </div>
-    </div>
-</div>
+?>
         </div>
     <?php endif; ?>
 </div>
@@ -385,8 +231,10 @@ if (isset($_POST['checkout'])) {
   </div>
 </div>
 
-<!-- Bootstrap JavaScript -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.7/dist/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/5.3.3/js/bootstrap.min.js"></script>
 
 <script>
 $(document).ready(function() {
@@ -427,32 +275,14 @@ $(document).ready(function() {
             }
         }, 'json');
     });
-
-         // Handle Checkout process
-         $('#proceed-btn').on('click', function() {
-        var userNote = $('#user-note').val();
-        var reservationType = $("#reservation-type").val();
-        $.ajax({
-            method: 'POST',
-            url: '',
-            data: {
-                checkout: true,
-                note: userNote,
-                reservation_type: reservationType
-            },
-            success: function(response) {
-                var result = JSON.parse(response);
-                if (result.success) {
-                    alert(result.message);
-                    window.location.href = 'order-track.php';
-                }
-            }
-        });
-    });
-
-
 });
 </script>
 
+
+
+
 </body>
+
+<footer>
+
 </html>

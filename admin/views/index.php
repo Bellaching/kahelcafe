@@ -98,7 +98,7 @@ include './../inc/topNav.php';
     </div>
 </div>
 
-<!-- <div class ="d-flex justify-content-center w-100">
+<div class ="d-flex justify-content-center w-100">
 <div class="container-fluid shadow p-3 mx-5 bg-body-tertiary rounded">
 
         <div class="d-flex justify-content-end m-2 mb-5">
@@ -109,27 +109,27 @@ include './../inc/topNav.php';
         <table id="userTable" class="display">
             <thead>
                 <tr>
-                    <th>ID</th>
-                    <th>Employee</th>
-                    <th>Email</th>
-                    <th>Role</th>
-                    
+                    <th>Transaction ID</th>
+                    <th>Customer</th>
                     <th>Date</th>
+                    <th>Amount</th>
+                    
+                    <th>Reservation Type</th>
                     <th>Actions</th>
                 </tr>
             </thead>
             <tbody>
-               Table data will be filled dynamically 
+               <!-- Table data will be filled dynamically  -->
             </tbody>
         </table>
     </div>
-</div> -->
+</div>
 
-<div class="container text-center" style="margin-top: 100px;">
+<!-- <div class="container text-center" style="margin-top: 100px;">
     <div class="alert alert-warning" role="alert">
         Under Development
     </div>
-</div>
+</div> -->
 
 
 <!-- Update User Modal -->

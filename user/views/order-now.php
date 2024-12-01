@@ -232,6 +232,7 @@ ob_end_flush();
             <div class="modal-header">
                 <h5 class="modal-title" id="verificationModalLabel">Verification Required</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+
             </div>
             <div class="modal-body text-center">
                 <p>Please log in to add items to your cart.</p>
@@ -240,47 +241,7 @@ ob_end_flush();
         </div>
     </div>
 </div>
-<script>
-    <?php if (isset($_SESSION['cart_success'])): ?>
-        let alertBox = document.createElement('div');
-        alertBox.textContent = '<?php echo $_SESSION['cart_success']; ?>';
-        alertBox.style.position = 'fixed';
-        alertBox.style.top = '20px';
-        alertBox.style.left = '50%';
-        alertBox.style.transform = 'translateX(-50%)';
-        alertBox.style.backgroundColor = '#4CAF50';
-        alertBox.style.color = 'white';
-        alertBox.style.padding = '10px 20px';
-        alertBox.style.borderRadius = '5px';
-        alertBox.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.1)';
-        alertBox.style.opacity = '0';
-        alertBox.style.transition = 'opacity 0.5s ease';
-        document.body.appendChild(alertBox);
-        setTimeout(() => { alertBox.style.opacity = '1'; }, 10);
-        setTimeout(() => { alertBox.style.opacity = '0'; setTimeout(() => { alertBox.remove(); }, 500); }, 4500);
-        <?php unset($_SESSION['cart_success']); ?>
-    <?php endif; ?>
 
-    <?php if (isset($_SESSION['cart_error'])): ?>
-        let alertBox = document.createElement('div');
-        alertBox.textContent = '<?php echo $_SESSION['cart_error']; ?>';
-        alertBox.style.position = 'fixed';
-        alertBox.style.top = '20px';
-        alertBox.style.left = '50%';
-        alertBox.style.transform = 'translateX(-50%)';
-        alertBox.style.backgroundColor = '#f44336';
-        alertBox.style.color = 'white';
-        alertBox.style.padding = '10px 20px';
-        alertBox.style.borderRadius = '5px';
-        alertBox.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.1)';
-        alertBox.style.opacity = '0';
-        alertBox.style.transition = 'opacity 0.5s ease';
-        document.body.appendChild(alertBox);
-        setTimeout(() => { alertBox.style.opacity = '1'; }, 10);
-        setTimeout(() => { alertBox.style.opacity = '0'; setTimeout(() => { alertBox.remove(); }, 500); }, 4500);
-        <?php unset($_SESSION['cart_error']); ?>
-    <?php endif; ?>
-</script>
 <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.7/dist/umd/popper.min.js"></script>

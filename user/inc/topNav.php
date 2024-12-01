@@ -59,10 +59,7 @@ include '../views/change_profile.php';
             text-decoration: none;
             padding: 10px 15px;
         }
-        .navbar-nav > li > a:hover {
-            background-color: #f8f9fa;
-            color: black;
-        }
+     
         .navbar-nav > li > a.active {
             color: #FF902B !important;
         }
@@ -138,6 +135,7 @@ include '../views/change_profile.php';
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
                             <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#changeProfileModal"><i class="fa-regular fa-user me-2"></i>Change Profile</a></li>
+                            <li><a class="dropdown-item" href="order-track.php" data-bs-toggle="" data-bs-target="#"><i class="fa-regular fa-user me-2"></i>Track Order</a></li>
                             <li><a class="dropdown-item" href="?logout"><i class="fa-solid fa-power-off me-2"></i>Logout</a></li>
                         </ul>
                     </li>
@@ -159,6 +157,7 @@ include '../views/change_profile.php';
                 <h5 class="modal-title" id="changeProfileModalLabel">Change Your Profile</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
+            
             <div class="modal-body">
                 <!-- Profile Form (Can be included from change_profile.php) -->
                 <?php include '../views/change_profile.php'; ?>
