@@ -115,6 +115,10 @@ position: relative; /* Makes the input group a positioning context */
     padding: 0.5rem;
 }
 
+.close-add:hover{
+    background-color: #FF902B !important;
+}
+
 .close-add{
     border-radius: 7rem;
     background:none !important;
@@ -163,16 +167,10 @@ position: relative; /* Makes the input group a positioning context */
     cursor: not-allowed;
 }
 
-.category-title {
-    font-size: 1.2rem;
-    font-weight: bold;
-}
+
 .menu-item-container {
     display: flex;
     justify-content: space-between;
-}
-.menu-item-container .category-title {
-    flex: 1;
 }
 
 
@@ -192,17 +190,10 @@ position: relative; /* Makes the input group a positioning context */
     flex: 1;
 }
 
-.category-title {
-    font-size: 1.2rem;
-    font-weight: bold;
-}
+
 .menu-item-container {
     display: flex;
     justify-content: space-between;
 }
-.menu-item-container .category-title {
-    flex: 1;
-}
-.menu-item-container .price-info {
-    flex: 1;
-}
+
+

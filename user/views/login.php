@@ -7,6 +7,7 @@ session_start();
 $loginSuccess = false;
 $errors = []; // Array to hold login errors
 
+
 // Handle login
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['login'])) {
     $email = $_POST['email'];
@@ -37,18 +38,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['login'])) {
             // Check if the user is verified
             if ($user['verified'] == 1) { // Assuming 'verified' is the column name
                 // Check the password (plain text)
-                if ($password == $user['password']) {
-                    $errors['password'] = "Invalid password.";
-                } else {
-                 
-
+                if (password_verify($password, $user['password'])) {
+                    // Login successful
                     $_SESSION['user_id'] = $user['id'];
                     $_SESSION['email'] = $user['email'];
                     $_SESSION['verified'] = $user['verified']; // Store verification status
                     $loginSuccess = true;
                     header("Location: index.php"); // Redirect to a secure page after login
                     exit();
+                } else {
+                    $errors['password'] = "Invalid password.";
                 }
+                
             } else {
                 $errors['email'] = "Your email is not verified. <a href='verification.php'>Click here to verify.</a>";
             }
@@ -115,5 +116,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['login'])) {
         </div>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        window.onload = function() {
+    if (sessionStorage.getItem('fromLoginRedirect') === 'true') {
+       
+        sessionStorage.removeItem('fromLoginRedirect');
+
+ 
+        window.history.replaceState(null, null, window.location.href);
+    }
+};
+
+    </script>
 </body>
 </html>

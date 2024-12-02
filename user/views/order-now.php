@@ -10,6 +10,7 @@
 </head>
 <body>
 <?php
+
 ob_start(); // Start output buffering
 include "banner.php";
 include "./../../connection/connection.php";
@@ -143,21 +144,25 @@ ob_end_flush();
                         </div>
                     </div>
                 </div>
+
                 <div class="modal fade" id="itemModal<?php echo $item['id']; ?>" tabindex="-1" aria-labelledby="itemModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title text-light" id="itemModalLabel"> <?php echo $item['name']; ?> </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <h5 class="modal-title text-light" id="itemModalLabel"><?php echo $item['name']; ?></h5>
+                <button type="button" class="btn-close" data-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
+            <form method="post" action="<?php echo $_SERVER['REQUEST_URI']; ?>" class="h-100">
                 <div class="row">
                     <div class="col-md-6">
                         <img src="<?php echo $item['image']; ?>" class="img-fluid" alt="<?php echo $item['name']; ?>">
                         <p><?php echo $item['description']; ?></p>
                     </div>
                     <div class="col-md-6">
-                        <form method="post" action="<?php echo $_SERVER['REQUEST_URI']; ?>">
+                    
+                        
+                            
                             <input type="hidden" name="item_id" value="<?php echo $item['id']; ?>">
 
                             <?php if (in_array($item['category'], ['Coffee', 'Non-Coffee'])): ?>
@@ -165,7 +170,7 @@ ob_end_flush();
                                     <label for="size" class="form-label">Size</label>
                                     <select class="form-select" name="size" id="size">
                                         <?php
-                                        $sizes = explode(',', $item['size']); // Assuming sizes are stored as a comma-separated string in DB
+                                        $sizes = explode(',', $item['size']);
                                         foreach ($sizes as $size) {
                                             echo "<option value='" . trim($size) . "'>" . trim($size) . "</option>";
                                         }
@@ -177,7 +182,7 @@ ob_end_flush();
                                     <label for="temperature" class="form-label">Temperature</label>
                                     <select class="form-select" name="temperature" id="temperature">
                                         <?php
-                                        $temperatures = explode(',', $item['temperature']); // Assuming temperatures are stored as a comma-separated string in DB
+                                        $temperatures = explode(',', $item['temperature']);
                                         foreach ($temperatures as $temp) {
                                             echo "<option value='" . trim($temp) . "'>" . trim($temp) . "</option>";
                                         }
@@ -187,30 +192,50 @@ ob_end_flush();
                             <?php endif; ?>
 
                             <strong><label for="quantity<?php echo $item['id']; ?>">Quantity</label></strong> <br>
-                        <div class="mb-3 d-flex align-items-center">
-                            <span 
-                                id="quantityLabel<?php echo $item['id']; ?>" 
-                                class="mx-2 border border-dark border-3 rounded-circle d-inline-flex align-items-center justify-content-center" 
-                                style="width: 50px; height: 50px; background-color: #f8f9fa; font-weight: bold;">
-                                1
-                            </span>
+                            <div class="mb-3 d-flex align-items-center">
+                                <span 
+                                    id="quantityLabel<?php echo $item['id']; ?>" 
+                                    class="mx-2 border  rounded-circle d-inline-flex align-items-center text-light justify-content-center" 
+                                    style="width: 50px; height: 50px; background-color: #FF902A; font-weight: bold;">
+                                    1
+                                </span>
 
-                            <input 
-                                type="range" 
-                                class="form-range flex-grow-1 " 
-                                min="1" 
-                                max="<?php echo $item['quantity']; ?>" 
-                                value="1" 
-                                id="quantity<?php echo $item['id']; ?>" 
-                                name="quantity">
-                        </div>
+                                <input 
+                                    type="range" 
+                                    class="form-range flex-grow-1" 
+                                    min="1" 
+                                    max="<?php echo $item['quantity']; ?>" 
+                                    value="1" 
+                                    id="quantity<?php echo $item['id']; ?>" 
+                                    name="quantity">
+                            </div>
 
-                         <div class="mb-3" >
-                            <span style="color: green; font-weight: bold; margin-right: 5px;">Price:</span>
-                            <span id="price" style="color: green; font-weight: bold;"><?php echo $item['price']; ?></span>
-                        </div>
+                            <div class="mb-3">
+                                <span style="color: green; font-weight: bold; margin-right: 5px;">Price:</span>
+                                <span id="price" style="color: green; font-weight: bold;"><?php echo $item['price']; ?></span>
+                            </div>
 
-                            <button type="submit" name="add_to_cart" class="btn btn-primary w-100 mt-5">Add to Cart</button>
+                            
+
+                            <!-- Footer Buttons -->
+                           
+</div>
+<div class="modal-body d-flex flex-column" style="height: 100%;">
+    <!-- Your modal content goes here -->
+
+    <!-- Buttons at the bottom -->
+    <div class="row">
+        <!-- Close button - dismisses the modal -->
+        <div class="col-6">
+            <button type="button" class="close-add container-fluid" data-dismiss="modal">Close</button>
+        </div>
+
+        <div class="col-6">
+            <!-- Add to Cart button - submits the form -->
+            <button type="submit" name="add_to_cart" class="btn-add-item text-light container-fluid">Add to Cart</button>
+        </div>
+    </div>
+
                         </form>
                     </div>
                 </div>
@@ -218,6 +243,11 @@ ob_end_flush();
         </div>
     </div>
 </div>
+
+
+
+
+
 
 
             <?php } ?>
@@ -236,12 +266,54 @@ ob_end_flush();
             </div>
             <div class="modal-body text-center">
                 <p>Please log in to add items to your cart.</p>
-                <a href="./../../user/views//login.php" class="btn btn-primary">Log In</a>
+                <a href="./../../user/views/login.php" class="btn btn-primary">Log In</a>
             </div>
         </div>
     </div>
 </div>
 
+
+<script>
+    <?php if (isset($_SESSION['cart_success'])): ?>
+        let alertBox = document.createElement('div');
+        alertBox.textContent = '<?php echo $_SESSION['cart_success']; ?>';
+        alertBox.style.position = 'fixed';
+        alertBox.style.top = '20px';
+        alertBox.style.left = '50%';
+        alertBox.style.transform = 'translateX(-50%)';
+        alertBox.style.backgroundColor = '#4CAF50';
+        alertBox.style.color = 'white';
+        alertBox.style.padding = '10px 20px';
+        alertBox.style.borderRadius = '5px';
+        alertBox.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.1)';
+        alertBox.style.opacity = '0';
+        alertBox.style.transition = 'opacity 0.5s ease';
+        document.body.appendChild(alertBox);
+        setTimeout(() => { alertBox.style.opacity = '1'; }, 10);
+        setTimeout(() => { alertBox.style.opacity = '0'; setTimeout(() => { alertBox.remove(); }, 500); }, 4500);
+        <?php unset($_SESSION['cart_success']); ?>
+    <?php endif; ?>
+
+    <?php if (isset($_SESSION['cart_error'])): ?>
+        let alertBox = document.createElement('div');
+        alertBox.textContent = '<?php echo $_SESSION['cart_error']; ?>';
+        alertBox.style.position = 'fixed';
+        alertBox.style.top = '20px';
+        alertBox.style.left = '50%';
+        alertBox.style.transform = 'translateX(-50%)';
+        alertBox.style.backgroundColor = '#f44336';
+        alertBox.style.color = 'white';
+        alertBox.style.padding = '10px 20px';
+        alertBox.style.borderRadius = '5px';
+        alertBox.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.1)';
+        alertBox.style.opacity = '0';
+        alertBox.style.transition = 'opacity 0.5s ease';
+        document.body.appendChild(alertBox);
+        setTimeout(() => { alertBox.style.opacity = '1'; }, 10);
+        setTimeout(() => { alertBox.style.opacity = '0'; setTimeout(() => { alertBox.remove(); }, 500); }, 4500);
+        <?php unset($_SESSION['cart_error']); ?>
+    <?php endif; ?>
+</script>
 <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.7/dist/umd/popper.min.js"></script>

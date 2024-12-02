@@ -16,7 +16,7 @@ include './../inc/topNav.php';
     <script src="https://cdn.datatables.net/1.10.21/js/jquery.dataTables.min.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
  
-    <script src="./../js/accountManagement.js"></script>
+    <script src="./../js/index.js"></script>
 
     <style>
         
@@ -107,14 +107,15 @@ include './../inc/topNav.php';
             </button>
         </div>
         <table id="userTable" class="display">
+           
             <thead>
                 <tr>
                     <th>Transaction ID</th>
                     <th>Customer</th>
                     <th>Date</th>
                     <th>Amount</th>
-                    
                     <th>Reservation Type</th>
+                    <!-- <th>Status</th> -->
                     <th>Actions</th>
                 </tr>
             </thead>

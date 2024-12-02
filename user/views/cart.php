@@ -30,10 +30,10 @@ if (isset($_POST['remove_item'])) {
     $stmt->close();
     $conn->close();
     
-    // Remove item from the session cart
+   
     foreach ($_SESSION['cart'] as $key => $item) {
         if ($item['id'] == $item_id) {
-            unset($_SESSION['cart'][$key]); // Remove item from cart session
+            unset($_SESSION['cart'][$key]); 
             break;
         }
     }
@@ -43,15 +43,21 @@ if (isset($_POST['remove_item'])) {
 
 
 
-// Check if the cart is empty
+
 $cartEmpty = empty($_SESSION['cart']);
 
+if (!isset($_SESSION['user_id'])) {
+    $_SESSION['cart_error'] = "You need to log in to add items to the cart.";
+    header("Location: ./../../user/views/login.php");
+    exit();
+}
 
 
-// Initialize totalPrice
+
+
 $totalPrice = 0;
 
-// Loop through the cart items and calculate the total price
+
 if (isset($_SESSION['cart']) && is_array($_SESSION['cart'])) {
     foreach ($_SESSION['cart'] as $item) {
         $totalPrice += $item['price'] * $item['quantity'];
@@ -59,23 +65,27 @@ if (isset($_SESSION['cart']) && is_array($_SESSION['cart'])) {
 }
 
 
-// Check if the cart is empty
 $cartEmpty = empty($_SESSION['cart']);
 
-// Retrieve client details
+
 $clientFullName = 'Unknown';
-$clientId = $_SESSION['user_id'];
+$clientId = isset($_SESSION['user_id']) ? $_SESSION['user_id'] : null;
 
-$query = "SELECT firstname, lastname FROM client WHERE id = ?";
-$stmt = $conn->prepare($query);
-$stmt->bind_param("i", $clientId);
-$stmt->execute();
-$result = $stmt->get_result();
+if ($clientId) {
+    $query = "SELECT firstname, lastname FROM client WHERE id = ?";
+    $stmt = $conn->prepare($query);
+    $stmt->bind_param("i", $clientId);
+    $stmt->execute();
+    $result = $stmt->get_result();
 
-if ($result->num_rows > 0) {
-    $row = $result->fetch_assoc();
-    $clientFullName = " " . htmlspecialchars($row['firstname'] . ' ' . $row['lastname']);
+    if ($result->num_rows > 0) {
+        $row = $result->fetch_assoc();
+        $clientFullName = " " . htmlspecialchars($row['firstname'] . ' ' . $row['lastname']);
+    }
+} else {
+    echo "User is not logged in. Please log in to view your cart.";
 }
+
 
 function generateTransactionId($conn) {
     do {
@@ -221,6 +231,12 @@ if (isset($_POST['checkout'])) {
         font-weight: bold;
     }
 
+    .btn-increase,
+    .btn-decrease{
+        background-color:#FF902A ;
+        border: none;
+    }
+
 
     </style>
 </head>
@@ -262,7 +278,7 @@ if (isset($_POST['checkout'])) {
                 <td>
                     <div class="input-group quantity-buttons">
                         <button class="btn btn-secondary btn-sm btn-decrease" data-id="<?php echo $item['id']; ?>">-</button>
-                        <input type="text" class="form-control quantity-input text-center" value="<?php echo $item['quantity']; ?>" data-id="<?php echo $item['id']; ?>" readonly>
+                        <input type="text" class="form-control quantity-input text-center" max="<?php echo $menu['quantity']; ?>" value="<?php echo $item['quantity']; ?>" data-id="<?php echo $item['id']; ?>" readonly>
                         <button class="btn btn-secondary btn-sm btn-increase" data-id="<?php echo $item['id']; ?>">+</button>
                     </div>
                 </td>
@@ -322,8 +338,8 @@ if (isset($_POST['checkout'])) {
         <strong class="fs-6 text-dark">Reservation Type:</strong>
     </label>
     <select id="reservation-type" class="form-control w-auto" required>
-        <option value="dine-in">Over the counter</option>
-        <option value="take-out">Pickup</option>
+        <option value="Over the counter">Over the counter</option>
+        <option value="Pickup">Pickup</option>
     </select>
 </p>
 
@@ -351,7 +367,8 @@ if (isset($_POST['checkout'])) {
             <strong> <span class="float-end fs-5" style="color: #FF902B;">₱<?php echo number_format($totalPrice, 2); ?></span></strong> 
             </p>
             <div class="text-end">
-            <button class="btn btn-primary proceedBtn float-end mt-3 container-fluid" id="proceed-btn">Proceed to Checkout</button>
+            <button type="button" id="proceed-to-checkout" class="btn proceedBtn w-100 text-light">Proceed to Checkout</button>
+
             </div>
         </div>
     </div>
@@ -385,11 +402,45 @@ if (isset($_POST['checkout'])) {
   </div>
 </div>
 
+<!-- Modal -->
+<div class="modal fade" id="checkoutModal" tabindex="-1" aria-labelledby="checkoutModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="checkoutModalLabel">Confirm Checkout</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to check out your items?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="proceed-btn">Proceed</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
 <!-- Bootstrap JavaScript -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
+ 
+
 $(document).ready(function() {
+    $('#proceed-to-checkout').click(function (e) {
+        e.preventDefault(); // Prevent form submission
+
+        // Show the confirmation modal
+        $('#checkoutModal').modal('show');
+    });
+
+    // When the user clicks "Proceed" in the modal
+    $('#confirmCheckout').click(function () {
+        // Trigger form submission to checkout
+        $('#checkoutForm').submit(); // Replace with your checkout form ID if necessary
+    });
     // Handle quantity increase/decrease for specific items
     $('.btn-decrease, .btn-increase').click(function() {
         let itemId = $(this).data('id');

@@ -31,12 +31,7 @@
             display: flex;
             justify-content: space-between;
         }
-        .menu-item-container .category-title {
-            flex: 1;
-        }
-        .menu-item-container .price-info {
-            flex: 1;
-        }
+     
     </style>
 </head>
 <body>
