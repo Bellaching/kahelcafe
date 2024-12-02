@@ -32,18 +32,23 @@ if ($reservation_fee_result) {
 
 // Check if the form is submitted
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Get the data from the POST request
+    // Get the data from the POST request, ensuring the keys exist
     $client_id = $_POST['client_id'];
     $transaction_code = uniqid('TXN-', true); // Generate a unique transaction code
     $reservation_date = $_POST['reservation_date'];
     $reservation_time = $_POST['reservation_time'];
+<<<<<<< Updated upstream
     $party_size = $_POST['party_size'];
     $note = $_POST['note-area'];
+=======
+    $party_size = isset($_POST['party-size-result']) ? $_POST['party-size-result'] : null;
+    $note = isset($_POST['note_area']) ? $_POST['note_area'] : null;
+>>>>>>> Stashed changes
     $amount = $reservation_fee;
     $res_status = "for payment"; // Default value
 
     // Insert the reservation data into the database
-    $insert_query = "INSERT INTO reservation (transaction_code, client_id, reservation_date, reservation_time, party_size, note, amount, res_status) 
+    $insert_query = "INSERT INTO reservation (transaction_code, client_id, reservation_date, reservation_time, party_size, note_area, amount, res_status) 
                      VALUES ('$transaction_code', '$client_id', '$reservation_date', '$reservation_time', '$party_size', '$note', '$amount', '$res_status')";
 
     if (mysqli_query($conn, $insert_query)) {
@@ -52,6 +57,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         echo "<script>alert('Error creating reservation: " . mysqli_error($conn) . "');</script>";
     }
 }
+
 ?>
 
 <!DOCTYPE html>
@@ -81,7 +87,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             <div class="note">
                 <h5 class="header-h1-note">Note</h5>
+<<<<<<< Updated upstream
                 <textarea name="note-area" id="note-area" maxlength="500" placeholder="Additional notes..."></textarea> 
+=======
+                <textarea name="note_area" id="note-area" maxlength="100%"></textarea>
+>>>>>>> Stashed changes
             </div>
         </div>
 

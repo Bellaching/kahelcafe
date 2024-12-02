@@ -94,6 +94,17 @@ $result = $conn->query("SELECT * FROM banners");
             border-radius: 100%;
             padding: 0.8rem;
         }
+        .carousel-item img { 
+    object-fit: cover;  /* This will stretch the image to fill the container */
+    height: 100%;      /* Ensure the image takes the full height of the container */
+    width: 100%;       /* Ensure the image takes the full width of the container */
+}
+
+.uploadModal{
+    display: flex;
+    flex-direction: column;
+}
+
     </style>
 </head>
 <body>
@@ -122,49 +133,51 @@ $result = $conn->query("SELECT * FROM banners");
     </div>
 
     <!-- Upload Modal -->
-    <div class="modal fade" id="uploadModal" tabindex="-1" role="dialog" aria-labelledby="uploadModalLabel" aria-hidden="true">
-        <div class="modal-dialog" role="document">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title text-center text-light" id="uploadModalLabel">Edit Banner</h5>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                </div>
-                <h5 class="mt-3 mx-3">Uploaded Images</h5>
-                <div class="modal-body">
-                  
-                    <div id="uploadedImages">
-                        <?php
-                        // Fetch images again to display in the modal
-                        $result->data_seek(0); // Reset the pointer to the first row
-                        while ($row = $result->fetch_assoc()): ?>
-                            <div class="image-container">
-                                <img src="<?php echo $row['content']; ?>" alt="Uploaded Image" style="width: 100px; height: 100px; object-fit: cover;">
-                                <form action="" method="post" style="display: inline;">
-                                    <input type="hidden" name="delete_id" value="<?php echo $row['id']; ?>">
-                                    <button type="submit" class="delete-button" onclick="return confirm('Are you sure you want to delete this banner?');">X</button>
-                                </form>
-                            </div>
-                        <?php endwhile; ?>
-                    </div>
-                    <form action="" method="post" enctype="multipart/form-data">
-                        <div class="form-group">
-                            <input type="file" name="image[]" class="form-control" multiple required> <!-- Allow multiple files -->
-                        </div>
-                        <!-- <div class="form-group">
-                            <label for="description">Description</label> Change label to 'Description' 
-                            <textarea id="summernote" name="description"></textarea>  Change 'content' to 'description' 
-                        </div> -->
-                       
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button> <button type="submit" class="btn btn-primary">Upload</button>
-                </div>
+<div class="modal fade" id="uploadModal" tabindex="-1" role="dialog" aria-labelledby="uploadModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title text-center text-light" id="uploadModalLabel">Edit Banner</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
             </div>
+            <div class="modal-body d-flex flex-column">
+                <h5 class="mt-3 mx-3">Uploaded Images</h5>
+                <div id="uploadedImages" class="d-flex flex-column mb-3">
+                    <?php
+                    // Fetch images again to display in the modal
+                    $result->data_seek(0); // Reset the pointer to the first row
+                    while ($row = $result->fetch_assoc()): ?>
+                        <div class="image-container mb-2">
+                            <img src="<?php echo $row['content']; ?>" alt="Uploaded Image" style="width: 100px; height: 100px; object-fit: cover;">
+                            <form action="" method="post" style="display: inline;">
+                                <input type="hidden" name="delete_id" value="<?php echo $row['id']; ?>">
+                                <button type="submit" class="delete-button" onclick="return confirm('Are you sure you want to delete this banner?');">X</button>
+                            </form>
+                        </div>
+                    <?php endwhile; ?>
+                </div>
+                <form action="" method="post" enctype="multipart/form-data" class="d-flex flex-column">
+                    <div class="form-group mb-3">
+                        <input type="file" name="image[]" class="form-control" multiple required> <!-- Allow multiple files -->
+                    </div>
+                    <!-- <div class="form-group">
+                        <label for="description">Description</label> Change label to 'Description' 
+                        <textarea id="summernote" name="description"></textarea>  Change 'content' to 'description' 
+                    </div> -->
+                    <div class="modal-footer d-flex justify-content-between">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                <button type="submit" class="btn btn-primary">Upload</button>
+            </div>
+                </form>
+            </div>
+            
+           
         </div>
     </div>
+</div>
+
 
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>

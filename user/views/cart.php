@@ -466,18 +466,19 @@ $(document).ready(function() {
         }, 'json');
     });
 
-    // Confirm removal when user clicks 'Delete'
     $('#deleteBtn').click(function() {
-        let itemId = $(this).data('id');
-        
-        $.post("cart.php", { remove_item: true, item_id: itemId }, function(response) {
-            if (response.success) {
-                $(`.cart-item[data-id="${itemId}"]`).remove();
-                $('#alert').fadeIn().delay(3000).fadeOut();  // Show alert
-                $('#deleteModal').modal('hide');
-            }
-        }, 'json');
-    });
+    let itemId = $(this).data('id' );
+    
+    $.post("cart.php", { remove_item: true, item_id: itemId }, function(response) {
+        if (response.success) {
+            $(`.cart-item[data-id="${itemId}"]`).remove();
+            $('#alert').fadeIn().delay(3000).fadeOut();  // Show alert
+            $('#deleteModal').modal('hide');
+            location.reload();  // Reload the page
+        }
+    }, 'json');
+});
+
 
          // Handle Checkout process
          $('#proceed-btn').on('click', function() {
