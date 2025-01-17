@@ -35,20 +35,16 @@ $(document).ready(function() {
                 {
                     data: null,
                     render: function(data, type, row) {
-                        return `
-
-                         <button class="editBtn" onclick="openUpdateModal(${row.order_id})" data-id="${data.transaction_id}" 
+                        return ` <button class="editBtn" data-id="${data.transaction_id}" 
                         data-status="${data.status}" 
                         data-client-name="${data.client_full_name}" 
                         data-reservation-type="${data.reservation_type}" 
                         data-total-price="${data.total_price}"
                         data-created-at="${data.created_at}">
-                            <i class="fas fa-edit text-primary border-0"></i>
-
+                            <i class="fas fa-edit"></i> Edit
                         </button>
-
                          <button class="btn btn-danger btn-sm" onclick="deleteOrder(${row.transaction_id})">
-                         <i class="fa-solid fa-trash"></i>
+                            <i class="fas fa-trash"></i> Delete
                         </button>
                         `;
                     }
@@ -102,7 +98,7 @@ $(document).ready(function() {
     });
     
 
- // Click event for the Edit button
+    // Click event for the Edit button
     $('#userTable').on('click', '.editBtn', function() {
         const orderId = $(this).data('id');
         const status = $(this).data('status');
@@ -161,7 +157,6 @@ $(document).ready(function() {
                 const result = JSON.parse(response);
                 if (result.success) {
                     $('#updateUserModal').modal('hide');
-                  
                     table.ajax.reload();  // Reload the table after update
                 } else {
                     alert('Error updating status');

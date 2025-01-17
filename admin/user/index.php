@@ -1,59 +1,92 @@
-
 <?php
 include './../../connection/connection.php';
-
 
 // Get the action
 $action = isset($_POST['action']) ? $_POST['action'] : '';
 
 if ($action === 'read') {
-    $query = "SELECT transaction_id, client_full_name, order_created, total_price, reservation_type FROM orders";
+    $query = "SELECT order_id, client_full_name, created_at, transaction_id ,total_price, reservation_type, status FROM orders";
     $result = $conn->query($query);
-    $users = [];
+    $orders = [];
 
     while ($row = $result->fetch_assoc()) {
-        $users[] = $row;
+        $orders[] = $row;
     }
 
-    echo json_encode($users);
+    echo json_encode($orders);
     exit();  
 }
 
+if ($action === 'getOrderItems') {
+    $orderId = $_POST['order_id'];
+
+    $query = "
+        SELECT oi.item_name, oi.price, oi.size, oi.temperature, oi.quantity, 
+               o.client_full_name, o.transaction_id, o.reservation_type, o.created_at, o.total_price 
+        FROM order_items oi
+        JOIN orders o ON oi.order_id = o.order_id
+        WHERE oi.order_id = ?
+    ";
+    $stmt = $conn->prepare($query);
+    $stmt->bind_param('i', $orderId);
+
+    if ($stmt->execute()) {
+        $result = $stmt->get_result();
+        $items = [];
+
+        while ($row = $result->fetch_assoc()) {
+            $items[] = $row;
+        }
+
+        echo json_encode(['success' => true, 'items' => $items]);
+    } else {
+        echo json_encode(['success' => false, 'message' => 'Failed to fetch items: ' . $conn->error]);
+    }
+
+    $stmt->close();
+    exit();
+}
 
 
+if ($action === 'update') {
+    $id = $_POST['id'];
+    $status = $_POST['status'];
+    $client_full_name = $_POST['client_full_name'];
+   
+    // Sanitize inputs and prepare the query
+    if ($stmt = $conn->prepare("UPDATE orders SET status = ? WHERE transaction_id = ?")) {
+        $stmt->bind_param('si', $status, $id);
 
-// if ($action === 'update') {
-//     $id = $_POST['id'];
+        if ($stmt->execute()) {
+            echo json_encode(['success' => true]);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Update failed: ' . $conn->error]);
+        }
 
-//     $role = $_POST['role'];
-
-//     // Prepare and execute the query
-//     $query = $conn->prepare("UPDATE orders SET  role = ? WHERE id = ?");
-//     $query->bind_param('si',  $role, $id);
-
-//     if ($query->execute()) {
-//         echo json_encode(['success' => true]);
-//     } else {
-//         echo json_encode(['success' => false, 'message' => 'Update failed: ' . $conn->error]);
-//     }
-//     $query->close();
-//     exit();
-// }
-
+        $stmt->close();
+    } else {
+        echo json_encode(['success' => false, 'message' => 'Prepared statement failed: ' . $conn->error]);
+    }
+    exit();
+}
 
 if ($action === 'delete') {
     $id = $_POST['id'];
 
-    // Prepare and execute the query
-    $query = $conn->prepare("DELETE FROM orders WHERE id = ?");
-    $query->bind_param('i', $id);
+    // Sanitize inputs and prepare the query
+    if ($stmt = $conn->prepare("DELETE FROM orders WHERE transaction_id = ?")) {
+        $stmt->bind_param('i', $id);
 
-    if ($query->execute()) {
-        echo json_encode(['success' => true]);
+        if ($stmt->execute()) {
+            echo json_encode(['success' => true]);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Delete failed: ' . $conn->error]);
+        }
+
+        $stmt->close();
     } else {
-        echo json_encode(['success' => false, 'message' => 'Delete failed: ' . $conn->error]);
+        echo json_encode(['success' => false, 'message' => 'Prepared statement failed: ' . $conn->error]);
     }
-    $query->close();
     exit();
 }
 

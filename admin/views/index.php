@@ -1,278 +1,231 @@
-
-<?php
-
+<?php 
+include './../../connection/connection.php';
 include './../inc/topNav.php';
-
-
 ?>
 
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>CRUD Operations</title>
-    <link rel="stylesheet" href="https://cdn.datatables.net/1.10.21/css/jquery.dataTables.min.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Orders</title>
+    <!-- Add necessary CSS for DataTable and Modal -->
+    <link href="https://cdn.datatables.net/1.13.1/css/jquery.dataTables.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
 
-    <script src="https://cdn.datatables.net/1.10.21/js/jquery.dataTables.min.js"></script>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
- 
-    <script src="./../js/index.js"></script>
+    <!-- Bootstrap for Modal -->
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
 
     <style>
-        
-        body {
-            background-color: #FCFCFC;
-        }
-        .editBtn,
-        .deleteBtn {
-            background: none;
-            border: none;
-        }
-        .btn_color {
-            background-color: #06C185;
-            border: #06C185 solid 1px;
-        }
-        .dataTables_filter input {
-            border: #9E9E9E 1px solid;
-            border-radius: 0.3rem;
-        }
-        #usersTable, th {
-            border: none;
-        }
-        .editBtn {
-            color: #624DE3;
-        }
-        .deleteBtn {
-            color: #A30D11;
-        }
-        .account-text {
-            font-size: 2rem;
-            font-weight: bold;
-        }
-        .management-underline {
-            position: relative;
-        }
-        .management-underline::after {
-            content: '';
-            position: absolute;
-            bottom: -10px; 
-            left: 0;
-            width: 100%;
-            height: 5px; 
-            background-color: #FC8E29;
-            border-radius: 3px;
+        *{
+            padding: 0;
+            margin: 0;
+            box-sizing: border-box;
         }
 
+        .modal-body{
+            display: flex;
+            flex-direction: column;
+           
+        }
 
+        .update-down{
+            display: flex;
+            flex-direction: row;
+         
+        }
+
+        .order-sum{
+            display: flex;
+            flex-direction: row;
+         
+        }
+
+        .order-s{
+            color: #FF902B;
+        }
+
+        .p1{
+            color: #FF902B;
+        }
+
+        .p{
+            color: #616161;
+        }
+
+        .l{
+            color: #000000;
+        }
+
+        .upsta{
+            color: white;
+            background-color: #FF902B;
+            border: none;
+        }
 
     </style>
 </head>
+
 <body>
 
-<div class="container-fluid mb-3 ">
-    <div class="row mt-5 ms-5">
-        <div class="col-12 col-md-10 col-lg-8">
-            <p class="account-text ">
-               Order <span class="management-underline">Management</span>
-            </p>
-        </div>
-    </div>
-</div>
-
-<!-- Add Admin Modal -->
-<div class="modal fade" id="addAdminModal" tabindex="-1" aria-labelledby="addAdminModalLabel" aria-hidden="true">
-    <div class="modal-dialog p-3">
-        <div class="modal-content p-3">
-            <!-- Modal Header with no border -->
-            <div class="modal-header border-0">
-                <h5 class="modal-title" id="addAdminModalLabel">Scan QR Code</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-
-            <div class="modal-body">
-                <div id="qr-reader" style="width: 100%;"></div>
-                <div id="qr-reader-results" class="mt-3"></div>
-                <p class="error text-danger" id="scanError" style="display: none;"></p>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class ="d-flex justify-content-center w-100">
-<div class="container-fluid shadow p-3 mx-5 bg-body-tertiary rounded">
-
-        <div class="d-flex justify-content-end m-2 mb-5">
-            <button type="button" class="btn btn_color btn-primary" data-bs-toggle="modal" data-bs-target="#addAdminModal">
-            <i class="fa-solid fa-qrcode"></i> &#160; <strong>QR_Scanner</strong> 
-            </button>
-        </div>
-        <table id="userTable" class="display">
-           
+    <div class="container mt-5">
+        <h2>Order Management</h2>
+        <table id="userTable" class="display container-fluid" style="">
             <thead>
                 <tr>
-                    <th>Transaction ID</th>
-                    <th>Customer</th>
-                    <th>Date</th>
-                    <th>Amount</th>
+                    <th>Order ID</th>
+                    <th>Client Name</th>
+                    <th>Order Date</th>
+                    <th>Total Price</th>
                     <th>Reservation Type</th>
-                    <!-- <th>Status</th> -->
+                    <th>Status</th>
                     <th>Actions</th>
                 </tr>
             </thead>
-            <tbody>
-               <!-- Table data will be filled dynamically  -->
-            </tbody>
         </table>
     </div>
+
+    <!-- Modal for Delete Confirmation -->
+    <div class="modal fade" id="deleteUserModal" tabindex="-1" role="dialog" aria-labelledby="deleteUserModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="deleteUserModalLabel">Delete Confirmation</h5>
+                    <button type="button" class="close" data-bs-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    Are you sure you want to delete this order?
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" id="cancelDeleteBtn" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Delete</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for Update User Status -->
+<div class="modal fade container-fluid" id="updateUserModal" tabindex="-1" role="dialog" aria-labelledby="updateUserModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content container-fluid">
+            <div class="modal-header">
+                <h5 class="modal-title" id="updateUserModalLabel">Update Order Status</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body container-fluid">
+
+                <form id="updateStatusForm">
+                    <div class="form-group">
+                        <p>orders</p>
+
+                        <table id="userTableUpdate" class="display container-fluid" style="">
+                            <thead>
+                                <tr>
+                                <th>Item</th>
+                                <th>Price</th>
+                                <th>Size</th>
+                                <th>Temperature</th>
+                                <th>Quantity</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+
+                    <div class="form-group update-down d-flex flex-column">
+                    <h5 class="order-s">Order Summary</h5>
+                        <div class="form-group order-sum d-flex flex-row">
+                        
+                        <div class="d-flex flex-column gap-3 m-3">
+    <div class="d-flex flex-row mb-3 align-items-baseline">
+        <label class="l mr-5">Client Name</label>
+        <p id="client_full_name_display" class="p mb-0 ml-auto text-right"></p>
+    </div>
+
+    <div class="d-flex flex-row mb-3 align-items-baseline">
+        <label class="l mr-5">Transaction no.</label>
+        <p id="transaction_id" class="p mb-0 ml-auto text-right"></p>
+    </div>
+
+    <div class="d-flex flex-row mb-3 align-items-baseline">
+        <label class="l mr-5">Reservation Type</label>
+        <p id="reservation_type" class="p mb-0 ml-auto text-right"></p>
+    </div>
+
+    <div class="d-flex flex-row mb-3 align-items-baseline">
+        <label class="l mr-5">Party Size</label>
+        <p id="party_size" class="p mb-0 ml-auto text-right"></p>
+    </div>
+
+    <div class="d-flex flex-row mb-1 align-items-baseline mt-2">
+        <label class="l mr-5 fs-5 bold">Total Price</label>
+        <p id="total_price1" class="p1 mb-0 ml-auto bold text-right">P</p>
+    </div>
 </div>
 
-<!-- <div class="container text-center" style="margin-top: 100px;">
-    <div class="alert alert-warning" role="alert">
-        Under Development
+
+<div class="d-flex flex-column gap-3 m-3">
+    <div class="d-flex flex-row mb-3 align-items-baseline">
+        <label class="l mr-5">Date</label>
+        <p id="created_at" class="p mb-0 ml-auto text-right"></p>
     </div>
-</div> -->
+
+    <div class="d-flex flex-row mb-3 align-items-baseline">
+        <label class="l mr-5">Time</label>
+        <p id="transaction_id" class="p mb-0 ml-auto text-right"></p>
+    </div>
+
+    <div class="d-flex flex-row mb-3 align-items-baseline">
+        <label class="l mr-5">Sub total</label>
+        <p id="total_price" class="p mb-0 ml-auto bold text-right">P</p>
+    </div>
+
+    <div class="d-flex flex-row mb-3 align-items-baseline">
+        <label class="l mr-5">Reservation fee</label>
+        <p id="party_size" class="p mb-0 ml-auto text-right"></p>
+    </div>
+</div>
 
 
-<!-- Update User Modal -->
-<!-- Update User Modal -->
-<div class="modal fade" id="updateUserModal" tabindex="-1" aria-labelledby="updateUserModalLabel" aria-hidden="true">
-    <div class="modal-dialog p-3">
-        <div class="modal-content p-3">
-            <!-- Modal Header with no border -->
-            <div class="modal-header border-0">
-                <h5 class="modal-title" id="updateUserModalLabel">Edit User</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <form id="updateUserForm">
-                    <input type="hidden" name="id" id="updateUserId">
-
-                    <div class="mb-3">
-                        <label for="updateEmail" class="form-label">Email</label>
-                        <div class="input-group">
-                            <span class="input-group-text bg-white border-0 border-bottom border-dark">
-                                <i class="fa-regular fa-envelope"></i>
-                            </span>
-                            <input type="email" name="email" id="updateEmail" class="form-control border-0 border-bottom border-dark" placeholder="Enter your email" disabled>
-                        </div>
-                        <p class="error text-danger"></p> <!-- Error message container -->
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="updateUsername" class="form-label">New Username</label>
-                        <div class="input-group">
-                            <span class="input-group-text bg-white border-0 border-bottom border-dark">
-                                <i class="fa-regular fa-user"></i>
-                            </span>
-                            <input type="text" name="username" id="updateUsername" class="form-control border-0 border-bottom border-dark" disabled>
-                        </div>
-                        <p class="error text-danger"></p> <!-- Error message container -->
-                    </div>
-
-                    
-
-                    <div class="mb-3">
-                        <label for="updateRoleSelect" class="form-label">Select Role</label>
-                        <div class="input-group">
-                            <span class="input-group-text bg-white border-0 border-bottom border-dark">
-                                <i class="fa-regular fa-user"></i>
-                            </span>
-                            <select class="form-select border-0 border-bottom border-dark" id="updateRoleSelect" name="role" required>
-                                <option selected disabled>Select Role</option>
-                                <option value="owner">Owner</option>
-                                <option value="staff">Staff</option>
+                             <div class="form-group p-3 mb-5 mx-5">
+                            <label for="status" class="fw-bold">Order Status</label>
+                            <select class="form-control container-fluid" id="status" name="status">
+                                <option value="for confirmation">For Confirmation</option>
+                                <option value="cancelled">Cancelled</option>
+                                <option value="payment">Payment</option>
+                                <option value="booked">Booked</option>
+                                <option value="rate us">Rate Us</option>
                             </select>
                         </div>
+                        </div>
+
+                       
                     </div>
 
-                    <button type="submit" class="btn btn_color btn-primary mx-auto w-100 m-5 p-3" style="background-color: #FF902B; border-radius: 30px; border: none;">
-                        Update User
-                    </button>
+                    <input type="hidden" id="orderId" name="id">
                 </form>
             </div>
-        </div>
-    </div>
-</div>
-
-
-
-<!-- Delete User Modal -->
-<div class="modal fade" id="deleteUserModal" tabindex="-1" aria-labelledby="deleteUserModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="deleteUserModalLabel">Delete User</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <p>Are you sure you want to delete this user?</p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">No</button>
-                <button type="button" id="confirmDeleteBtn" class="btn btn-danger">Yes</button>
+            <div class="mx-auto m-5">
+              
+                <button type="button" class="upsta btn btn-primary rounded-pill  px-5 container-fluid" id="saveStatusBtn">Update Sts</button>
             </div>
         </div>
     </div>
 </div>
 
-<script src="https://unpkg.com/html5-qrcode/minified/html5-qrcode.min.js"></script>
-<script>
-    function onScanSuccess(decodedText, decodedResult) {
-        // Handle the result here
-        document.getElementById('qr-reader-results').innerText = `Scan result: ${decodedText}`;
-        // Optionally, you can process the scanned data (e.g., save to the database)
-    }
 
-    function onScanError(errorMessage) {
-        // Handle scan error (if necessary)
-        console.warn(`QR scan error: ${errorMessage}`);
-    }
+    <!-- jQuery, DataTable, and Bootstrap JS -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.1/js/jquery.dataTables.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.bundle.min.js"></script>
 
-    const html5QrCode = new Html5Qrcode("qr-reader");
-    html5QrCode.start(
-        { facingMode: "environment" }, 
-        {
-            fps: 10, 
-            qrbox: { width: 250, height: 250 } 
-        },
-        onScanSuccess,
-        onScanError
-    ).catch(err => {
-        // Start failed, handle it here
-        document.getElementById('scanError').innerText = "Error starting QR scanner: " + err;
-        document.getElementById('scanError').style.display = 'block';
-    });
-</script>
-
-<script>
-$(document).ready(function() {
-    // Example: Handle edit button click
-    $(document).on('click', '.editBtn', function() {
-        const userId = $(this).data('id'); // Assuming you store the ID in a data attribute
-        const username = $(this).data('username'); // Assuming you store the username
-
-        $('#updateUserId').val(userId);
-        $('#updateUsername').val(username);
-        $('#updateUserModal').modal('show');
-    });
-
-    // Example: Handle delete button click
-    $(document).on('click', '.deleteBtn', function() {
-        const userId = $(this).data('id'); // Assuming you store the ID in a data attribute
-
-        $('#confirmDeleteBtn').data('id', userId); // Store the ID on the confirm button
-        $('#deleteUserModal').modal('show');
-    });
-
-    // Confirm delete action
-    $('#confirmDeleteBtn').click(function() {
-        const userId = $(this).data('id');
-        // Perform the delete action using AJAX or a form submission
-    });
-});
-
-
-</script>
+    <!-- Custom JS -->
+    <script src="./../js/index.js"></script>
+    
 
 </body>
 </html>

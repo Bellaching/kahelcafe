@@ -1,11 +1,11 @@
 <?php
+
 include './../inc/topNav.php'; 
 include './../../connection/connection.php';
-
 // Handle image upload
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
  
-    $target_dir = './../uploads'; // Replace with your actual directory path
+    $target_dir = './../../uploads'; // Replace with your actual directory path
 
     if (isset($_FILES['image'])) {
         $images = $_FILES['image'];

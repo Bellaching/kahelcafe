@@ -14,6 +14,12 @@
 ob_start(); // Start output buffering
 include "banner.php";
 include "./../../connection/connection.php";
+// Redirect if not logged in
+if (!isset($_SESSION['user_id'])) {
+    $_SESSION['cart_error'] = "You need to log in to add items to the cart.";
+    header("Location: /login.php");
+    exit();
+}
 
 $itemsPerPage = 6; 
 $current_page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
@@ -33,6 +39,13 @@ if (isset($_SESSION['user_id'])) {
 
 $userVerified = isset($_SESSION['user_id']) ? 1 : 0;
 $selectedCategory = isset($_GET['category']) ? $conn->real_escape_string($_GET['category']) : '';
+
+// Redirect if not logged in
+if (!isset($_SESSION['user_id'])) {
+    $_SESSION['cart_error'] = "You need to log in to add items to the cart.";
+    header("Location: /login.php");
+    exit();
+}
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['add_to_cart'])) {
     $item_id = intval($_POST['item_id']);
@@ -87,13 +100,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['add_to_cart'])) {
     }
 }
 
-// Redirect if not logged in
-// if (!isset($_SESSION['user_id'])) {
-//     $_SESSION['cart_error'] = "You need to log in to add items to the cart.";
-//     header("Location: /login.php");
-//     exit();
-// }
-
 // Pagination logic
 $totalItemsResult = $conn->query("SELECT COUNT(*) as count FROM menu1" . ($selectedCategory ? " WHERE category = '$selectedCategory'" : ""));
 $totalItems = $totalItemsResult->fetch_assoc()['count'];
@@ -104,6 +110,7 @@ $sql = "SELECT * FROM menu1" . ($selectedCategory ? " WHERE category = '$selecte
 $result = $conn->query($sql);
 
 ob_end_flush();
+
 ?>
 
 <div class="container-fluid mb-5">
@@ -338,6 +345,15 @@ document.querySelectorAll('.form-range').forEach(range => {
     });
 
 });
+
+$(document).ready(function () {
+        $('#search').on('keyup', function () {
+            var value = $(this).val().toLowerCase();
+            $('.menu-card').filter(function () {
+                $(this).toggle($(this).find('.card-title').text().toLowerCase().indexOf(value) > -1)
+            });
+        });
+    });
 </script>
 
 </body>

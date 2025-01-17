@@ -1,0 +1,82 @@
+.con-cart{
+    padding: 5%;
+}
+
+.cart-table {
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Light shadow */
+}
+
+.cart-table thead {
+    background-color: #FF902A;
+    color: white;
+}
+
+.quantity-buttons {
+    display: flex;
+    align-items: center;
+}
+
+.quantity-buttons .btn {
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+}
+
+.quantity-buttons .form-control {
+    width: 50px;
+    text-align: center;
+}
+
+.cart-item img {
+    border-radius: 10px;
+}
+
+.card {
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Light shadow */
+}
+
+/* Modal styling */
+.modal-content {
+    border-radius: 10px;
+}
+
+.back-to-order a, i{
+    color: #FF902B;
+}
+
+.alert-dismissible {
+    display: none;
+}
+
+.order-underline {
+display: inline-block;
+border-bottom: 3px solid #FF902A;
+padding-bottom: 3px; 
+margin-bottom: 1rem;
+
+}
+
+.proceedBtn{
+background-color: #FF902A;
+border: none;
+border-radius: 15px;
+}
+.proceedBtn:hover{
+background-color: #ffffff;
+border:solid 1px #FF902A;
+color: black;
+border-radius: 15px;
+}
+.order-h4{
+color: #FF902A;
+font-weight: bold;
+}
+
+.btn-increase,
+.btn-decrease{
+background-color:#FF902A ;
+border: none;
+}

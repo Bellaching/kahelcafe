@@ -11,12 +11,14 @@
 <body>
 <?php 
 ob_start(); 
+
 include "./../../admin/views/banner.php";
 include "./../../connection/connection.php";
 $itemsPerPage = 6; // Change this to the number of items you want per page
 $current_page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
 $offset = ($current_page - 1) * $itemsPerPage;
 $selectedCategory = isset($_GET['category']) ? $conn->real_escape_string($_GET['category']) : '';
+
 
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['addMenuItem'])) {

@@ -1,6 +1,11 @@
 <?php
 include './../user/authenticate.php'; 
+
 ?>
+
+
+
+
 
 <!DOCTYPE html>
 <html lang="en">
@@ -58,6 +63,7 @@ include './../user/authenticate.php';
         <div class="collapse navbar-collapse justify-content-end text-dark" id="navbarNav">
             <ul class="navbar-nav flex-row">
                 <!-- Owner Side -->
+               
                 <?php if ($role === 'owner'): ?>
                     <li class="nav-item dropdown me-3">
                         <a class="nav-link dropdown-toggle text-black" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">Admin side</a>
@@ -111,6 +117,9 @@ include './../user/authenticate.php';
                         </ul>
                     </li>
                 <?php endif; ?>
+
+               
+
             </ul>
         </div>
     </div>

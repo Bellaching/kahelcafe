@@ -37,13 +37,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $transaction_code = uniqid('TXN-', true); // Generate a unique transaction code
     $reservation_date = $_POST['reservation_date'];
     $reservation_time = $_POST['reservation_time'];
-<<<<<<< Updated upstream
+
     $party_size = $_POST['party_size'];
     $note = $_POST['note-area'];
-=======
-    $party_size = isset($_POST['party-size-result']) ? $_POST['party-size-result'] : null;
-    $note = isset($_POST['note_area']) ? $_POST['note_area'] : null;
->>>>>>> Stashed changes
+
     $amount = $reservation_fee;
     $res_status = "for payment"; // Default value
 
@@ -87,11 +84,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             <div class="note">
                 <h5 class="header-h1-note">Note</h5>
-<<<<<<< Updated upstream
+
                 <textarea name="note-area" id="note-area" maxlength="500" placeholder="Additional notes..."></textarea> 
-=======
-                <textarea name="note_area" id="note-area" maxlength="100%"></textarea>
->>>>>>> Stashed changes
+
+
             </div>
         </div>
 

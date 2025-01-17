@@ -3,8 +3,40 @@ include './../inc/topNav.php';
 include './../../connection/connection.php';
 
 
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+ 
+    $target_dir = './../../uploads'; 
+
+    if (isset($_FILES['image'])) {
+        $images = $_FILES['image'];
+      
+        // Loop through each file
+        for ($i = 0; $i < count($images['name']); $i++) {
+            $target_file = $target_dir . basename($images["name"][$i]);
+
+            // Move the uploaded file to the target directory
+            if (move_uploaded_file($images["tmp_name"][$i], $target_file)) {
+                // Insert into database
+                $description = $_POST['description'] ?? 'Uploaded Image'; // Change 'content' to 'description'
+                $stmt = $conn->prepare("INSERT INTO banners (content, description) VALUES (?, ?)");
+                $stmt->bind_param("ss", $target_file, $description);
+                $stmt->execute();
+                $stmt->close();
+            }
+        }
+    } elseif (isset($_POST['delete_id'])) {
+        // Handle image deletion
+        $delete_id = $_POST['delete_id'];
+        $stmt = $conn->prepare("DELETE FROM banners WHERE id = ?");
+        $stmt->bind_param("i", $delete_id);
+        $stmt->execute();
+        $stmt->close();
+    }
+}
+
 // Fetch images from the database
 $result = $conn->query("SELECT * FROM banners");
+
 ?>
 
 <!DOCTYPE html>

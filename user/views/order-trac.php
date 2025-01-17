@@ -22,9 +22,6 @@ if (!$order) {
     exit();
 }
 
-error_log('Transaction ID: ' . $_GET['transaction_id']);
-
-
 // Fetch order items from the Order_Items table
 $stmt = $conn->prepare("SELECT * FROM Order_Items WHERE order_id = ?");
 $stmt->bind_param("i", $order['order_id']);
