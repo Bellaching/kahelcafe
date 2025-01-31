@@ -35,14 +35,7 @@ $(document).ready(function() {
                 {
                     data: null,
                     render: function(data, type, row) {
-                        return ` <button class="editBtn" data-id="${data.transaction_id}" 
-                        data-status="${data.status}" 
-                        data-client-name="${data.client_full_name}" 
-                        data-reservation-type="${data.reservation_type}" 
-                        data-total-price="${data.total_price}"
-                        data-created-at="${data.created_at}">
-                            <i class="fas fa-edit"></i> Edit
-                        </button>
+                        return `<button class="btn btn-info" onclick="openUpdateModal(${row.order_id})">Update</button>
                          <button class="btn btn-danger btn-sm" onclick="deleteOrder(${row.transaction_id})">
                             <i class="fas fa-trash"></i> Delete
                         </button>

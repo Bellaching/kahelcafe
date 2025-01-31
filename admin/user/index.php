@@ -1,6 +1,5 @@
 <?php
 include './../../connection/connection.php';
-
 // Get the action
 $action = isset($_POST['action']) ? $_POST['action'] : '';
 
@@ -17,12 +16,19 @@ if ($action === 'read') {
     exit();  
 }
 
+
+
 if ($action === 'getOrderItems') {
-    $orderId = $_POST['order_id'];
+    $orderId = $_POST['order_id'] ?? null;
+
+    if (!$orderId) {
+        echo json_encode(['success' => false, 'message' => 'Order ID is missing']);
+        exit();
+    }
 
     $query = "
-        SELECT oi.item_name, oi.price, oi.size, oi.temperature, oi.quantity, 
-               o.client_full_name, o.transaction_id, o.reservation_type, o.created_at, o.total_price 
+        SELECT oi.item_name, oi.price, oi.size, oi.temperature, oi.quantity, oi.receipt,
+               o.client_full_name, o.transaction_id, o.reservation_type, o.created_at, o.total_price
         FROM order_items oi
         JOIN orders o ON oi.order_id = o.order_id
         WHERE oi.order_id = ?
@@ -38,7 +44,8 @@ if ($action === 'getOrderItems') {
             $items[] = $row;
         }
 
-        echo json_encode(['success' => true, 'items' => $items]);
+       echo json_encode(['success' => true, 'items' => $items, 'receipt' => $items[0]['receipt'] ?? null]);
+
     } else {
         echo json_encode(['success' => false, 'message' => 'Failed to fetch items: ' . $conn->error]);
     }

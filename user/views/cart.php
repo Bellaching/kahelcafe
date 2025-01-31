@@ -104,6 +104,7 @@ function generateTransactionId($conn) {
         $stmt->fetch();
         $stmt->close();
 
+        // If count is 0, the transaction ID is unique
         if ($count === 0) {
             return $transactionId; // Return the unique transaction ID
         }
@@ -114,7 +115,11 @@ if (isset($_POST['checkout'])) {
     // Collect note and reservation type from the form
     $userNote = isset($_POST['note']) ? $_POST['note'] : '';
     $reservationType = isset($_POST['reservation_type']) ? $_POST['reservation_type'] : '';
-    $transactionId = generateTransactionId($conn);
+   $transactionId = generateTransactionId($conn);
+if (!$transactionId) {
+    die("Failed to generate a Transaction ID");
+}
+
 
     // Enable error reporting
     error_reporting(E_ALL);
@@ -207,15 +212,14 @@ if ($clientId) {
     $stmt->close();
 
     if ($_SERVER['HTTP_X_REQUESTED_WITH'] === 'XMLHttpRequest') {
-        // Respond to AJAX
         echo json_encode([
             'success' => true,
             'redirect' => "order-track.php?transaction_id=" . $transactionId,
         ]);
     } else {
-        // Regular HTTP request
         header("Location: order-track.php?transaction_id=" . $transactionId);
     }
+    
     exit;
     
     
@@ -546,33 +550,19 @@ $(document).ready(function() {
         const note = $("#modal-note").val();
         const reservationType = $("#reservation-type").val();
 
-        $.ajax({
-            url: "", // Adjust to your PHP file path
-            method: "POST",
-            data: {
-                checkout: true,
-                note: note,
-                reservation_type: reservationType,
-            },
-            dataType: "json",
-            success: function (response) {
-                if (response.success) {
-                    alert("Order placed successfully! Transaction ID: " + response.transaction_id);
-                    location.reload();
-                    // $(".btn-increase").remove();
-                    // $(".btn-decrease").hide();proceedBtn
-                    // $(".proceedBtn").hide();
-                   
-                   
-                     //window.location.href = "order-confirmation.php"; // Redirect after successful checkout
-                } else {
-                    alert("An error occurred while processing your order.");
-                }
-            },
-            error: function () {
-                alert("Failed to communicate with the server.");
-            },
-        });
+       $.ajax({
+    url: '',
+    type: 'POST',
+    data: { checkout: true },
+    success: function (response) {
+        const result = JSON.parse(response);
+        if (result.success) {
+            alert("Order placed successfully! Transaction ID: " + result.redirect.split("transaction_id=")[1]);
+            window.location.href = result.redirect;
+        }
+    }
+});
+
     });
     $('.btn-decrease, .btn-increase').click(function() {
     let itemId = $(this).data('id');
@@ -621,8 +611,6 @@ $('#deleteBtn').click(function() {
     }, 'json');
 });
 
-
-
     // Confirm removal when user clicks 'Delete'
     $('#deleteBtn').click(function() {
     let itemId = $(this).data('id');
@@ -637,30 +625,6 @@ $('#deleteBtn').click(function() {
         }
     }, 'json');
 });
-
-
-    //      // Handle Checkout process
-    //      $('#proceed-btn').on('click', function() {
-    //     var userNote = $('#user-note').val();
-    //     var reservationType = $("#reservation-type").val();
-    //     $.ajax({
-    //         method: 'POST',
-    //         url: '',
-    //         data: {
-    //             checkout: true,
-    //             note: userNote,
-    //             reservation_type: reservationType
-    //         },
-    //         success: function(response) {
-    //             var result = JSON.parse(response);
-    //             if (result.success) {
-                 
-                   
-    //             }
-    //         }
-    //     });
-    // });
-
 
 });
 </script>

@@ -1,3 +1,5 @@
+
+//start 
 $(document).ready(function() {
     $(document).ready(function() {
         const table = $('#userTable').DataTable({
@@ -19,6 +21,7 @@ $(document).ready(function() {
                 },
                 { data: 'total_price' },
                 { data: 'reservation_type' },
+                
                 {
                     data: 'status',
                     render: function(data) {
@@ -42,7 +45,8 @@ $(document).ready(function() {
                         data-client-name="${data.client_full_name}" 
                         data-reservation-type="${data.reservation_type}" 
                         data-total-price="${data.total_price}"
-                        data-created-at="${data.created_at}">
+                        data-created-at="${data.created_at}"
+                        data-receipt="${data.receipt}">
                             <i class="fas fa-edit text-primary border-0"></i>
 
                         </button>
@@ -56,7 +60,6 @@ $(document).ready(function() {
             ]
         });
     
-        // Open the modal and fetch order items
         window.openUpdateModal = function(orderId) {
             // Fetch order details
             $.ajax({
@@ -69,9 +72,13 @@ $(document).ready(function() {
                 success: function(response) {
                     const data = JSON.parse(response);
                     if (data.success) {
+                        const receiptPath = data.receipt ? `/kahelCafe/uploads/${data.receipt}` : null;
+                        
+                        console.log(receiptPath); // Check the URL in the console
+                        
                         // Populate the order items table
                         let orderItemsHtml = '';
-                        data.items.forEach(item => {
+                        data.items.forEach((item, index) => {
                             orderItemsHtml += `
                                 <tr>
                                     <td>${item.item_name}</td>
@@ -79,11 +86,19 @@ $(document).ready(function() {
                                     <td>${item.size}</td>
                                     <td>${item.temperature}</td>
                                     <td>${item.quantity}</td>
+                                    ${index === 0 ? `<td rowspan="${data.items.length}">${receiptPath ? `<img src="${receiptPath}" alt="Receipt" style="width: 300px; height: auto;">` : 'Not Paid'}</td>` : ''}
                                 </tr>
                             `;
                         });
                         $('#userTableUpdate tbody').html(orderItemsHtml);
-    
+        
+                        // Check if receipt exists and display it in the summary
+                        if (receiptPath) {
+                            $('#receipt').attr('src', receiptPath);
+                        } else {
+                            $('#receipt').text('No receipt available');
+                        }
+        
                         // Set order summary data
                         $('#client_full_name_display').text(data.items[0].client_full_name);
                         $('#transaction_id').text(data.items[0].transaction_id);
@@ -95,10 +110,11 @@ $(document).ready(function() {
                     }
                 }
             });
-    
+        
             // Open the modal
             $('#updateUserModal').modal('show');
         };
+        
     });
     
 
@@ -110,6 +126,7 @@ $(document).ready(function() {
         const reservationType = $(this).data('reservation-type');
         const totalPrice = $(this).data('total-price');
         const createdAt = $(this).data('created-at');
+        const receipt = $(this).data('receipt');
 
         // Set modal data
         $('#updateUserModal').modal('show');
@@ -119,6 +136,7 @@ $(document).ready(function() {
         $('#reservation_type').text(reservationType);
         $('#total_price1').text(`P ${totalPrice}`);
         $('#created_at').text(new Date(createdAt).toLocaleDateString('en-US'));
+        $('#receipt').text(`P ${receipt}`);
 
       
     });

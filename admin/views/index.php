@@ -63,6 +63,10 @@ include './../inc/topNav.php';
             border: none;
         }
 
+        thead {
+            background-color: #FF902B;
+        }
+
     </style>
 </head>
 
@@ -123,18 +127,22 @@ include './../inc/topNav.php';
                         <p>orders</p>
 
                         <table id="userTableUpdate" class="display container-fluid" style="">
-                            <thead>
+                        <thead class="text-light px-3">
                                 <tr>
-                                <th>Item</th>
+                                <th>Order Item</th>
                                 <th>Price</th>
                                 <th>Size</th>
                                 <th>Temperature</th>
                                 <th>Quantity</th>
+                                <th>Receipt</th>
                                 </tr>
                             </thead>
                             <tbody></tbody>
                         </table>
                     </div>
+                    
+                    
+
 
                     <div class="form-group update-down d-flex flex-column">
                     <h5 class="order-s">Order Summary</h5>
