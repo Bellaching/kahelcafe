@@ -63,8 +63,13 @@ include './../inc/topNav.php';
             border: none;
         }
 
-        thead {
+        .theadmodal {
             background-color: #FF902B;
+        }
+
+        .account-text {
+            font-size: 2rem;
+            font-weight: bold;
         }
 
     </style>
@@ -72,22 +77,39 @@ include './../inc/topNav.php';
 
 <body>
 
-    <div class="container mt-5">
-        <h2>Order Management</h2>
-        <table id="userTable" class="display container-fluid" style="">
+  
+<div class="container-fluid mb-3 ">
+    <div class="row mt-5 ms-5">
+        <div class="col-12 col-md-10 col-lg-8">
+            <p class="account-text ">
+                Order <span class="management-underline">Management</span>
+            </p>
+        </div>
+    </div>
+</div>
+
+    <div class ="d-flex justify-content-center w-100">
+<div class="container-fluid shadow p-3 mx-5 bg-body-tertiary rounded">
+
+        
+        <table id="userTable" class="display">
             <thead>
                 <tr>
-                    <th>Order ID</th>
-                    <th>Client Name</th>
+                <th>Order ID</th>
+                    <th>Customer</th>
                     <th>Order Date</th>
-                    <th>Total Price</th>
+                    <th>Amount</th>
                     <th>Reservation Type</th>
                     <th>Status</th>
                     <th>Actions</th>
                 </tr>
             </thead>
+            <tbody>
+                <!-- Table data will be filled dynamically -->
+            </tbody>
         </table>
     </div>
+</div>
 
     <!-- Modal for Delete Confirmation -->
     <div class="modal fade" id="deleteUserModal" tabindex="-1" role="dialog" aria-labelledby="deleteUserModalLabel" aria-hidden="true">
@@ -114,20 +136,15 @@ include './../inc/topNav.php';
 <div class="modal fade container-fluid" id="updateUserModal" tabindex="-1" role="dialog" aria-labelledby="updateUserModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg" role="document">
         <div class="modal-content container-fluid">
-            <div class="modal-header">
-                <h5 class="modal-title" id="updateUserModalLabel">Update Order Status</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
+            
             <div class="modal-body container-fluid">
 
                 <form id="updateStatusForm">
                     <div class="form-group">
-                        <p>orders</p>
+                    
 
                         <table id="userTableUpdate" class="display container-fluid" style="">
-                        <thead class="text-light px-3">
+                        <thead class="text-light px-3 theadmodal">
                                 <tr>
                                 <th>Order Item</th>
                                 <th>Price</th>
@@ -219,7 +236,7 @@ include './../inc/topNav.php';
             </div>
             <div class="mx-auto m-5">
               
-                <button type="button" class="upsta btn btn-primary rounded-pill  px-5 container-fluid" id="saveStatusBtn">Update Sts</button>
+                <button type="button" class="upsta btn btn-primary rounded-pill  px-5 container-fluid" id="saveStatusBtn">Update Status</button>
             </div>
         </div>
     </div>
