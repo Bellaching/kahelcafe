@@ -81,18 +81,6 @@ if (!$order || $order['status'] === 'cancelled') {
     echo "<div class='container text-center mt-5'>
             <h4>The order has been cancelled.</h4>
             <p>We're sorry, but no current orders are available. 😔</p>
-            <p>The reason why the order was cancelled:</p>
-            <ul class='text-start'>
-              <li>You cancelled the order.</li>
-              <li>The shop cancelled your order due to one of the following reasons:
-                <ul>
-                  <li>Payment was not completed or confirmed.</li>
-                  <li>The item is no longer available.</li>
-                  <li>Suspected fake or invalid payment details.</li>
-                  <li>Technical issues at the shop's end.</li>
-                </ul>
-              </li>
-            </ul>
             <p>If you have any questions or believe this was a mistake, please contact support for assistance.</p>
           </div>";
     exit();
@@ -119,53 +107,206 @@ $stmt->close();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Order Confirmation</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .order-tracking {
+            display: flex;
+            justify-content: space-between;
+            position: relative;
+            margin-bottom: 50px;
+        }
+        .order-tracking .step {
+            position: relative;
+            text-align: center;
+            width: 24%;
+        }
+        .order-tracking .step:before {
+            content: '';
+            position: absolute;
+            top: 14px;
+            left: 50%;
+            width: 100%;
+            height: 5px;
+            background-color: #ddd;
+            transform: translateX(-50%);
+        }
+        .order-tracking .step.active:before {
+            background-color: #12B76A;
+        }
+        .order-tracking .step.active .icon {
+            background-color: #12B76A;
+            color: white;
+        }
+        .order-tracking .step .icon {
+            width: 40px;
+            height: 40px;
+            line-height: 40px;
+            border-radius: 50%;
+            margin: 0 auto;
+            font-weight: bold;
+            color: #fff;
+            background-color: #ddd;
+        }
+        .order-tracking .step.active .title {
+            color: #12B76A;
+        }
+        .order-tracking .step .title {
+            font-weight: bold;
+            font-size: 14px;
+        }
+        .order-tracking .step .description {
+            font-size: 12px;
+            color: #888;
+        }
+
+        .custom-table thead th {
+    background-color: #FF902B;
+    color: white;
+    
+}
+
+.custom-table {
+    box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+    border-radius: 0.5rem;
+}
+h5{
+    color:#FF902B; 
+}
+
+.order-sum{
+    padding: 1rem;
+    box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+    border-radius: 0.5rem;
+}
+
+    </style>
 </head>
 <body>
     <div class="container mt-5">
-        <h3>Order Confirmation</h3>
-        <p>Transaction ID: <?php echo htmlspecialchars($order['transaction_id']); ?></p>
-        <p>Status: <?php echo htmlspecialchars($order['status']); ?></p>
-        <p>Total Price: ₱<?php echo number_format($order['total_price'], 2); ?></p>
+        <h3>Order Tracking</h3>
 
-        <h4>Order Items</h4>
-        <table class="table">
-            <thead>
-                <tr>
-                    <th>Item</th>
-                    <th>Size</th>
-                    <th>Temperature</th>
-                    <th>Quantity</th>
-                    <th>Price</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php while ($item = $orderItems->fetch_assoc()): ?>
-                    <tr>
-                        <td><?php echo htmlspecialchars($item['item_name']); ?></td>
-                        <td><?php echo htmlspecialchars($item['size']); ?></td>
-                        <td><?php echo htmlspecialchars($item['temperature']); ?></td>
-                        <td><?php echo htmlspecialchars($item['quantity']); ?></td>
-                        <td>₱<?php echo number_format($item['price'], 2); ?></td>
-                    </tr>
-                <?php endwhile; ?>
-            </tbody>
-        </table>
+            <!-- Order Tracking Steps -->
+            <div class="order-tracking">
+            <div class="step <?php echo ($order['status'] === 'for confirmation' ? 'active' : ''); ?>">
+                <div class="icon"></div>
+                <div class="title">For Confirmation</div>
+                <div class="description">We're confirming your order</div>
+            </div>
+            <div class="step <?php echo ($order['status'] === 'payment' ? 'active' : ''); ?>">
+                <div class="icon"></div>
+                <div class="title">Payment</div>
+                <div class="description">Payment processing</div>
+            </div>
+            <div class="step <?php echo ($order['status'] === 'booked' ? 'active' : ''); ?>">
+                <div class="icon"></div>
+                <div class="title">Booked</div>
+                <div class="description">Your order has been confirmed</div>
+            </div>
+            <div class="step <?php echo ($order['status'] === 'rate us' ? 'active' : ''); ?>">
+                <div class="icon fs-5"></div>
+                <div class="title">Rate Us</div>
+                <div class="description">Please rate your experience</div>
+              
 
-        <?php if ($order['status'] === 'payment'): ?>
+
+            </div>
+        </div>
+     
+      
+        <table class="table custom-table">
+    <thead>
+        <tr>
+            <th>Order item</th>
+            <th>Size</th>
+            <th>Temperature</th>
+            <th>Quantity</th>
+            <th>Price</th>
+        </tr>
+    </thead>
+    <tbody>
+        <?php while ($item = $orderItems->fetch_assoc()): ?>
+            <tr>
+                <td><?php echo htmlspecialchars($item['item_name']); ?></td>
+                <td><?php echo htmlspecialchars($item['size']); ?></td>
+                <td><?php echo htmlspecialchars($item['temperature']); ?></td>
+                <td><?php echo htmlspecialchars($item['quantity']); ?></td>
+                <td>₱<?php echo number_format($item['price'], 2); ?></td>
+            </tr>
+        <?php endwhile; ?>
+    </tbody>
+</table>
+<div class="order-sum">
+    <h5 class="bold">Order Summary</h5>
+    <div class="row">
+        <div class="col-md-6">
+            <div class="d-flex justify-content-between w-100">
+                <p><strong>Name:</strong></p>
+                <p><?php echo htmlspecialchars($order['client_full_name']); ?></p>
+            </div>
+            <div class="d-flex justify-content-between w-100">
+                <p><strong>Transaction ID:</strong></p>
+                <p><?php echo htmlspecialchars($order['transaction_id']); ?></p>
+            </div>
+            <div class="d-flex justify-content-between w-100">
+                <p><strong>Reservation Type:</strong></p>
+                <p><?php echo htmlspecialchars($order['reservation_type']); ?></p>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="d-flex justify-content-between w-100">
+                <p><strong>Date:</strong></p>
+                <p><?php echo htmlspecialchars($order['client_full_name']); ?></p>
+            </div>
+            <div class="d-flex justify-content-between w-100">
+                <p><strong>Time:</strong></p>
+                <p><?php echo htmlspecialchars($order['client_full_name']); ?></p>
+            </div>
+            <div class="d-flex justify-content-between w-100">
+                <p><strong>Subtotal:</strong></p>
+                <p><?php echo htmlspecialchars($order['client_full_name']); ?></p>
+            </div>
+            <div class="d-flex justify-content-between w-100">
+                <p><strong>Reservation Fee:</strong></p>
+                <p><?php echo htmlspecialchars($order['client_full_name']); ?></p>
+            </div>
+        </div>
+    </div>
+
+    <p><strong>Total Price:</strong> ₱<?php echo number_format($order['total_price'], 2); ?></p>
+</div>
+
+
+
+
+
+
+    
+
+        <?php if ($order['status'] === 'payment'): ?> 
+            <div class="buttons d-flex flex-column flex-wrap ">
             <form method="POST" enctype="multipart/form-data" class="mt-3">
                 <input type="hidden" name="order_id" value="<?php echo htmlspecialchars($order['order_id']); ?>">
                 <div class="mb-3">
                     <label for="receipt" class="form-label">Upload Receipt (JPG, PNG only):</label>
                     <input type="file" class="form-control" id="receipt" name="receipt" required>
                 </div>
+                </form>
+                
                 <button type="submit" name="upload_receipt" class="btn btn-success">Upload Receipt</button>
+
+                <form method="POST" class="mt-3">
+                <input type="hidden" name="order_id" value="<?php echo htmlspecialchars($order['order_id']); ?>">
+                <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#cancelOrderModal">Cancel Order</button>
+                 </form>
+            </div>
+           
+           
+        <?php elseif ($order['status'] === 'for confirmation'): ?> 
+            <form method="POST" class="mt-3">
+                <input type="hidden" name="order_id" value="<?php echo htmlspecialchars($order['order_id']); ?>">
+                <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#cancelOrderModal">Cancel Order</button>
             </form>
         <?php endif; ?>
-
-        <form method="POST" class="mt-3">
-            <input type="hidden" name="order_id" value="<?php echo htmlspecialchars($order['order_id']); ?>">
-            <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#cancelOrderModal">Cancel Order</button>
-        </form>
 
         <!-- Modal Structure -->
         <div class="modal fade" id="cancelOrderModal" tabindex="-1" aria-labelledby="cancelOrderModalLabel" aria-hidden="true">
@@ -189,7 +330,7 @@ $stmt->close();
             </div>
         </div>
 
-        <a href="order-now.php" class="btn btn-primary mt-3">Go back to Shopping</a>
+       
     </div>
 
     <!-- Bootstrap JavaScript -->
