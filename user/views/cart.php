@@ -1,19 +1,57 @@
 <?php
 session_start();
+
 include './../../connection/connection.php';
+// Fetch cart from database if session expired
+if (!isset($_SESSION['cart']) && isset($_SESSION['user_id'])) {
+    $clientId = $_SESSION['user_id'];
+    $query = "SELECT item_id, item_name, size, temperature, quantity, price , note FROM cart WHERE user_id = ?";
+    $stmt = $conn->prepare($query);
+
+    if (!$stmt) {
+        die("Prepare failed: " . $conn->error); // Debugging error
+    }
+
+    $stmt->bind_param("i", $clientId);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    $_SESSION['cart'] = [];
+    while ($row = $result->fetch_assoc()) {
+        $_SESSION['cart'][] = [
+            'id' => $row['item_id'],
+            'name' => $row['item_name'],
+            'size' => $row['size'],
+            'temperature' => $row['temperature'],
+            'quantity' => $row['quantity'],
+            'note' => $row['note'],
+            'price' => $row['price'],
+        ];
+    }
+    $stmt->close();
+}
 
 
-
-// Handle quantity update without reload (AJAX)
+// Handle quantity update (AJAX)
 if (isset($_POST['update_quantity'])) {
     $item_id = intval($_POST['item_id']);
     $quantity = intval($_POST['quantity']);
-    foreach ($_SESSION['cart'] as &$item) {
-        if ($item['id'] == $item_id) {
-            $item['quantity'] = $quantity;
-            break;
+
+    if (isset($_SESSION['cart'])) {
+        foreach ($_SESSION['cart'] as &$item) {
+            if ($item['id'] == $item_id) {
+                $item['quantity'] = $quantity;
+                break;
+            }
         }
     }
+
+    // Update database cart as well
+    $stmt = $conn->prepare("UPDATE cart SET quantity = ? WHERE item_id = ?");
+    $stmt->bind_param("ii", $quantity, $item_id);
+    $stmt->execute();
+    $stmt->close();
+
     echo json_encode(['success' => true]);
     exit;
 }
@@ -21,215 +59,123 @@ if (isset($_POST['update_quantity'])) {
 // Handle item removal
 if (isset($_POST['remove_item'])) {
     $item_id = intval($_POST['item_id']);
-    
-   
-    
+
     $stmt = $conn->prepare("DELETE FROM cart WHERE item_id = ?");
-    $stmt->bind_param("i", $item_id); // Bind the item_id to the query
+    $stmt->bind_param("i", $item_id);
     $stmt->execute();
     $stmt->close();
-    $conn->close();
-    
-    // Remove item from the session cart
+
+    // Remove from session cart
     foreach ($_SESSION['cart'] as $key => $item) {
         if ($item['id'] == $item_id) {
-            unset($_SESSION['cart'][$key]); // Remove item from cart session
+            unset($_SESSION['cart'][$key]);
             break;
         }
     }
 
     echo json_encode(['success' => true]);
+    exit;
 }
 
-
-
-// Check if the cart is empty
-$cartEmpty = empty($_SESSION['cart']);
-
+// Ensure user is logged in
 if (!isset($_SESSION['user_id'])) {
     $_SESSION['cart_error'] = "You need to log in to add items to the cart.";
     header("Location: ./../../user/views/login.php");
     exit();
 }
 
-
+// Check if cart is empty
+$cartEmpty = empty($_SESSION['cart']);
 
 // Initialize totalPrice
 $totalPrice = 0;
-
-// Loop through the cart items and calculate the total price
-if (isset($_SESSION['cart']) && is_array($_SESSION['cart'])) {
-    foreach ($_SESSION['cart'] as $item) {
-        $totalPrice += $item['price'] * $item['quantity'];
-    }
+foreach ($_SESSION['cart'] as $item) {
+    $totalPrice += $item['price'] * $item['quantity'];
 }
-
-
-// Check if the cart is empty
-$cartEmpty = empty($_SESSION['cart']);
 
 // Retrieve client details
 $clientFullName = 'Unknown';
-$clientId = isset($_SESSION['user_id']) ? $_SESSION['user_id'] : null;
+$clientId = $_SESSION['user_id'];
 
-if ($clientId) {
-    $query = "SELECT firstname, lastname FROM client WHERE id = ?";
-    $stmt = $conn->prepare($query);
-    $stmt->bind_param("i", $clientId);
-    $stmt->execute();
-    $result = $stmt->get_result();
-
-    if ($result->num_rows > 0) {
-        $row = $result->fetch_assoc();
-        $clientFullName = " " . htmlspecialchars($row['firstname'] . ' ' . $row['lastname']);
-    }
-} else {
-    echo "User is not logged in. Please log in to view your cart.";
+$query = "SELECT firstname, lastname FROM client WHERE id = ?";
+$stmt = $conn->prepare($query);
+$stmt->bind_param("i", $clientId);
+$stmt->execute();
+$result = $stmt->get_result();
+if ($result->num_rows > 0) {
+    $row = $result->fetch_assoc();
+    $clientFullName = htmlspecialchars($row['firstname'] . ' ' . $row['lastname']);
 }
+$stmt->close();
 
-
-function generateTransactionId($conn) {
-    while (true) {
-        $transactionId = strtoupper(bin2hex(random_bytes(6))); // Generate a 12-character random ID
-
-        // Check if the transaction ID already exists
-        $stmt = $conn->prepare("SELECT COUNT(*) FROM orders WHERE transaction_id = ?");
-        if (!$stmt) {
-            die("Prepare failed: " . $conn->error);
-        }
-
-        $stmt->bind_param("s", $transactionId);
-        $stmt->execute();
-        $stmt->bind_result($count);
-        $stmt->fetch();
-        $stmt->close();
-
-        // If count is 0, the transaction ID is unique
-        if ($count === 0) {
-            return $transactionId; // Return the unique transaction ID
-        }
-    }
-}
-
+// Handle checkout
 if (isset($_POST['checkout'])) {
-    // Collect note and reservation type from the form
     $userNote = isset($_POST['note']) ? $_POST['note'] : '';
+
     $reservationType = isset($_POST['reservation_type']) ? $_POST['reservation_type'] : '';
-   $transactionId = generateTransactionId($conn);
-if (!$transactionId) {
-    die("Failed to generate a Transaction ID");
-}
+    $transactionId = strtoupper(bin2hex(random_bytes(6)));
 
-
-    // Enable error reporting
-    error_reporting(E_ALL);
-    ini_set('display_errors', 1);
-
-    // Insert into the Orders table
-    $stmt = $conn->prepare("INSERT INTO Orders (user_id, client_full_name, total_price, transaction_id, reservation_type, status) 
-                            VALUES (?, ?, ?, ?, ?, ?)");
-    if (!$stmt) {
-        die("Order prepare failed: " . $conn->error);
-    }
-
-    $status = "for confirmation"; 
-  
-    $stmt->bind_param("isssss", $clientId, $clientFullName, $totalPrice, $transactionId, $reservationType, $status);
-
-
-    if (!$stmt->execute()) {
-        die("Order execute failed: " . $stmt->error);
-    }
-
-    $orderId = $stmt->insert_id; // Get the last inserted order_id
+    // Check for pending orders
+    $pendingStatuses = ['for confirmation', 'payment', 'booked'];
+    $query = "SELECT COUNT(*) FROM Orders WHERE user_id = ? AND status IN (?, ?, ?)";
+    $stmt = $conn->prepare($query);
+    $stmt->bind_param("isss", $clientId, ...$pendingStatuses);
+    $stmt->execute();
+    $stmt->bind_result($pendingOrderCount);
+    $stmt->fetch();
     $stmt->close();
 
-    // Insert items into the Order_Items table
+    if ($pendingOrderCount > 0) {
+        echo json_encode(['success' => false, 'message' => 'You already have a pending order.']);
+        exit;
+    }
+
+ 
+    $stmt = $conn->prepare("INSERT INTO Orders (user_id, client_full_name, total_price, transaction_id, reservation_type, status, reservation_fee) 
+                        VALUES (?, ?, ?, ?, ?, ?, ?)");
+    $reservation_fee = 50; 
+    $status = "for confirmation";
+    $stmt->bind_param("isssssi", $clientId, $clientFullName, $totalPrice, $transactionId, $reservationType, $status, $reservation_fee);
+  
+    $stmt->execute();
+    $orderId = $stmt->insert_id;
+    $stmt->close();
+
+    // Insert into Order_Items table
     foreach ($_SESSION['cart'] as $item) {
         $stmt = $conn->prepare("INSERT INTO Order_Items (order_id, item_name, size, temperature, quantity, note, price) 
                                 VALUES (?, ?, ?, ?, ?, ?, ?)");
-        if (!$stmt) {
-            die("Order_Items prepare failed: " . $conn->error);
-        }
-
-        $itemSize = isset($item['size']) ? $item['size'] : null;
-        $itemTemperature = isset($item['temperature']) ? $item['temperature'] : null;
-        $stmt->bind_param(
-            "isssids", 
-            $orderId, 
-            $item['name'], 
-            $itemSize, 
-            $itemTemperature, 
-            $item['quantity'], 
-            $userNote, 
-            $item['price']
-        );
-
-        if (!$stmt->execute()) {
-            error_log("Order_Items execute failed: " . $stmt->error);
-        }
+      $stmt->bind_param(
+        "isssiss", 
+        $orderId, 
+        $item['name'], 
+        $item['size'], 
+        $item['temperature'], 
+        $item['quantity'], 
+        $userNote, 
+        $item['price']
+    );
+    
+        $stmt->execute();
         $stmt->close();
     }
 
-    // Retrieve the latest order status for the user
-$orderStatus = '';
-if ($clientId) {
-    $query = "SELECT firstname, lastname FROM client WHERE id = ?";
-    $stmt = $conn->prepare($query);
-
-    // Check if $stmt is valid
-    if (!$stmt) {
-        die("Prepare failed: " . $conn->error);
-    }
-
-    $stmt->bind_param("i", $clientId);
-    $stmt->execute();
-
-    $result = $stmt->get_result();
-    if ($result->num_rows > 0) {
-        $row = $result->fetch_assoc();
-        $clientFullName = " " . htmlspecialchars($row['firstname'] . ' ' . $row['lastname']);
-    } else {
-        echo "No client found with the given ID.";
-    }
-    $stmt->close();
-} else {
-    echo "User is not logged in. Please log in to view your cart.";
-}
-
-
-    // Clear the cart in session and database
+    // Clear cart in session and database
     unset($_SESSION['cart']);
     $stmt = $conn->prepare("DELETE FROM cart WHERE user_id = ?");
-    if (!$stmt) {
-        die("Cart delete prepare failed: " . $conn->error);
-    }
-
     $stmt->bind_param("i", $clientId);
-    if (!$stmt->execute()) {
-        die("Cart delete execute failed: " . $stmt->error);
-    }
+    $stmt->execute();
     $stmt->close();
 
     if ($_SERVER['HTTP_X_REQUESTED_WITH'] === 'XMLHttpRequest') {
-        echo json_encode([
-            'success' => true,
-            'redirect' => "order-track.php?transaction_id=" . $transactionId,
-        ]);
+        echo json_encode(['success' => true, 'redirect' => "order-track.php?transaction_id=" . $transactionId]);
     } else {
         header("Location: order-track.php?transaction_id=" . $transactionId);
     }
-    
     exit;
-    
-    
 }
-
-
-
-
-
 ?>
+
 
 <?php if (!empty($orderStatus)): ?>
     <div class="alert alert-info">
@@ -410,7 +356,7 @@ if ($clientId) {
 
 <div class="note-section mt-4">
     <label for="user-note">Note</label>
-    <textarea id="user-note" class="form-control" placeholder="Enter your note here" 
+    <textarea id="user-note" class="form-control" placeholder="Enter your note here" name= "note"
               style="border-color: #B3B3B3; border-radius: 10px; height: 150px; resize: none;"></textarea>
 </div>
 
@@ -543,91 +489,94 @@ if ($clientId) {
 
 <!-- Bootstrap JavaScript -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-
 <script>
 $(document).ready(function() {
     $("#checkoutBtn").click(function () {
-        const note = $("#modal-note").val();
+        const note = $("#user-note").val();
         const reservationType = $("#reservation-type").val();
 
-       $.ajax({
+        $.ajax({
     url: '',
     type: 'POST',
-    data: { checkout: true },
-    success: function (response) {
-        const result = JSON.parse(response);
-        if (result.success) {
-            alert("Order placed successfully! Transaction ID: " + result.redirect.split("transaction_id=")[1]);
-            window.location.href = result.redirect;
-        }
-    }
-});
+    data: { checkout: true, note: note, reservation_type: reservationType },
 
-    });
-    $('.btn-decrease, .btn-increase').click(function() {
-    let itemId = $(this).data('id');
-    let $quantityInput = $(`.quantity-input[data-id="${itemId}"]`);
-    let currentQuantity = parseInt($quantityInput.val());
-
-    // Adjust quantity
-    if ($(this).hasClass('btn-increase')) {
-        currentQuantity += 1;
-    } else if ($(this).hasClass('btn-decrease') && currentQuantity > 1) {
-        currentQuantity -= 1;
-    }
-
-    // Update input field
-    $quantityInput.val(currentQuantity);
-
-    // AJAX update for new quantity
-    $.post("cart.php", { update_quantity: true, item_id: itemId, quantity: currentQuantity }, function(response) {
-        if (response.success) {
-            if (currentQuantity === 1) {
-                $('#deleteModal').modal('show');
-                $('#deleteBtn').data('id', itemId);  // Store item id for removal
+            success: function (response) {
+                const result = JSON.parse(response);
+                if (result.success) {
+                    alert("Order placed successfully! Transaction ID: " + result.redirect.split("transaction_id=")[1]);
+                    window.location.href = result.redirect;
+                } else {
+                    // This will show the alert for pending orders
+                    alert(result.message);
+                }
             }
-        } else {
-            // Handle any errors from the server response
-            alert('Failed to update quantity. Please try again.');
+        });
+    });
+
+    $('.btn-decrease, .btn-increase').click(function() {
+        let itemId = $(this).data('id');
+        let $quantityInput = $(`.quantity-input[data-id="${itemId}"]`);
+        let currentQuantity = parseInt($quantityInput.val());
+
+        // Adjust quantity
+        if ($(this).hasClass('btn-increase')) {
+            currentQuantity += 1;
+        } else if ($(this).hasClass('btn-decrease') && currentQuantity > 1) {
+            currentQuantity -= 1;
         }
-    }, 'json');
-});
 
-// Handle delete button click
-$('#deleteBtn').click(function() {
-    let itemId = $(this).data('id');
+        // Update input field
+        $quantityInput.val(currentQuantity);
 
-    // Perform AJAX request to delete the item
-    $.post("cart.php", { delete_item: true, item_id: itemId }, function(response) {
-        if (response.success) {
-            // Close the modal first
-            $('#deleteModal').modal('hide');
+        // AJAX update for new quantity
+        $.post("cart.php", { update_quantity: true, item_id: itemId, quantity: currentQuantity }, function(response) {
+            if (response.success) {
+                if (currentQuantity === 1) {
+                    $('#deleteModal').modal('show');
+                    $('#deleteBtn').data('id', itemId);  // Store item id for removal
+                }
+            } else {
+                // Handle any errors from the server response
+                alert('Failed to update quantity. Please try again.');
+            }
+        }, 'json');
+    });
 
-            // Reload the page after successful deletion
-            location.reload();  // This will reload the page
-        } else {
-            alert('Failed to delete item. Please try again.');
-        }
-    }, 'json');
-});
+    // Handle delete button click
+    $('#deleteBtn').click(function() {
+        let itemId = $(this).data('id');
+
+        // Perform AJAX request to delete the item
+        $.post("cart.php", { delete_item: true, item_id: itemId }, function(response) {
+            if (response.success) {
+                // Close the modal first
+                $('#deleteModal').modal('hide');
+
+                // Reload the page after successful deletion
+                location.reload();  // This will reload the page
+            } else {
+                alert('Failed to delete item. Please try again.');
+            }
+        }, 'json');
+    });
 
     // Confirm removal when user clicks 'Delete'
     $('#deleteBtn').click(function() {
-    let itemId = $(this).data('id');
-    
-    $.post("cart.php", { remove_item: true, item_id: itemId }, function(response) {
-        if (response.success) {
-            $(`.cart-item[data-id="${itemId}"]`).remove();
-            $('#alert').fadeIn().delay(3000).fadeOut();  // Show alert
-            $('#deleteModal').modal('hide');
-            // This will reload the current page
-            location.reload();  // Automatically reload the page after successful deletion
-        }
-    }, 'json');
-});
-
+        let itemId = $(this).data('id');
+        
+        $.post("cart.php", { remove_item: true, item_id: itemId }, function(response) {
+            if (response.success) {
+                $(`.cart-item[data-id="${itemId}"]`).remove();
+                $('#alert').fadeIn().delay(3000).fadeOut();  // Show alert
+                $('#deleteModal').modal('hide');
+                // This will reload the current page
+                location.reload();  // Automatically reload the page after successful deletion
+            }
+        }, 'json');
+    });
 });
 </script>
+
 
 </body>
 </html>

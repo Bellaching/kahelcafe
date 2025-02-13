@@ -22,30 +22,28 @@ if ($time_result) {
 
 // Fetch the reservation fee from the menu table
 $reservation_fee = 0;
-$reservation_fee_query = "SELECT price FROM menu1 WHERE name = 'Reservation'";
+$reservation_fee_query = "SELECT reservation_fee FROM Orders WHERE name = 'Reservation'";
 $reservation_fee_result = mysqli_query($conn, $reservation_fee_query);
 
 if ($reservation_fee_result) {
     $row = mysqli_fetch_assoc($reservation_fee_result);
-    $reservation_fee = $row['price'];  // Store the reservation fee
+    $reservation_fee = $row['reservation_fee'];  // Store the reservation fee
 }
 
 // Check if the form is submitted
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Get the data from the POST request, ensuring the keys exist
+    // Get the data from the POST request
     $client_id = $_POST['client_id'];
     $transaction_code = uniqid('TXN-', true); // Generate a unique transaction code
     $reservation_date = $_POST['reservation_date'];
     $reservation_time = $_POST['reservation_time'];
-
     $party_size = $_POST['party_size'];
     $note = $_POST['note-area'];
-
     $amount = $reservation_fee;
     $res_status = "for payment"; // Default value
 
     // Insert the reservation data into the database
-    $insert_query = "INSERT INTO reservation (transaction_code, client_id, reservation_date, reservation_time, party_size, note_area, amount, res_status) 
+    $insert_query = "INSERT INTO reservation (transaction_code, client_id, reservation_date, reservation_time, party_size, note, amount, res_status) 
                      VALUES ('$transaction_code', '$client_id', '$reservation_date', '$reservation_time', '$party_size', '$note', '$amount', '$res_status')";
 
     if (mysqli_query($conn, $insert_query)) {
@@ -54,7 +52,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         echo "<script>alert('Error creating reservation: " . mysqli_error($conn) . "');</script>";
     }
 }
-
 ?>
 
 <!DOCTYPE html>
@@ -84,10 +81,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             <div class="note">
                 <h5 class="header-h1-note">Note</h5>
-
                 <textarea name="note-area" id="note-area" maxlength="500" placeholder="Additional notes..."></textarea> 
-
-
             </div>
         </div>
 
