@@ -6,6 +6,7 @@
     <title>Calendar</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+
     <style>
         .reservation-page
         {
@@ -100,33 +101,38 @@
             outline: none;
             border-radius: 1rem;
         }
+
+
     </style>
 </head>
 <body class="reservation-page">
 
-<div class="container mt-5">
-    <div id="calendar" class="calendar-container">
-        <div class="calendar-header">
-        <span id="prev-month" class="calendar-nav"><i class="fas fa-chevron-left"></i></span>
+<div class="container "> 
+    <div id="calendar" class="w-100 ">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <span id="prev-month" class="calendar-nav"><i class="fas fa-chevron-left"></i></span>
             <span id="calendar-title" class="fw-bold"></span>
             <span id="next-month" class="calendar-nav"><i class="fas fa-chevron-right"></i></span>
+
         </div>
-        <table class="calendar-table">
-            <thead>
-                <tr>
-                    <th>Sun</th>
-                    <th>Mon</th>
-                    <th>Tue</th>
-                    <th>Wed</th>
-                    <th>Thu</th>
-                    <th>Fri</th>
-                    <th>Sat</th>
-                </tr>
-            </thead>
-            <tbody id="calendar-body">
-                <!-- automatic dates here -->
-            </tbody>
-        </table>
+        <div class="table-responsive">
+            <table class="table table-bordered text-center">
+                <thead>
+                    <tr class="table-light">
+                        <th>Sun</th>
+                        <th>Mon</th>
+                        <th>Tue</th>
+                        <th>Wed</th>
+                        <th>Thu</th>
+                        <th>Fri</th>
+                        <th>Sat</th>
+                    </tr>
+                </thead>
+                <tbody id="calendar-body">
+                    <!-- automatic dates here -->
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 

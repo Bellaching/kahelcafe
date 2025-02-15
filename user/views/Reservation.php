@@ -2,56 +2,8 @@
 include './../inc/topNav.php'; 
 
 include './../../connection/connection.php';
+include '../views/reserve.php'
 
-
-$user_id = 25;  // Use the actual user_id dynamically if necessary
-
-// Fetch available times from the res_time table
-$times = [];
-$time_query = "SELECT * FROM res_time";
-$time_result = mysqli_query($conn, $time_query);
-
-if ($time_result) {
-    while ($row = mysqli_fetch_assoc($time_result)) {
-        $times[] = [
-            'time_id' => $row['id'],
-            'time' => $row['time']
-        ];
-    }
-}
-
-// Fetch the reservation fee from the menu table
-$reservation_fee = 0;
-$reservation_fee_query = "SELECT reservation_fee FROM Orders WHERE name = 'Reservation'";
-$reservation_fee_result = mysqli_query($conn, $reservation_fee_query);
-
-if ($reservation_fee_result) {
-    $row = mysqli_fetch_assoc($reservation_fee_result);
-    $reservation_fee = $row['reservation_fee'];  // Store the reservation fee
-}
-
-// Check if the form is submitted
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Get the data from the POST request
-    $client_id = $_POST['client_id'];
-    $transaction_code = uniqid('TXN-', true); // Generate a unique transaction code
-    $reservation_date = $_POST['reservation_date'];
-    $reservation_time = $_POST['reservation_time'];
-    $party_size = $_POST['party_size'];
-    $note = $_POST['note-area'];
-    $amount = $reservation_fee;
-    $res_status = "for payment"; // Default value
-
-    // Insert the reservation data into the database
-    $insert_query = "INSERT INTO reservation (transaction_code, client_id, reservation_date, reservation_time, party_size, note, amount, res_status) 
-                     VALUES ('$transaction_code', '$client_id', '$reservation_date', '$reservation_time', '$party_size', '$note', '$amount', '$res_status')";
-
-    if (mysqli_query($conn, $insert_query)) {
-        echo "<script>alert('Reservation successfully created!'); window.location.href='reservation-confirmation.php';</script>";
-    } else {
-        echo "<script>alert('Error creating reservation: " . mysqli_error($conn) . "');</script>";
-    }
-}
 ?>
 
 <!DOCTYPE html>
@@ -62,13 +14,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Reservation</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
     <link rel="stylesheet" href="../asset/css/resrvation.css">
  
    
 </head>
-<body class="reservation">
+<body class="reservation ">
     <div class="res-body">
         <div class="reservation-left">
             <div class="left-header">
@@ -76,23 +28,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
 
             <div class="calendar">
-                <iframe src="../inc/calendar.php"></iframe>
+                <iframe src="../inc/calendar2.php"></iframe>
             </div>
 
-            <div class="note">
-                <h5 class="header-h1-note">Note</h5>
-                <textarea name="note-area" id="note-area" maxlength="500" placeholder="Additional notes..."></textarea> 
-            </div>
+         
         </div>
 
-        <div class="reservation-right">
+        <div class="reservation-right  ">
             <div class="seat-reservation">
-                <h4 class="cart-right-header1">Seat Reservation</h4>
+                <h4 class="cart-right-header1 px-4">Seat Reservation</h4>
 
-                <div class="reservation-color">
-                    <p class="color-coding" style="background-color:#07D090;">Available</p>
-                    <p class="color-coding" style="background-color:red;">Fully Booked</p>
-                    <p class="color-coding" style="background-color:purple;">Your Reservation</p>
+                <div class="reservation-color ">
+                    <p class="color-coding text-light p-2" style="background-color:#07D090;">Available</p>
+                    <p class="color-coding text-light p-2" style="background-color:#E60000;">Fully Booked</p>
+                    <p class="color-coding text-light p-2" style="background-color:#9647FF;">Your Reservation</p>
                 </div>
             </div>
 
@@ -120,8 +69,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
 
 
-            <div class="order-summary-container">
-    <h1 class="cart-right-header1">Order Summary</h1>
+            <div class="order-summary-container container-fluid px-4">
+    <h1 class="cart-right-header1">Reservation Summary</h1>
 
     <div class="order-summary-info">
         <form action="" method="POST">
@@ -129,14 +78,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <input type="hidden" name="client_id" value="<?php echo $user_id; ?>">
 
             <div class="reservation-info" id="reservation-info-name">
-                <p class="name" id="name">Name</p>
-                <p class="result-sum name-result" id="name-result">Name Result</p>
+                <p class="name" id="name">Name</p> 
+                <p class="result-sum name-result" id="name-result"><?php echo $clientFullName; ?></p>
             </div>
 
-            <div class="reservation-info" id="reservation-info-transaction-no">
-                <p class="transaction-no" id="transaction-no">Transaction Code</p>
-                <p class="result-sum transaction-no-result" id="transaction-no-result">Confirm reservation to generate</p>
-            </div>
+          
 
             <div class="reservation-info" id="reservation-info-party-size">
                 <p class="party-size-info" id="party-size">Party Size</p>
@@ -164,7 +110,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <input type="hidden" name="amount" value="<?php echo '₱' . number_format($reservation_fee, 2); ?>">
             </div>
 
-            <button type="submit" id="confirm-order">Confirm Order</button>
+          
+
+                  <div class="con-reser mb-3">
+
+                  <div class="note my-2 container-fluid">
+                  <label for="user-note">Notes</label>
+          <textarea name="note_area" id="" maxlength="500" class="container-fluid " style="border-color: #B3B3B3; border-radius: 10px; height: 150px; resize: none;" placeholder="Additional notes..."></textarea>
+         
+      
+      
+                  </div>
+                  <button type="submit" class="container-fluid" id="confirm-order" class="mb-3" >Confirm Order</button>
+                  </div>
+
+       
         </form>
 
 
