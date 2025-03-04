@@ -17,47 +17,44 @@ include './../inc/topNav.php';
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
 
     <style>
-        *{
+        * {
             padding: 0;
             margin: 0;
             box-sizing: border-box;
         }
 
-        .modal-body{
+        .modal-body {
             display: flex;
             flex-direction: column;
-           
         }
 
-        .update-down{
+        .update-down {
             display: flex;
-            flex-direction: row;
-         
+            flex-direction: column;
         }
 
-        .order-sum{
+        .order-sum {
             display: flex;
-            flex-direction: row;
-         
+            flex-direction: column;
         }
 
-        .order-s{
+        .order-s {
             color: #FF902B;
         }
 
-        .p1{
+        .p1 {
             color: #FF902B;
         }
 
-        .p{
+        .p {
             color: #616161;
         }
 
-        .l{
+        .l {
             color: #000000;
         }
 
-        .upsta{
+        .upsta {
             color: white;
             background-color: #FF902B;
             border: none;
@@ -72,30 +69,62 @@ include './../inc/topNav.php';
             font-weight: bold;
         }
 
+        @media (max-width: 768px) {
+            .modal-dialog {
+                margin: 0.5rem;
+            }
+
+            .modal-content {
+                padding: 1rem;
+            }
+
+            .order-sum {
+                flex-direction: column;
+            }
+
+            .update-down {
+                flex-direction: column;
+            }
+
+            .form-group {
+                margin-bottom: 1rem;
+            }
+
+            .modal-body {
+                padding: 1rem;
+            }
+
+            .modal-footer {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .modal-footer .btn {
+                width: 100%;
+                margin-bottom: 0.5rem;
+            }
+        }
     </style>
 </head>
 
 <body>
 
-  
-<div class="container-fluid mb-3 ">
+<div class="container-fluid mb-3">
     <div class="row mt-5 ms-5">
         <div class="col-12 col-md-10 col-lg-8">
-            <p class="account-text ">
+            <p class="account-text">
                 Order <span class="management-underline">Management</span>
             </p>
         </div>
     </div>
 </div>
 
-    <div class ="d-flex justify-content-center w-100">
-<div class="container-fluid shadow p-3 mx-5 bg-body-tertiary rounded">
-
-        
+<div class="d-flex justify-content-center w-100">
+    <div class="container-fluid shadow p-3 mx-5 bg-body-tertiary rounded">
         <table id="userTable" class="display">
             <thead>
                 <tr>
-                <th>Order ID</th>
+                    <th>Order ID</th>
                     <th>Customer</th>
                     <th>Order Date</th>
                     <th>Amount</th>
@@ -111,112 +140,103 @@ include './../inc/topNav.php';
     </div>
 </div>
 
-    <!-- Modal for Delete Confirmation -->
-    <div class="modal fade" id="deleteUserModal" tabindex="-1" role="dialog" aria-labelledby="deleteUserModalLabel" aria-hidden="true">
-        <div class="modal-dialog" role="document">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="deleteUserModalLabel">Delete Confirmation</h5>
-                    <button type="button" class="close" data-bs-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                </div>
-                <div class="modal-body">
-                    Are you sure you want to delete this order?
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" id="cancelDeleteBtn" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Delete</button>
-                </div>
+<!-- Modal for Delete Confirmation -->
+<div class="modal fade" id="deleteUserModal" tabindex="-1" role="dialog" aria-labelledby="deleteUserModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteUserModalLabel">Delete Confirmation</h5>
+                <button type="button" class="close" data-bs-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                Are you sure you want to delete this order?
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="cancelDeleteBtn" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Delete</button>
             </div>
         </div>
     </div>
+</div>
 
-    <!-- Modal for Update User Status -->
+<!-- Modal for Update User Status -->
 <div class="modal fade container-fluid" id="updateUserModal" tabindex="-1" role="dialog" aria-labelledby="updateUserModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg" role="document">
         <div class="modal-content container-fluid">
-            
             <div class="modal-body container-fluid">
-
                 <form id="updateStatusForm">
                     <div class="form-group">
-                    
-
-                        <table id="userTableUpdate" class="display container-fluid" style="">
-                        <thead class="text-light px-3 theadmodal">
+                        <table id="userTableUpdate" class="display container-fluid">
+                            <thead class="text-light px-3 theadmodal">
                                 <tr>
-                                <th>Order Item</th>
-                                <th>Price</th>
-                                <th>Size</th>
-                                <th>Temperature</th>
-                                <th>Quantity</th>
-                                <th>Receipt</th>
+                                    <th>Order Item</th>
+                                    <th>Price</th>
+                                    <th>Size</th>
+                                    <th>Temperature</th>
+                                    <th>Quantity</th>
+                                    <th>Receipt</th>
                                 </tr>
                             </thead>
                             <tbody></tbody>
                         </table>
                     </div>
-                    
-                    
-
 
                     <div class="form-group update-down d-flex flex-column">
-                    <h5 class="order-s">Order Summary</h5>
+                        <h5 class="order-s">Order Summary</h5>
                         <div class="form-group order-sum d-flex flex-row">
-                        
-                        <div class="d-flex flex-column gap-3 m-3">
-    <div class="d-flex flex-row mb-3 align-items-baseline">
-        <label class="l mr-5">Client Name</label>
-        <p id="client_full_name_display" class="p mb-0 ml-auto text-right"></p>
-    </div>
+                            <div class="d-flex flex-column gap-3 m-3">
+                                <div class="d-flex flex-row mb-3 align-items-baseline">
+                                    <label class="l mr-5">Client Name</label>
+                                    <p id="client_full_name_display" class="p mb-0 ml-auto text-right"></p>
+                                </div>
 
-    <div class="d-flex flex-row mb-3 align-items-baseline">
-        <label class="l mr-5">Transaction no.</label>
-        <p id="transaction_id" class="p mb-0 ml-auto text-right"></p>
-    </div>
+                                <div class="d-flex flex-row mb-3 align-items-baseline">
+                                    <label class="l mr-5">Transaction no.</label>
+                                    <p id="transaction_id" class="p mb-0 ml-auto text-right"></p>
+                                </div>
 
-    <div class="d-flex flex-row mb-3 align-items-baseline">
-        <label class="l mr-5">Reservation Type</label>
-        <p id="reservation_type" class="p mb-0 ml-auto text-right"></p>
-    </div>
+                                <div class="d-flex flex-row mb-3 align-items-baseline">
+                                    <label class="l mr-5">Reservation Type</label>
+                                    <p id="reservation_type" class="p mb-0 ml-auto text-right"></p>
+                                </div>
 
-    <div class="d-flex flex-row mb-3 align-items-baseline">
-        <label class="l mr-5">Party Size</label>
-        <p id="party_size" class="p mb-0 ml-auto text-right"></p>
-    </div>
+                                <div class="d-flex flex-row mb-3 align-items-baseline">
+                                    <label class="l mr-5">Party Size</label>
+                                    <p id="party_size" class="p mb-0 ml-auto text-right"></p>
+                                </div>
 
-    <div class="d-flex flex-row mb-1 align-items-baseline mt-2">
-        <label class="l mr-5 fs-5 bold">Total Price</label>
-        <p id="total_price1" class="p1 mb-0 ml-auto bold text-right">P</p>
-    </div>
-</div>
+                                <div class="d-flex flex-row mb-1 align-items-baseline mt-2">
+                                    <label class="l mr-5 fs-5 bold">Total Price</label>
+                                    <p id="total_price1" class="p1 mb-0 ml-auto bold text-right">P</p>
+                                </div>
+                            </div>
 
+                            <div class="d-flex flex-column gap-3 m-3">
+                                <div class="d-flex flex-row mb-3 align-items-baseline">
+                                    <label class="l mr-5">Date</label>
+                                    <p id="created_at" class="p mb-0 ml-auto text-right"></p>
+                                </div>
 
-<div class="d-flex flex-column gap-3 m-3">
-    <div class="d-flex flex-row mb-3 align-items-baseline">
-        <label class="l mr-5">Date</label>
-        <p id="created_at" class="p mb-0 ml-auto text-right"></p>
-    </div>
+                                <div class="d-flex flex-row mb-3 align-items-baseline">
+                                    <label class="l mr-5">Time</label>
+                                    <p id="transaction_id" class="p mb-0 ml-auto text-right"></p>
+                                </div>
 
-    <div class="d-flex flex-row mb-3 align-items-baseline">
-        <label class="l mr-5">Time</label>
-        <p id="transaction_id" class="p mb-0 ml-auto text-right"></p>
-    </div>
+                                <div class="d-flex flex-row mb-3 align-items-baseline">
+                                    <label class="l mr-5">Sub total</label>
+                                    <p id="total_price" class="p mb-0 ml-auto bold text-right">P</p>
+                                </div>
 
-    <div class="d-flex flex-row mb-3 align-items-baseline">
-        <label class="l mr-5">Sub total</label>
-        <p id="total_price" class="p mb-0 ml-auto bold text-right">P</p>
-    </div>
+                                <div class="d-flex flex-row mb-3 align-items-baseline">
+                                    <label class="l mr-5">Reservation fee</label>
+                                    <p id="party_size" class="p mb-0 ml-auto text-right"></p>
+                                </div>
+                            </div>
+                        </div>
 
-    <div class="d-flex flex-row mb-3 align-items-baseline">
-        <label class="l mr-5">Reservation fee</label>
-        <p id="party_size" class="p mb-0 ml-auto text-right"></p>
-    </div>
-</div>
-
-
-                             <div class="form-group p-3 mb-5 mx-5">
+                        <div class="form-group p-3 mb-5 mx-5">
                             <label for="status" class="fw-bold">Order Status</label>
                             <select class="form-control container-fluid" id="status" name="status">
                                 <option value="for confirmation">For Confirmation</option>
@@ -226,31 +246,25 @@ include './../inc/topNav.php';
                                 <option value="rate us">Rate Us</option>
                             </select>
                         </div>
-                        </div>
-
-                       
                     </div>
 
                     <input type="hidden" id="orderId" name="id">
                 </form>
             </div>
             <div class="mx-auto m-5">
-              
-                <button type="button" class="upsta btn btn-primary rounded-pill  px-5 container-fluid" id="saveStatusBtn">Update Status</button>
+                <button type="button" class="upsta btn btn-primary rounded-pill px-5 container-fluid" id="saveStatusBtn">Update Status</button>
             </div>
         </div>
     </div>
 </div>
 
+<!-- jQuery, DataTable, and Bootstrap JS -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.1/js/jquery.dataTables.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.bundle.min.js"></script>
 
-    <!-- jQuery, DataTable, and Bootstrap JS -->
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.datatables.net/1.13.1/js/jquery.dataTables.min.js"></script>
-    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.bundle.min.js"></script>
-
-    <!-- Custom JS -->
-    <script src="./../js/index.js"></script>
-    
+<!-- Custom JS -->
+<script src="./../js/index.js"></script>
 
 </body>
 </html>

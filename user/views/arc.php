@@ -46,20 +46,16 @@ if ($reservation_fee_result) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $transaction_code = uniqid('TXN-', true);
+   
     $reservation_date = mysqli_real_escape_string($conn, $_POST['reservation_date']);
-    $reservation_time = mysqli_real_escape_string($conn, $_POST['reservation_time']);
-    $party_size = (int) $_POST['party_size'];
-    $note = mysqli_real_escape_string($conn, $_POST['note_area']);
-    $amount = 50;
-    $res_status = "for confirmation";
+  
 
     // Insert into reservation table using the retrieved $clientFullName
-    $insert_query = "INSERT INTO reservation (transaction_code, client_id, clientFullName, reservation_date, reservation_time, party_size, note_area, amount, res_status) 
-                     VALUES ('$transaction_code', '$user_id', '$clientFullName', '$reservation_date', '$reservation_time', '$party_size', '$note', '$amount', '$res_status')";
+    $insert_query = "INSERT INTO Order_Items (reservation_date) 
+                     VALUES ('$reservation_date')";
 
     if (mysqli_query($conn, $insert_query)) {
-        echo "<script>alert('Reservation successfully created!'); window.location.href='reservation_track.php';</script>";
+        echo "<script>alert('Reservation successfully created!'); window.location.href='reservation.php';</script>";
     } else {
         echo "<script>alert('Error creating reservation: " . mysqli_error($conn) . "');</script>";
     }

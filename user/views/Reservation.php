@@ -79,10 +79,8 @@ include '../views/reserve.php'
 
             <div class="reservation-info" id="reservation-info-name">
                 <p class="name" id="name">Name</p> 
-                <p class="result-sum name-result" id="name-result"><?php echo $clientFullName; ?></p>
+                <p class="result-sum name-result" id="name-result"> <?php echo $clientFullName ?></p>
             </div>
-
-          
 
             <div class="reservation-info" id="reservation-info-party-size">
                 <p class="party-size-info" id="party-size">Party Size</p>
@@ -105,7 +103,7 @@ include '../views/reserve.php'
             <div class="reservation-info" id="reservation-info-reservation-fee">
                 <p class="reservation-fee" id="reservation-fee">Reservation Fee</p>
                 <p class="result-sum reservation-fee-result" id="reservation-fee-result">
-                    <?php echo '₱' . number_format($reservation_fee, 2); ?>
+                    ₱ 50
                 </p>
                 <input type="hidden" name="amount" value="<?php echo '₱' . number_format($reservation_fee, 2); ?>">
             </div>
@@ -160,67 +158,61 @@ window.addEventListener('message', function(event) {
     }
 });
 
-   // Attach click listeners only once when the DOM is loaded
-document.addEventListener('DOMContentLoaded', function () {
-    const buttons = document.querySelectorAll('.available-time-btn');
 
-    buttons.forEach((button) => {
-        button.addEventListener('click', function () {
-            // Ensure only clickable (green) buttons respond
-            if (button.style.backgroundColor === 'rgb(7, 208, 144)') { // RGB value for #07D090
-                const selectedTime = button.innerText; // Get the clicked button's time
-                document.getElementById('time-result').innerText = selectedTime; // Update time result
-                document.getElementById('reservation_time_input').value = button.dataset.timeId; // Set hidden input value
-            }
-        });
-    });
-
-    // Initial fetch when page loads (today's date)
-    const today = new Date().toISOString().split('T')[0];
-    document.getElementById('date-picker').value = today;
-    fetchReservationStatus(today);
-});
 
 // Fetch reservation status based on selected date
 function fetchReservationStatus(date) {
-                    fetch(`../user/res.php?date=${date}`)
-                        .then(response => response.json())
-                        .then(data => {
-                            const buttons = document.querySelectorAll('.available-time-btn');
+    fetch(`../user/res.php?date=${date}`)
+        .then(response => response.json())
+        .then(data => {
+            const buttons = document.querySelectorAll('.available-time-btn');
 
-                            data.status_reservations.forEach((status, index) => {
-                                let color = '#07D090'; // Default color
-                                let isDisabled = false;
+            data.status_reservations.forEach((status, index) => {
+                let color = '#07D090'; // Default color
+                let isDisabled = false;
 
-                                // Check if the user has a reservation or the status is booked
-                                if (status.client_id == <?php echo json_encode($user_id); ?>) {
-                                    color = 'purple';
-                                    isDisabled = true;
-                                } else if (status.status === 'booked') {
-                                    color = 'red'; 
-                                    isDisabled = true; 
-                                }
-
-                                // Apply the color and disable status
-                                buttons[index].style.backgroundColor = color;
-                                buttons[index].disabled = isDisabled;
-
-                                // Only allow click if the button is available (green)
-                                if (color === '#07D090') {
-                                    buttons[index].disabled = false;
-                                }
-
-                                buttons[index].addEventListener('click', function() {
-                                    if (color === '#07D090' && !buttons[index].disabled) { 
-                                        const selectedTime = buttons[index].innerText; // Get the time of the clicked button
-                                        document.getElementById('time-result').innerText = `${selectedTime}`; // Display the time 
-                                        
-                                    }
-                                });
-                            });
-                        })
-                        .catch(error => console.error('Error fetching data:', error));
+                // Check if the user has a reservation or the status is booked
+                if (status.client_id == <?php echo json_encode($user_id); ?>) {
+                    color = 'purple';
+                    isDisabled = true;
+                    // Optionally, you can add an alert or a message if needed
+                    // alert("You already have a reservation for this time.");
+                } else if (status.status === 'booked') {
+                    color = 'red'; 
+                    isDisabled = true; 
                 }
+
+                // Apply the color and disable status
+                buttons[index].style.backgroundColor = color;
+                buttons[index].disabled = isDisabled;
+
+                // Only allow click if the button is available (green)
+                if (color === '#07D090') {
+                    buttons[index].disabled = false;
+                }
+
+                buttons[index].addEventListener('click', function() {
+                    // When a valid time slot is clicked, update the time input field
+                    if (color === '#07D090' && !buttons[index].disabled) {
+                        const selectedTime = buttons[index].innerText; // Get the time of the clicked button
+                        document.getElementById('time-result').innerText = `${selectedTime}`; // Display the time
+
+                        // Set the value of the hidden input to the selected time's corresponding timeId
+                        document.getElementById('reservation_time_input').value = buttons[index].dataset.timeId;
+
+                        // Any additional logic if the user has a reservation or the time is already booked
+                        if (status.client_id == <?php echo json_encode($user_id); ?>) {
+                            // Here you can do something special if the user has a reservation, e.g., show a message
+                            console.log("You already have a reservation for this time.");
+                        }
+                    }
+                });
+            });
+        })
+        .catch(error => console.error('Error fetching data:', error));
+}
+
+
 
                 // Initial fetch when page loads (for today's date)
                 document.addEventListener('DOMContentLoaded', function() {
@@ -270,21 +262,23 @@ function fetchReservationStatus(date) {
                     partySizeResult.textContent = numberInput.value;
                 });
 
-//                 document.getElementById('confirm-order').addEventListener('click', () => {
-//     // Gather data from the order summary
-//     const data = {
-//         transaction_code: document.getElementById('transactionCode').innerText.trim(),
-//         client_id: document.getElementById('clientId').innerText.trim(),
-//         reservation_date: document.getElementById('reservation_date_input').value,
-//             reservation_time: document.getElementById('reservation_time_input').value,
-//             party_size: document.getElementById('party-size-result').innerText.trim(),
-//             note: document.getElementById('note-area').value.trim(),
-//         amount: document.getElementById('amount').innerText.trim(),
-//         res_status: "for payment"
-//     };
+           // JavaScript - Updated click handler for selecting reservation time
+const timeButtons = document.querySelectorAll('.time-button');
+timeButtons.forEach(button => {
+    button.addEventListener('click', function () {
+        const selectedTime = this.textContent.trim(); // Get the actual time
+        document.getElementById('reservation_time_input').value = selectedTime;
+        console.log("Selected Time:", selectedTime); // Debugging
+    });
+});
 
-   
-// });
+document.querySelector('#confirm-order').addEventListener('click', function() {
+    console.log("Reservation Time Input:", document.getElementById('reservation_time_input').value);
+});
+
+
+
+
 
 
 

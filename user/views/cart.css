@@ -1,7 +1,3 @@
-.con-cart{
-    padding: 5%;
-}
-
 .cart-table {
     border-radius: 10px;
     overflow: hidden;
@@ -64,19 +60,20 @@ background-color: #FF902A;
 border: none;
 border-radius: 15px;
 }
-.proceedBtn:hover{
-background-color: #ffffff;
-border:solid 1px #FF902A;
-color: black;
-border-radius: 15px;
-}
+
 .order-h4{
 color: #FF902A;
 font-weight: bold;
 }
 
-.btn-increase,
-.btn-decrease{
-background-color:#FF902A ;
-border: none;
+.alert {
+margin-top: 20px;
+padding: 15px;
+border-radius: 5px;
+font-size: 16px;
+}
+
+.re-op:hover{
+background-color: #FF902B;
+color: white;
 }

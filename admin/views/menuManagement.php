@@ -4,9 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Menu</title>
-  <link rel="stylesheet" href="menu.css">
+    <link rel="stylesheet" href="menu.css">
     <link href="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-bs4.min.css" rel="stylesheet">
-   
 </head>
 <body>
 <?php 
@@ -18,8 +17,6 @@ $itemsPerPage = 6; // Change this to the number of items you want per page
 $current_page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
 $offset = ($current_page - 1) * $itemsPerPage;
 $selectedCategory = isset($_GET['category']) ? $conn->real_escape_string($_GET['category']) : '';
-
-
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['addMenuItem'])) {
     // Initialize variables
@@ -91,22 +88,33 @@ $sql = "SELECT * FROM menu1" . ($selectedCategory ? " WHERE category = '$selecte
 $result = $conn->query($sql);
 ob_end_flush();
 ?>
-<div class="container-fluid mb-5 ">
-    <div class="row mt-5 ms-5 align-items-center">
+<div class="container-fluid mb-5">
+    <div class="row mt-5 justify-content-center text-center text-md-start align-items-center">
         <div class="col-12 col-md-8">
             <p class="account-text">
                 Our <span class="management-underline">Menu</span>
             </p>
         </div>
-        <div class="col-12 col-md-3 d-flex justify-content-md-end ">
-            <div class="dropdown ">
-                <div class="input-group">
-            <input type="text" id="search" class="form-control search-box" placeholder="Search item..." aria-label="Search item">
-        </div>
-               <button class="btn btn-success add-menu  mx-3" data-bs-toggle="modal" data-bs-target="#addMenuModal" style="width: 200px;">+ Add Menu</button>
-            </div>
+        <div class="col-12 col-md-3 d-flex flex-column flex-md-row align-items-center justify-content-center justify-content-md-end gap-2">
+            <div class="input-group w-100 w-md-auto">
+                <input type="text" id="search" class="form-control search-box" 
+                    placeholder="Search item..." 
+                    aria-label="Search item"
+                    style="min-width: 200px; height: 35px; padding: 5px 10px; border-radius: 5px;">
+            </div> 
+            <button class="btn btn-success add-menu w-100 w-md-auto" 
+                data-bs-toggle="modal" 
+                data-bs-target="#addMenuModal" 
+                style="min-width: 200px; white-space: nowrap; display: inline-block;">
+                + Add Menu
+            </button>
         </div>
     </div>
+</div>
+
+
+
+
     <?php include "filter.php";?>
             </div>
         </div>
@@ -449,6 +457,21 @@ function filterByCategory() {var selectedCategory = document.getElementById('cat
 const quantityValue = document.getElementById('quantityValue');quantitySlider.oninput = function() {quantityValue.innerText = this.value;};
 const priceSlider = document.getElementById('menuPrice');const priceValue = document.getElementById('priceValue');
 priceSlider.oninput = function() {priceValue.innerText = parseFloat(this.value).toFixed(2);};
+</script>
+<script>
+    // Add event listeners to the dropdown to toggle the filter icon button visibility
+    document.addEventListener('DOMContentLoaded', function () {
+        const filterDropdown = document.querySelector('.dropdown');
+        const filterIconButton = document.getElementById('filterIconButton'); // Add this ID to your filter icon button
+
+        filterDropdown.addEventListener('show.bs.dropdown', function () {
+            filterIconButton.style.display = 'none';
+        });
+
+        filterDropdown.addEventListener('hide.bs.dropdown', function () {
+            filterIconButton.style.display = 'block';
+        });
+    });
 </script>
 </body>
 </html>

@@ -49,6 +49,12 @@ include '../views/change_profile.php';
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/slick-carousel/slick/slick.css"/>
+<link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/slick-carousel/slick/slick-theme.css"/>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/slick-carousel/slick/slick.min.js"></script>
+
     <style>
         .navbar-default {
             background-color: white;
@@ -136,6 +142,7 @@ include '../views/change_profile.php';
                         <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
                             <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#changeProfileModal"><i class="fa-regular fa-user me-2"></i>Change Profile</a></li>
                             <li><a class="dropdown-item" href="order-track.php" data-bs-toggle="" data-bs-target="#"><i class="fa-regular fa-user me-2"></i>Track Order</a></li>
+                            <li><a class="dropdown-item" href="reservation_track.php" data-bs-toggle="" data-bs-target="#"><i class="fa-regular fa-user me-2"></i>Track Reservation</a></li>
                             <li><a class="dropdown-item" href="?logout"><i class="fa-solid fa-power-off me-2"></i>Logout</a></li>
                         </ul>
                     </li>

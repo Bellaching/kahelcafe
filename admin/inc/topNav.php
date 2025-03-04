@@ -71,8 +71,8 @@ include './../user/authenticate.php';
                             <li><a class="dropdown-item text-black" href="./../views/accountManagement.php">Account Management</a></li>
                             <li><a class="dropdown-item text-black" href="./../views/client.php">Client Management</a></li>
                             <li><a class="dropdown-item text-black" href="./../views/index.php">Order Management</a></li>
-                            <li><a class="dropdown-item text-black" href="#">Reservation Management</a></li>
-                            <li><a class="dropdown-item text-black" href="#">Performance Report</a></li>
+                            <li><a class="dropdown-item text-black" href="./../views/reservation.php">Reservation Management</a></li>
+                            <li><a class="dropdown-item text-black" href="./../views/report.php">Performance Report</a></li>
                             <li><a class="dropdown-item text-black" href="../views/menuManagement.php">Menu Management</a></li>
                         </ul>
                     </li>
@@ -98,7 +98,7 @@ include './../user/authenticate.php';
                         <a class="nav-link dropdown-toggle text-black" href="#" id="adminDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">Admin Side</a>
                         <ul class="dropdown-menu" aria-labelledby="adminDropdown">
                             <li><a class="dropdown-item text-black" href="#">Order Management</a></li>
-                            <li><a class="dropdown-item text-black" href="#">Reservation Management</a></li>
+                            <li><a class="dropdown-item text-black" href="./../views/reservation.php">Reservation Management</a></li>
                             <li><a class="dropdown-item text-black" href="../views/menuManagement.php">Menu Management</a></li>
                         </ul>
                     </li>

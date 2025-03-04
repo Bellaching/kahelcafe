@@ -1,9 +1,7 @@
+<link rel="stylesheet" href="menu.css">
 <div class="container-fluid">
-        <div class="row mb-3 category-list container-fluid">
 
-            <div class="col-12 d-flex flex-wrap justify-content-center"> <!-- Center the buttons -->
-                <!-- Category Filter -->
-                <div class="mb-3 me-3 ">
+<div class="mb-3 me-3 mt-3">
                     <select class="form-select" id="categoryFilter" onchange="filterByCategory()">
                         <option value="Coffe,Non-Coffe ">All</option> <!-- Added Show All option -->
                         <option value="Coffee">Coffee</option>
@@ -19,6 +17,11 @@
                     </select>
                 </div>
                 
+        <div class="row mb-3 category-list container-fluid">
+
+            <div class="col-12 d-flex flex-wrap justify-content-center"> <!-- Center the buttons -->
+                <!-- Category Filter -->
+             
 
                 <div class="me-3">
     <a href="?category=Popular Now" class="btn btn-light border-0 <?php echo $selectedCategory == 'Popular Now' ? 'active' : ''; ?>">

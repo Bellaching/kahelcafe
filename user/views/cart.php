@@ -156,13 +156,11 @@ $stmt->close();
 // Handle checkout
 if (isset($_POST['checkout'])) {
     $userNote = isset($_POST['note']) ? $_POST['note'] : '';
-
     $reservationType = isset($_POST['reservation_type']) ? $_POST['reservation_type'] : '';
     $transactionId = strtoupper(bin2hex(random_bytes(6)));
-    $reservation_date =   isset($_POST['reservation_date']) ? $_POST['reservation_date'] : '';
-$reservation_time = isset($_POST['reservation_time']) ? $_POST['reservation_time'] : ''; 
-$party_size = isset($_POST['party_size']) ? $_POST['party_size'] : '';
-
+    $reservation_date = isset($_POST['reservation_date']) ? $_POST['reservation_date'] : '';
+    $reservation_time = isset($_POST['reservation_time']) ? $_POST['reservation_time'] : '';
+    $party_size = isset($_POST['party_size']) ? $_POST['party_size'] : '';
 
     // Check for pending orders
     $pendingStatuses = ['for confirmation', 'payment', 'booked'];
@@ -179,42 +177,39 @@ $party_size = isset($_POST['party_size']) ? $_POST['party_size'] : '';
         exit;
     }
 
- 
+    // Insert into Orders table
     $stmt = $conn->prepare("INSERT INTO Orders (user_id, client_full_name, total_price, transaction_id, reservation_type, status, reservation_fee) 
-                        VALUES (?, ?, ?, ?, ?, ?, ?)");
+                            VALUES (?, ?, ?, ?, ?, ?, ?)");
     $reservation_fee = 50; 
     $status = "for confirmation";
     $stmt->bind_param("isssssi", $clientId, $clientFullName, $totalPrice, $transactionId, $reservationType, $status, $reservation_fee);
-  
     $stmt->execute();
     $orderId = $stmt->insert_id;
     $stmt->close();
 
     // Insert into Order_Items table
     foreach ($_SESSION['cart'] as $item) {
-        $stmt_items = $conn->prepare("INSERT INTO Order_Items (order_id, item_name, size, temperature, quantity, note, price, reservation_date, reservation_time, party_size) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt_items = $conn->prepare("INSERT INTO Order_Items (order_id, item_id, item_name, size, temperature, quantity, note, price, reservation_time, party_size, reservation_date) 
+                                      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
         
-        $stmt_items->bind_param(  
-            "isssisssii",  // Ensure 10 placeholders match
+        $stmt_items->bind_param(
+            "iisssisssis",  
             $orderId, 
+            $item['id'],  
             $item['name'],  
             $item['size'], 
             $item['temperature'], 
             $item['quantity'], 
             $userNote, 
             $item['price'],
-            $reservation_date, 
             $reservation_time, 
-            $party_size
+            $party_size,
+            $reservation_date
         );
-        
-        
         
         $stmt_items->execute();
         $stmt_items->close();
     }
-    
 
     // Clear cart in session and database
     unset($_SESSION['cart']);
@@ -275,91 +270,7 @@ $party_size = isset($_POST['party_size']) ? $_POST['party_size'] : '';
 
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css" integrity="sha512-Kc323vGBEqzTmouAECnVceyQqyqdsSiqLQISBL29aUW4U/M7pSPA/gEUZQqv1cwx4OnYxTxve5UMg5GT6L4JJg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-    <style>
-      
-
-        .cart-table {
-            border-radius: 10px;
-            overflow: hidden;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Light shadow */
-        }
-
-        .cart-table thead {
-            background-color: #FF902A;
-            color: white;
-        }
-
-        .quantity-buttons {
-            display: flex;
-            align-items: center;
-        }
-
-        .quantity-buttons .btn {
-            border-radius: 50%;
-            width: 30px;
-            height: 30px;
-        }
-
-        .quantity-buttons .form-control {
-            width: 50px;
-            text-align: center;
-        }
-
-        .cart-item img {
-            border-radius: 10px;
-        }
-
-        .card {
-            border-radius: 10px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Light shadow */
-        }
-
-        /* Modal styling */
-        .modal-content {
-            border-radius: 10px;
-        }
-
-        .back-to-order a, i{
-            color: #FF902B;
-        }
-
-        .alert-dismissible {
-            display: none;
-        }
-
-        .order-underline {
-    display: inline-block;
-    border-bottom: 3px solid #FF902A;
-    padding-bottom: 3px; 
-    margin-bottom: 1rem;
-
-}
-
-.proceedBtn{
-        background-color: #FF902A;
-        border: none;
-        border-radius: 15px;
-    }
-
-    .order-h4{
-        color: #FF902A;
-        font-weight: bold;
-    }
-
-    .alert {
-    margin-top: 20px;
-    padding: 15px;
-    border-radius: 5px;
-    font-size: 16px;
-}
-
-.re-op:hover{
-    background-color: #FF902B;
-    color: white;
-}
-
-
-    </style>
+    <link rel="stylesheet" href="cart.css">
 </head>
 <body>
     
@@ -417,18 +328,9 @@ $party_size = isset($_POST['party_size']) ? $_POST['party_size'] : '';
     <textarea id="user-note" class="form-control" placeholder="Enter your note here" name= "note"
               style="border-color: #B3B3B3; border-radius: 10px; height: 150px; resize: none;"></textarea>
 </div>
-
-
-
-
 </div>
-
-<!-- Cart Items List Above the Total -->
-
 <div class="col-lg-4">
-   
 <div class="card ">
-       <!-- Seat Reservation -->
        <strong><h4 class="m-3 order-h4">Seat Reservation</h4></strong> 
         <div class="card-body">
         <div class="card-body">
@@ -469,14 +371,17 @@ $party_size = isset($_POST['party_size']) ? $_POST['party_size'] : '';
     <p id="date-picker" class="form-control d-none"></p>
 
     <div class="Available-Time-show d-grid gap-2" id="Available-Time-show" style="grid-template-columns: repeat(2, 1fr);">
-        <?php foreach ($times as $i => $time): ?>
-          
-
-            <button class="available-time-btn btn rounded-pill text-white p-2 small" name="reservation_time" id="time-btn-<?= $i ?>" data-time-id="<?= $time['time_id'] ?>" style="background-color: #07D090;" style="background-color: #07D090;">
-                        <?= $time['time'] ?>
-                    </button>
-        <?php endforeach; ?>
-    </div>
+    <?php foreach ($times as $i => $time): ?>
+        <button class="available-time-btn btn rounded-pill text-white p-2 small" 
+                name="reservation_time" 
+                id="time-btn-<?= $i ?>" 
+                data-time-id="<?= $time['time_id'] ?>" 
+                data-time="<?= $time['time'] ?>" 
+                style="background-color: #07D090;">
+            <?= $time['time'] ?>
+        </button>
+    <?php endforeach; ?>
+</div>
 </div>
 
 
@@ -500,15 +405,6 @@ $party_size = isset($_POST['party_size']) ? $_POST['party_size'] : '';
         <button class="btn btn-outline-secondary" type="button" id="button-plus">+</button>
     </div>
 </div>
-
-
-
-
-
-
-
-    <!-- Order Summary Card -->
- 
        <strong><h4 class="m-3 order-h4">Order Summary</h4></strong> 
         <div class="card-body">
   
@@ -522,18 +418,19 @@ $party_size = isset($_POST['party_size']) ? $_POST['party_size'] : '';
     <strong>Reservation fee:</strong>
     <span>P 50</span>
 </p>
-
-<p class="d-flex justify-content-between">
+ 
+<div class="d-flex justify-content-between">
     <strong>Date:</strong>
-    <p id="date-result" class="result-sum date-result">0</p>
+    <span id="date-result" class="result-sum date-result">0</span>
     <input type="hidden" name="reservation_date" id="reservation_date_input">
-</p>
+</div>
 
-<p class="d-flex justify-content-between">
+<div class="d-flex justify-content-between">
     <strong>Time:</strong>
-    <p class="result-sum time-result" id="time-result">Select time</p>
+    <span class="result-sum time-result" id="time-result">Select time</span>
     <input type="hidden" name="reservation_time" id="reservation_time_input">
-</p>
+</div>
+
 <!-- <p class="d-flex justify-content-between">
     <strong>Transaction ID:</strong>
     <span><?php echo htmlspecialchars($_SESSION['transaction_id']); ?></span>
@@ -545,7 +442,7 @@ $party_size = isset($_POST['party_size']) ? $_POST['party_size'] : '';
             <strong> <span class="float-end fs-5" style="color: #FF902B;">₱<?php echo number_format($totalPrice, 2); ?></span></strong> 
             </p>
             <div class="text-end">
-            <button type="button" class="btn proceedBtn text-light text-center container-fluid bold-1" data-bs-toggle="modal" data-bs-target="#checkoutModal">
+            <button type="button" id="confirm-order" class="btn proceedBtn text-light text-center container-fluid bold-1" data-bs-toggle="modal" data-bs-target="#checkoutModal">
     Confirm Order
 </button>
             </div>
@@ -602,199 +499,127 @@ $party_size = isset($_POST['party_size']) ? $_POST['party_size'] : '';
 
 <!-- Bootstrap JavaScript -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+
 <script>
-              // Listener to handle date selection from the calendar iframe
+
+
+document.querySelectorAll('.available-time-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const selectedTime = this.dataset.time; // Get the time from the button's data attribute
+            const selectedTimeId = this.dataset.timeId; // Get the time ID from the button's data attribute
+
+            // Update the hidden input field with the selected time ID
+            document.getElementById('reservation_time_input').value = selectedTimeId;
+
+            // Display the selected time in the UI
+            document.getElementById('time-result').textContent = selectedTime;
+        });
+    });
+
+
+
 window.addEventListener('message', function(event) {
-    if (event.data && event.data.selectedDate) {
-        const selectedDate = event.data.selectedDate;
-        
-        // Set the selected date in the hidden input field
-        document.getElementById('reservation_date_input').value = selectedDate; // Pass the date to the hidden input
-
-        // Update the date result in the UI
-        const resultElement = document.getElementById("date-result");
-        const today = new Date();
-        const todayFormatted = today.toISOString().split('T')[0];  // Format as yyyy-mm-dd
-
-        if (selectedDate === todayFormatted) {
-            resultElement.textContent = "Select another date";
-        } else {
-            resultElement.textContent = selectedDate;
-            document.getElementById('time-result').innerText = 'Select Time';  // Clear time result
+        if (event.data && event.data.selectedDate) {
+            const selectedDate = event.data.selectedDate;
+            document.getElementById('reservation_date_input').value = selectedDate;
+            document.getElementById('date-result').textContent = selectedDate;
         }
-
-        // Fetch reservation status
-        fetchReservationStatus(selectedDate);
-    }
-});
-
-   // Attach click listeners only once when the DOM is loaded
-document.addEventListener('DOMContentLoaded', function () {
-    const buttons = document.querySelectorAll('.available-time-btn');
-
-    buttons.forEach((button) => {
-        button.addEventListener('click', function () {
-            // Ensure only clickable (green) buttons respond
-            if (button.style.backgroundColor === 'rgb(7, 208, 144)') { // RGB value for #07D090
-                const selectedTime = button.innerText; // Get the clicked button's time
-                document.getElementById('time-result').innerText = selectedTime; // Update time result
-                document.getElementById('reservation_time_input').value = button.dataset.timeId; // Set hidden input value
-            }
-        });
     });
 
-    // Initial fetch when page loads (today's date)
-    const today = new Date().toISOString().split('T')[0];
-    document.getElementById('date-picker').value = today;
-    fetchReservationStatus(today);
-});
+    function fetchReservationStatus(date) {
+    fetch(`../user/res.php?date=${date}`)
+        .then(response => response.json())
+        .then(data => {
+            const buttons = document.querySelectorAll('.available-time-btn');
 
-// Fetch reservation status based on selected date
-function fetchReservationStatus(date) {
-                    fetch(`../user/res.php?date=${date}`)
-                        .then(response => response.json())
-                        .then(data => {
-                            const buttons = document.querySelectorAll('.available-time-btn');
+            data.status_reservations.forEach((status, index) => {
+                let color = '#07D090'; // Default color
+                let isDisabled = false;
 
-                            data.status_reservations.forEach((status, index) => {
-                                let color = '#07D090'; // Default color
-                                let isDisabled = false;
-
-                                // Check if the user has a reservation or the status is booked
-                                if (status.client_id == <?php echo json_encode($user_id); ?>) {
-                                    color = 'purple';
-                                    isDisabled = true;
-                                } else if (status.status === 'booked') {
-                                    color = 'red'; 
-                                    isDisabled = true; 
-                                }
-
-                                // Apply the color and disable status
-                                buttons[index].style.backgroundColor = color;
-                                buttons[index].disabled = isDisabled;
-
-                                // Only allow click if the button is available (green)
-                                if (color === '#07D090') {
-                                    buttons[index].disabled = false;
-                                }
-
-                                buttons[index].addEventListener('click', function() {
-                                    if (color === '#07D090' && !buttons[index].disabled) { 
-                                        const selectedTime = buttons[index].innerText; // Get the time of the clicked button
-                                        document.getElementById('time-result').innerText = `${selectedTime}`; // Display the time 
-                                        
-                                    }
-                                });
-                            });
-                        })
-                        .catch(error => console.error('Error fetching data:', error));
+                // Check if the user has a reservation or the status is booked
+                if (status.client_id == <?php echo json_encode($user_id); ?>) {
+                    color = 'purple';
+                    isDisabled = true;
+                    // Optionally, you can add an alert or a message if needed
+                    // alert("You already have a reservation for this time.");
+                } else if (status.status === 'booked') {
+                    color = 'red'; 
+                    isDisabled = true; 
                 }
 
-                // Initial fetch when page loads (for today's date)
-                document.addEventListener('DOMContentLoaded', function() {
-                    const today = new Date().toISOString().split('T')[0];
-                    document.getElementById('date-picker').value = today;
-                    fetchReservationStatus(today);
-                });
+                // Apply the color and disable status
+                buttons[index].style.backgroundColor = color;
+                buttons[index].disabled = isDisabled;
 
-                // Initial setup when the page loads
-                document.addEventListener('DOMContentLoaded', function() {
-                    const numberInput = document.getElementById("number-input");
-                    const partySizeResult = document.getElementById("party-size-result");
+                // Only allow click if the button is available (green)
+                if (color === '#07D090') {
+                    buttons[index].disabled = false;
+                }
 
-                    // Set initial value of the number input to 1
-                    numberInput.value = 1;
+                buttons[index].addEventListener('click', function() {
+                    // When a valid time slot is clicked, update the time input field
+                    if (color === '#07D090' && !buttons[index].disabled) {
+                        const selectedTime = buttons[index].innerText; // Get the time of the clicked button
+                        document.getElementById('time-result').innerText = `${selectedTime}`; // Display the time
 
-                    // Update the party size result
-                    partySizeResult.textContent = numberInput.value;
-                    document.getElementById('party-size-result').textContent = document.getElementById('number-input').value;
-                    
-                    
-                });
+                        // Set the value of the hidden input to the selected time's corresponding timeId
+                        document.getElementById('reservation_time_input').value = buttons[index].dataset.timeId;
 
-                // Update the party size result when the number input changes
-                document.getElementById("button-plus").addEventListener("click", function() {
-                    const numberInput = document.getElementById("number-input");
-                    const partySizeResult = document.getElementById("party-size-result");
-                    document.getElementById("party_size_input").value=partySizeResult;
-
-                    // Increment the value
-                    numberInput.value = parseInt(numberInput.value) + 1;
-
-                    // Update the result text
-                    partySizeResult.textContent = numberInput.value;
-                });
-
-                document.getElementById("button-minus").addEventListener("click", function() {
-                    const numberInput = document.getElementById("number-input");
-                    const partySizeResult = document.getElementById("party-size-result");
-
-                    // Decrement the value, but prevent going below 1
-                    if (parseInt(numberInput.value) > 1) {
-                        numberInput.value = parseInt(numberInput.value) - 1;
+                        // Any additional logic if the user has a reservation or the time is already booked
+                        if (status.client_id == <?php echo json_encode($user_id); ?>) {
+                            // Here you can do something special if the user has a reservation, e.g., show a message
+                            console.log("You already have a reservation for this time.");
+                        }
                     }
-
-                    // Update the result text
-                    partySizeResult.textContent = numberInput.value;
                 });
+            });
+        })
+        .catch(error => console.error('Error fetching data:', error));
+}
 
-//                 document.getElementById('confirm-order').addEventListener('click', () => {
-//     // Gather data from the order summary
-//     const data = {
-//         transaction_code: document.getElementById('transactionCode').innerText.trim(),
-//         client_id: document.getElementById('clientId').innerText.trim(),
-//         reservation_date: document.getElementById('reservation_date_input').value,
-//             reservation_time: document.getElementById('reservation_time_input').value,
-//             party_size: document.getElementById('party-size-result').innerText.trim(),
-//             note: document.getElementById('note-area').value.trim(),
-//         amount: document.getElementById('amount').innerText.trim(),
-//         res_status: "for payment"
-//     };
-
-   
-// });
-
-
-
-                
-
-    </script>
-
-<script>
-$(document).ready(function() {
-    
-    $(".available-time-btn").click(function () {
-
-
-    const selectedTime = $(this).data("time-id"); // Get the time ID
-    $("#selected-time").val(selectedTime); // Store it in a hidden input for later use
+// Call the fetchReservationStatus function with the selected date when the page loads or when the date changes
+document.addEventListener('DOMContentLoaded', function() {
+    const selectedDate = document.getElementById('reservation_date_input').value;
+    fetchReservationStatus(selectedDate);
 });
 
+$("#checkoutBtn").click(function () {
+    const note = $("#user-note").val();
+    const reservationType = $("#reservation-type").val();
+    const partySize = $("#party_size").val();
+    const selectedDate = document.getElementById('reservation_date_input').value;
+    const selectedTimeId = document.getElementById('reservation_time_input').value;
 
-    $("#checkoutBtn").click(function () {
-        const note = $("#user-note").val();
-        const reservationType = $("#reservation-type").val();
-        const party_size = $("#party_size").val();
-        const selectedTime = $("#selected-time").val();
+    // Ensure a time is selected
+    if (!selectedTimeId) {
+        alert("Please select a reservation time.");
+        return;
+    }
 
-        $.ajax({
-    url: '',
-    type: 'POST',
-    data: { checkout: true, note: note, reservation_type: reservationType , party_size: party_size , reservation_time: selectedTime},
-
-            success: function (response) {
-                const result = JSON.parse(response);
-                if (result.success) {
-                    alert("Order placed successfully! Transaction ID: " + result.redirect.split("transaction_id=")[1]);
-                    window.location.href = result.redirect;
-                } else {
-                    // This will show the alert for pending orders
-                    alert(result.message);
-                }
+    // Send AJAX request to the server
+    $.ajax({
+        url: '',
+        type: 'POST',
+        data: { 
+            checkout: true, 
+            note: note, 
+            reservation_type: reservationType, 
+            party_size: partySize,
+            reservation_date: selectedDate, 
+            reservation_time: selectedTimeId, // Pass the selected time ID
+        },
+        success: function (response) {
+            const result = JSON.parse(response);
+            if (result.success) {
+                alert("Order placed successfully! Transaction ID: " + result.redirect.split("transaction_id=")[1]);
+                window.location.href = result.redirect;
+            } else {
+                alert(result.message);
             }
-        });
+        }
     });
-
+});
     $('.btn-decrease, .btn-increase').click(function() {
         let itemId = $(this).data('id');
         let $quantityInput = $(`.quantity-input[data-id="${itemId}"]`);
@@ -856,7 +681,7 @@ $(document).ready(function() {
             }
         }, 'json');
     });
-});
+
 </script>
 
 
