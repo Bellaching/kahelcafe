@@ -134,11 +134,11 @@ if ($order && $order['status'] === 'booked') {
     file_put_contents($qrFile, $qrCode->getString());
 }
 
-// Fetch order items with the correct item_id from menu1
+// Fetch order items with the correct item_id from menu1 and only unrated items
 $query = "SELECT oi.*, m.id AS menu_item_id 
           FROM order_items oi 
           JOIN menu1 m ON oi.item_id = m.id 
-          WHERE oi.order_id = ?";
+          WHERE oi.order_id = ? AND oi.is_rated = 0";
 
 $stmt = $conn->prepare($query);
 
@@ -167,12 +167,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['item_id'], $_POST['ra
     $stmt->store_result();
 
     if ($stmt->num_rows > 0) {
-        // Update rating in menu1 table
+        // Update rating in menu1 table and mark as rated in order_items table
         $updateQuery = "UPDATE menu1 SET rating = ? WHERE id = ?";
         $stmt = $conn->prepare($updateQuery);
         $stmt->bind_param("ii", $rating, $itemId);
 
         if ($stmt->execute()) {
+            // Mark the item as rated in the order_items table
+            $markRatedQuery = "UPDATE order_items SET is_rated = 1 WHERE item_id = ? AND order_id = ?";
+            $stmt = $conn->prepare($markRatedQuery);
+            $stmt->bind_param("ii", $itemId, $order['order_id']);
+            $stmt->execute();
+
             echo "Rating updated successfully!";
         } else {
             echo "Error updating rating: " . $stmt->error;

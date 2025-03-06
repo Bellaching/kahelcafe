@@ -99,23 +99,26 @@ $morningPercentage = $totalOrders > 0 ? ($morningCount / $totalOrders) * 100 : 0
 $afternoonPercentage = $totalOrders > 0 ? ($afternoonCount / $totalOrders) * 100 : 0;
 $eveningPercentage = $totalOrders > 0 ? ($eveningCount / $totalOrders) * 100 : 0;
 
-// Fetch total revenue for the selected date range (status = 'rate us')
-$revenueQuery = "SELECT SUM(total_price) as total_revenue FROM orders 
-                 WHERE status = 'rate us' 
-                 AND created_at BETWEEN ? AND ?";
-$stmtRevenue = $conn->prepare($revenueQuery);
-if (!$stmtRevenue) {
-    die("SQL Error (Revenue): " . $conn->error);
+// Fetch total revenue for the current month (status = 'rate us')
+$currentMonthFrom = date('Y-m-01'); // First day of the current month
+$currentMonthTo = date('Y-m-t'); // Last day of the current month
+
+$currentRevenueQuery = "SELECT SUM(total_price) as total_revenue FROM orders 
+                        WHERE status = 'rate us' 
+                        AND created_at BETWEEN ? AND ?";
+$stmtCurrentRevenue = $conn->prepare($currentRevenueQuery);
+if (!$stmtCurrentRevenue) {
+    die("SQL Error (Current Revenue): " . $conn->error);
 }
-$stmtRevenue->bind_param("ss", $dateFrom, $dateTo);
-$stmtRevenue->execute();
-$revenueResult = $stmtRevenue->get_result();
-$currentRevenue = $revenueResult->fetch_assoc()['total_revenue'] ?? 0;
-$stmtRevenue->close();
+$stmtCurrentRevenue->bind_param("ss", $currentMonthFrom, $currentMonthTo);
+$stmtCurrentRevenue->execute();
+$currentRevenueResult = $stmtCurrentRevenue->get_result();
+$currentRevenue = $currentRevenueResult->fetch_assoc()['total_revenue'] ?? 0;
+$stmtCurrentRevenue->close();
 
 // Fetch total revenue for the previous month (status = 'rate us')
-$previousMonthFrom = date('Y-m-01', strtotime('-1 month', strtotime($dateFrom)));
-$previousMonthTo = date('Y-m-t', strtotime('-1 month', strtotime($dateTo)));
+$previousMonthFrom = date('Y-m-01', strtotime('-1 month')); // First day of the previous month
+$previousMonthTo = date('Y-m-t', strtotime('-1 month')); // Last day of the previous month
 
 $previousRevenueQuery = "SELECT SUM(total_price) as total_revenue FROM orders 
                          WHERE status = 'rate us' 
@@ -136,13 +139,16 @@ if ($previousRevenue > 0) {
     $percentageChange = (($currentRevenue - $previousRevenue) / $previousRevenue) * 100;
 }
 
-// Calculate percentages for reservation types
 $totalCount = $reservationCount + $pickupCount + $overTheCounterCount;
-
-$reservationPercentage = ($totalCount > 0) ? ($reservationCount / $totalCount) * 100 : 0;
-$pickupPercentage = ($totalCount > 0) ? ($pickupCount / $totalCount) * 100 : 0;
-$overTheCounterPercentage = ($totalCount > 0) ? ($overTheCounterCount / $totalCount) * 100 : 0;
-
+if ($totalCount > 0) {
+    $reservationPercentage = ($reservationCount / $totalCount) * 100;
+    $pickupPercentage = ($pickupCount / $totalCount) * 100;
+    $overTheCounterPercentage = ($overTheCounterCount / $totalCount) * 100;
+} else {
+    $reservationPercentage = 0;
+    $pickupPercentage = 0;
+    $overTheCounterPercentage = 0;
+}
 // Prepare data for the reservation type chart
 $labels = [];
 $data = [];
@@ -236,11 +242,11 @@ foreach ($labelsFoodDrink as $month) {
 $dateFrom = isset($_GET['date_from']) ? $_GET['date_from'] : date('Y-m-01'); // Default: Start of the current month
 $dateTo = isset($_GET['date_to']) ? $_GET['date_to'] : date('Y-m-t'); // Default: End of the current month
 
-// Fetch Top 4 Most Ordered Food Items
 $topFoodQuery = "
     SELECT 
         m.name, 
-        m.price
+        m.price,
+        COUNT(oi.item_id) as order_count
     FROM 
         order_items oi
     JOIN 
@@ -254,7 +260,7 @@ $topFoodQuery = "
     GROUP BY 
         oi.item_id
     ORDER BY 
-        COUNT(oi.item_id) DESC
+        order_count DESC
     LIMIT 4;
 ";
 $stmtTopFood = $conn->prepare($topFoodQuery);
@@ -270,7 +276,6 @@ while ($row = $topFoodResult->fetch_assoc()) {
     $topFoodItems[] = $row;
 }
 $stmtTopFood->close();
-
 
 //orders
 // 
@@ -306,7 +311,6 @@ $percentageChange = 0;
 if ($lastWeekCount > 0) {
     $percentageChange = (($last6DaysCount - $lastWeekCount) / $lastWeekCount) * 100;
 }
-
 
 //cards
 // Fetch total sales for today
@@ -469,105 +473,123 @@ $conn->close();
 
 <body>
 <div class="container-fluid d-flex flex-column">
+<h2 class="m-4" style="color: black;">
+    Performance <span style="border-bottom: 3px solid #FF902B;" >Report</span>
+</h2>
     <!-- Date Filter at Top Right -->
     <div class="d-flex justify-content-end mb-4">
-        <form method="GET" action="" class="d-flex align-items-center">
-            <label for="date_from" class="me-2">From:</label>
-            <input type="date" id="date_from" name="date_from" value="<?php echo $dateFrom; ?>" required class="form-control me-2">
-            
-            <label for="date_to" class="me-2">To:</label>
-            <input type="date" id="date_to" name="date_to" value="<?php echo $dateTo; ?>" required class="form-control me-2">
-            
-            <button type="submit" class="btn btn-primary">Apply Filter</button>
-        </form>
-    </div>
-
+    <form method="GET" action="" class="d-flex align-items-center gap-3 p-3 rounded ">
+        <div class="d-flex align-items-center gap-2">
+            <label for="date_from" class="form-label mb-0">From:</label>
+            <input type="date" id="date_from" name="date_from" value="<?php echo $dateFrom; ?>" required class="form-control form-control-sm">
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <label for="date_to" class="form-label mb-0">To:</label>
+            <input type="date" id="date_to" name="date_to" value="<?php echo $dateTo; ?>" required class="form-control form-control-sm">
+        </div>
+        <button type="submit" class="btn btn-primary btn-sm">Apply Filter</button>
+    </form>
+</div>
     <!-- Display Selected Date Range -->
-    <div class="date-range mb-4">
-        Showing data from <strong><?php echo $dateFrom; ?></strong> to <strong><?php echo $dateTo; ?></strong>
-    </div>
+    <!-- <div class="date-range mb-4 text-center">
+        Showing data from <strong><?php echo $dateFrom; ?></strong> to <strong><?php echo $dateTo; ?></strong> -->
+    <!-- </div> -->
 
-    <!-- Section 1: Cards -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="d-flex flex-row gap-3">
-                <!-- Total Sales Card -->
-                <div class="card text-center p-3 flex-fill border border-2" style="min-width: 0;">
-                    <div class="symbol mx-auto mb-2" style="width: 40px; height: 40px; background-color: #FFC3C3; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
-                        <i class="fas fa-dollar-sign text-white"></i>
-                    </div>
-                    <div class="total fs-4 fw-bold"><?php echo number_format($totalSalesToday, 2); ?></div>
-                    <div class="label text-muted">Total Sales</div>
-                    <div class="percentage" style="color: <?php echo ($salesPercentageDifference >= 0) ? 'green' : 'red'; ?>;">
-                        <?php echo ($salesPercentageDifference >= 0) ? '▲' : '▼'; ?> <?php echo number_format(abs($salesPercentageDifference), 2); ?>%
-                    </div>
+ <!-- Section 1: Cards -->
+<div class="row mb-4 ">
+    <div class="col-12">
+        <div class="d-flex flex-row gap-3 px-5 " >
+            <!-- Total Sales Card -->
+            <div class="card p-3" style="width: 200px; background-color: #FFE2E5; outline: none; border: none; box-shadow: none;">
+                <div class="symbol mb-2" style="width: 40px; height: 40px; background-color: #FA5A7D; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                    <i class="fas fa-dollar-sign text-white"></i>
                 </div>
-
-                <!-- Total Orders Card -->
-                <div class="card text-center p-3 flex-fill border border-2" style="min-width: 0;">
-                    <div class="symbol mx-auto mb-2" style="width: 40px; height: 40px; background-color: #FFE0B2; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
-                        <i class="fas fa-shopping-cart text-white"></i>
-                    </div>
-                    <div class="total fs-4 fw-bold"><?php echo $totalOrdersToday; ?></div>
-                    <div class="label text-muted">Total Orders</div>
-                    <div class="percentage" style="color: <?php echo ($ordersPercentageDifference >= 0) ? 'green' : 'red'; ?>;">
-                        <?php echo ($ordersPercentageDifference >= 0) ? '▲' : '▼'; ?> <?php echo number_format(abs($ordersPercentageDifference), 2); ?>%
-                    </div>
+                <div class="total fs-4 fw-bold"><?php echo number_format($totalSalesToday, 2); ?></div>
+                <div class="label text-muted">Total Sales</div>
+                <div class="percentage fs-6" style="color: <?php echo ($salesPercentageDifference >= 0) ? '#4079ED' : 'red'; ?>;">
+                    <?php echo ($salesPercentageDifference >= 0) ? '▲' : '▼'; ?> <?php echo number_format(abs($salesPercentageDifference), 2); ?>% from yesterday
                 </div>
+            </div>
 
-                <!-- Products Sold Card -->
-                <div class="card text-center p-3 flex-fill border border-2" style="min-width: 0;">
-                    <div class="symbol mx-auto mb-2" style="width: 40px; height: 40px; background-color: #B2F2BB; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
-                        <i class="fas fa-box text-white"></i>
-                    </div>
-                    <div class="total fs-4 fw-bold"><?php echo $totalProductsSoldToday; ?></div>
-                    <div class="label text-muted">Products Sold</div>
-                    <div class="percentage" style="color: <?php echo ($productsSoldPercentageDifference >= 0) ? 'green' : 'red'; ?>;">
-                        <?php echo ($productsSoldPercentageDifference >= 0) ? '▲' : '▼'; ?> <?php echo number_format(abs($productsSoldPercentageDifference), 2); ?>%
-                    </div>
+            <!-- Total Orders Card -->
+            <div class="card p-3" style="width: 200px; background-color: #FFF4DE; outline: none; border: none; box-shadow: none;">
+                <div class="symbol mb-2" style="width: 40px; height: 40px; background-color: #FF947A; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                    <i class="fas fa-shopping-cart text-white"></i>
                 </div>
+                <div class="total fs-4 fw-bold"><?php echo $totalOrdersToday; ?></div>
+                <div class="label text-muted">Total Orders</div>
+                <div class="percentage fs-6" style="color: <?php echo ($ordersPercentageDifference >= 0) ? '#4079ED' : 'red'; ?>;">
+                    <?php echo ($ordersPercentageDifference >= 0) ? '▲' : '▼'; ?> <?php echo number_format(abs($ordersPercentageDifference), 2); ?>% from yesterday
+                </div>
+            </div>
 
-                <!-- New Customers Card -->
-                <div class="card text-center p-3 flex-fill border border-2" style="min-width: 0;">
-                    <div class="symbol mx-auto mb-2" style="width: 40px; height: 40px; background-color: #D4B9FF; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
-                        <i class="fas fa-users text-white"></i>
-                    </div>
-                    <div class="total fs-4 fw-bold"><?php echo $newCustomersToday; ?></div>
-                    <div class="label text-muted">New Customers</div>
-                    <div class="percentage" style="color: <?php echo ($newCustomersPercentageDifference >= 0) ? 'green' : 'red'; ?>;">
-                        <?php echo ($newCustomersPercentageDifference >= 0) ? '▲' : '▼'; ?> <?php echo number_format(abs($newCustomersPercentageDifference), 2); ?>%
-                    </div>
+            <!-- Products Sold Card -->
+            <div class="card p-3"style="width: 200px; background-color: #DCFCE7; outline: none; border: none; box-shadow: none;">
+                <div class="symbol mb-2" style="width: 40px; height: 40px; background-color: #3CD856; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                    <i class="fas fa-box text-white"></i>
+                </div>
+                <div class="total fs-4 fw-bold"><?php echo $totalProductsSoldToday; ?></div>
+                <div class="label text-muted">Products Sold</div>
+                <div class="percentage fs-6" style="color: <?php echo ($productsSoldPercentageDifference >= 0) ? '#4079ED' : 'red'; ?>;">
+                    <?php echo ($productsSoldPercentageDifference >= 0) ? '▲' : '▼'; ?> <?php echo number_format(abs($productsSoldPercentageDifference), 2); ?>% from yesterday
+                </div>
+            </div>
+
+            <!-- New Customers Card -->
+            <div class="card p-3" style="width: 200px; background-color: #F3E8FF; outline: none; border: none; box-shadow: none;">
+                <div class="symbol mb-2" style="width: 40px; height: 40px; background-color: #BF83FF; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                    <i class="fas fa-users text-white"></i>
+                </div>
+                <div class="total fs-4 fw-bold"><?php echo $newCustomersToday; ?></div>
+                <div class="label text-muted">New Customers</div>
+                <div class="percentage fs-6" style="color: <?php echo ($newCustomersPercentageDifference >= 0) ? '#4079ED' : 'red'; ?>;">
+                    <?php echo ($newCustomersPercentageDifference >= 0) ? '▲' : '▼'; ?> <?php echo number_format(abs($newCustomersPercentageDifference), 2); ?>% from yesterday
                 </div>
             </div>
         </div>
     </div>
+</div>
 
     <!-- Section 2: Revenue, Food and Drink, Orders -->
     <div class="row mb-4">
         <div class="col-12">
             <div class="d-flex flex-row gap-3">
-                <!-- Revenue -->
-                <div class="chart-container border border-2 flex-fill p-3" style="min-width: 0;">
-                    <h5 class="text-dark">Revenue</h5>
-                    <p class="text-dark fs-3">Total <?php echo $currentRevenue; ?></p>
-                    <div style="color: <?php echo ($percentageChange >= 0) ? 'green' : 'red'; ?>;">
-                        <?php echo ($percentageChange >= 0) ? '▲' : '▼'; ?> <?php echo number_format(abs($percentageChange), 2); ?>% <span class="text-muted">vs last month</span>
-                    </div>
-                    <canvas id="revenueChart"></canvas>
-                </div>
+    <!-- Revenue Chart -->
+<div class="chart-container border border-2 flex-fill p-3" style="min-width: 0;">
+    <h5 class="text-dark">Revenue</h5>
+    <p class="text-dark fs-3">Total <?php echo number_format($currentRevenue, 2); ?></p>
+    <div style="color: <?php echo ($percentageChange >= 0) ? 'green' : 'red'; ?>;">
+        <?php echo ($percentageChange >= 0) ? '▲' : '▼'; ?> <?php echo number_format(abs($percentageChange), 2); ?>% <span class="text-muted">vs last month</span>
+    </div>
+    <canvas id="revenueChart"></canvas>
+</div>
 
                 <!-- Food and Drinks Line Chart -->
                 <div class="chart-container border border-2 flex-fill p-3" style="min-width: 0;">
-                    <h2 class="text-center bg-light border-bottom">Food and Drinks Line Chart</h2>
-                    <canvas id="foodDrinksChart"></canvas>
-                </div>
-
+    <h2 class="p-1 fs-6">Food and Drinks Line Chart</h2>
+    <?php if (count($labelsFoodDrink) > 0): ?>
+        <canvas id="foodDrinksChart"></canvas>
+        <!-- Custom Legend Below the Chart -->
+        <div class="d-flex justify-content-center gap-3 mt-3 p-2">
+            <div>
+                <span style="display: inline-block; width: 10px; height: 10px; background-color: #EF4444; "></span>
+                Food
+            </div>
+            <div>
+                <span style="display: inline-block; width: 10px; height: 10px; background-color: #A700FF; "></span>
+                Drinks
+            </div>
+        </div>
+    <?php else: ?>
+        <div class="text-center text-muted">No data available</div>
+    <?php endif; ?>
+</div>
                 <!-- Orders Chart -->
                 <div class="chart-container border border-2 flex-fill p-3" style="min-width: 0;">
-                    <h2 class="text-center">Orders</h2>
-                    <p class="text-center"><?php echo $last6DaysCount + $lastWeekCount; ?></p>
-                    <div class="text-center" style="color: <?php echo ($percentageChange >= 0) ? 'green' : 'red'; ?>;">
-                        <?php echo ($percentageChange >= 0) ? '▲' : '▼'; ?> <?php echo number_format(abs($percentageChange), 2); ?>% vs last week
+                    <h2 class="fs-6">Order</h2>
+                    <p class="fs-4 bold"><?php echo $last6DaysCount + $lastWeekCount; ?></p>
+                    <div class="" style="color: <?php echo ($percentageChange >= 0) ? 'green' : 'red'; ?>;">
+                        <?php echo ($percentageChange >= 0) ? '▲' : '▼'; ?> <?php echo number_format(abs($percentageChange), 2); ?>% vs  <span class="text-muted">last week</span>
                     </div>
                     <canvas id="orderComparisonChart"></canvas>
                     <div class="d-flex justify-content-center gap-3 mt-3">
@@ -590,43 +612,56 @@ $conn->close();
         <div class="col-12">
             <div class="d-flex flex-row gap-3">
                 <!-- Most Ordered Food -->
-                <div class="chart-container border border-2 flex-fill p-3" style="min-width: 0;">
-                    <h2 class="text-center">Most Ordered Food</h2>
-                    <div>
-                        <?php if (count($topFoodItems) > 0): ?>
-                            <?php foreach ($topFoodItems as $item): ?>
-                                <div class="d-flex justify-content-between">
-                                    <span class="fw-bold"><?php echo htmlspecialchars($item['name']); ?></span>
-                                    <span class="text-muted"><?php echo htmlspecialchars($item['price']); ?></span>
-                                </div>
-                            <?php endforeach; ?>
-                        <?php else: ?>
-                            <div class="text-center text-muted">No data available</div>
-                        <?php endif; ?>
-                    </div>
+           
+<div class="chart-container border border-2 flex-fill p-3" style="min-width: 0;">
+    <h2 class="fs-6 mb-2 p-1">Most Ordered Food<br>
+        <span class="fs-7 text-muted">Best seller and crowd favorite!</span>
+    </h2>
+    <div>
+        <?php if (count($topFoodItems) > 0): ?>
+            <?php foreach ($topFoodItems as $item): ?>
+                <div class="d-flex justify-content-between align-items-center text-center">
+                    <span class="fw-bold"><?php echo htmlspecialchars($item['name']); ?></span>
+                    <span class="text-muted"><?php echo htmlspecialchars($item['price']); ?></span>
                 </div>
-
+            <?php endforeach; ?>
+        <?php else: ?>
+            <div class="text-center text-muted">No data available</div>
+        <?php endif; ?>
+    </div>
+</div>
              <!-- Order Time Distribution -->
 <div class="chart-container border border-2 flex-fill p-3" style="min-width: 0;">
-    <h2 class="text-center bg-light border-bottom p-2">Order Time Distribution</h2>
-    <div class="position-relative" style="height: 300px; width: 100%;"> <!-- Constrain canvas -->
-        <canvas id="timeChart" style="max-width: 100%; height: 100%;"></canvas>
-    </div>
-    <div class="d-flex justify-content-center gap-3 mt-3 bg-light border-top p-2" id="timeChartLegend"></div>
-</div>
-
-<!-- Reservation Type Distribution -->
-<div class="chart-container border border-2 flex-fill p-3" style="min-width: 0;">
-    <h2 class="text-center bg-light border-bottom p-2">Reservation Type Distribution</h2>
-    <?php if ($totalCount == 0): ?>
-        <div class="text-center text-muted bg-light p-2">No data available</div>
-    <?php else: ?>
-        <div class="position-relative" style="height: 300px; width: 100%;"> <!-- Constrain canvas -->
-            <canvas id="reservationChart" style="max-width: 100%; height: 100%;"></canvas>
+    <h2 class=" p-1 fs-6 ">Order Time Distribution</h2>
+    <?php if (count($timeLabels) > 0): ?>
+        <div class="d-flex justify-content-center" style="height: 15rem; width: 100%;"> 
+            <canvas id="timeChart"  class="w-100 h-100"></canvas>
         </div>
-        <div class="d-flex justify-content-center gap-3 mt-3 bg-light border-top p-2" id="chartLegend"></div>
+        <div class="d-flex justify-content-center gap-3 mt-3 p-2" id="timeChartLegend"></div>
+    <?php else: ?>
+        <div class="text-center text-muted">No data available</div>
     <?php endif; ?>
 </div>
+
+ 
+
+
+
+
+<div class="chart-container bordborder er-2 flex-fill p-3" style="min-width: 0;">
+    
+        <h2 class=" p-1 fs-6">Reservation/Order Type</h2>
+        <?php if ($totalCount == 0): ?>
+            <div class="text-center text-muted bg-light p-2">No data available</div>
+        <?php else: ?>
+            <div class="d-flex justify-content-center" style="height: 15rem; width: 100%;"> 
+                <canvas id="reservationChart" class="w-100 h-100"></canvas>
+            </div>
+            <div class="d-flex justify-content-center gap-3 mt-3 p-2" id="chartLegend"></div>
+        <?php endif; ?>
+   
+</div>
+
 
             </div>
         </div>
@@ -774,95 +809,88 @@ $conn->close();
             timeChartLegend.appendChild(legendItem);
         });
 
-        // Frontend: Chart.js Bar Chart for Total Revenue
-        const revenueCtx = document.getElementById('revenueChart').getContext('2d');
-        const revenueChart = new Chart(revenueCtx, {
-            type: 'bar',
-            data: {
-                labels: ['Last Month', 'Current Period'],
-                datasets: [{
-                    label: 'Total Revenue',
-                    data: [<?php echo $previousRevenue; ?>, <?php echo $currentRevenue; ?>],
-                    backgroundColor: ['#D8D9DB', '#FF902B'],
-                    borderColor: ['#D8D9DB', '#FF902B'],
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: {
-                        display: false,
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                let label = context.label || '';
-                                if (label) {
-                                    label += ': ';
-                                }
-                                label += 'P' + context.raw.toFixed(2);
-                                return label;
+       // Frontend: Chart.js Bar Chart for Total Revenue
+    const revenueCtx = document.getElementById('revenueChart').getContext('2d');
+    const revenueChart = new Chart(revenueCtx, {
+        type: 'bar',
+        data: {
+            labels: ['Last Month', 'Current Month'], // Labels for the bars
+            datasets: [{
+                label: 'Total Revenue',
+                data: [<?php echo $previousRevenue; ?>, <?php echo $currentRevenue; ?>], // Data for last month and current month
+                backgroundColor: ['#D8D9DB', '#FF902B'], // Colors for the bars
+                borderColor: ['#D8D9DB', '#FF902B'],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    display: false, // Hide the legend
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.label || '';
+                            if (label) {
+                                label += ': ';
                             }
+                            label += 'P' + context.raw.toFixed(2); // Display revenue in tooltip
+                            return label;
                         }
                     }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true
-                    }
                 }
-            }
-        });
-
-        // Frontend: Chart.js Line Chart for Food and Drinks
-        const foodDrinksCtx = document.getElementById('foodDrinksChart').getContext('2d');
-        const foodDrinksChart = new Chart(foodDrinksCtx, {
-            type: 'line',
-            data: {
-                labels: <?php echo json_encode($labelsFoodDrink); ?>,
-                datasets: [{
-                    label: 'Food',
-                    data: <?php echo json_encode($foodCounts); ?>,
-                    borderColor: '#EF4444',
-                    backgroundColor: '#EF4444',
-                    fill: false,
-                    pointRadius: 5,
-                    pointHoverRadius: 7
-                },
-                {
-                    label: 'Drinks',
-                    data: <?php echo json_encode($drinkCounts); ?>,
-                    borderColor: '#A700FF',
-                    backgroundColor: '#A700FF',
-                    fill: false,
-                    pointRadius: 5,
-                    pointHoverRadius: 7
-                }]
             },
-            options: {
-                responsive: true,
-                plugins: {
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                let label = context.dataset.label || '';
-                                if (label) {
-                                    label += ': ';
-                                }
-                                label += context.raw;
-                                return label;
-                            }
-                        }
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true
-                    }
+            scales: {
+                y: {
+                    beginAtZero: true // Start the y-axis from zero
                 }
             }
-        });
+        }
+    });
+// Frontend: Chart.js Line Chart for Food and Drinks
+const foodDrinksCtx = document.getElementById('foodDrinksChart').getContext('2d');
+const foodDrinksChart = new Chart(foodDrinksCtx, {
+    type: 'line',
+    data: {
+        labels: <?php echo json_encode($labelsFoodDrink); ?>,
+        datasets: [{
+            label: 'Food',
+            data: <?php echo json_encode($foodCounts); ?>,
+            borderColor: '#EF4444',
+            backgroundColor: '#EF4444',
+            fill: false,
+            pointRadius: 3,
+            pointHoverRadius: 7
+        },
+        {
+            label: 'Drinks',
+            data: <?php echo json_encode($drinkCounts); ?>,
+            borderColor: '#A700FF',
+            backgroundColor: '#A700FF',
+            fill: false,
+            pointRadius: 5,
+            pointHoverRadius: 7
+        }]
+    },
+   options: {
+    responsive: true,
+    plugins: {
+        legend: {
+            display: false // Disable the legend (labels)
+        },
+        tooltip: {
+            enabled: false // Disable tooltips
+        }
+    },
+    scales: {
+        y: {
+            beginAtZero: true
+        }
+    }
+}
+});
     </script>
 </body>
 </html>
