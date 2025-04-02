@@ -1,46 +1,47 @@
-
-//start 
 $(document).ready(function() {
-    $(document).ready(function() {
-        const table = $('#userTable').DataTable({
-            ajax: {
-                url: './../user/index.php',
-                type: 'POST',
-                data: { action: 'read' },
-                dataSrc: ''
-            },
-            columns: [
-                { data: 'order_id' },
-                { data: 'client_full_name' },
-                {
-                    data: 'created_at',
-                    render: function(data) {
-                        const date = new Date(data);
-                        return date.toLocaleDateString('en-US');
-                    }
-                },
-                { data: 'total_price' },
-                { data: 'reservation_type' },
-                
-                {
-                    data: 'status',
-                    render: function(data) {
-                        const statusMap = {
-                            "for confirmation": '<span style="color: #001BCC; background-color: #81CDFF; font-size: 0.7rem;" class="p-2 rounded-pill">For Confirmation</span>',
-                            "cancelled": '<span class="text-white bg-danger p-2 rounded">Cancelled</span>',
-                            "payment": '<span class="text-dark bg-warning p-2 rounded">Payment</span>',
-                            "booked": '<span class="text-white bg-success p-2 rounded">Booked</span>',
-                            "rate us": '<span class="text-dark bg-secondary p-2 rounded">Rate Us</span>',
-                        };
-                        return statusMap[data] || data;
-                    }
-                },
-                {
-                    data: null,
-                    render: function(data, type, row) {
-                        return `
+    const table = initializeDataTable();
+    setupEventHandlers(table);
+});
 
-                         <button class="editBtn" onclick="openUpdateModal(${row.order_id})" data-id="${data.transaction_id}" 
+function initializeDataTable() {
+    return $('#userTable').DataTable({
+        ajax: {
+            url: './../user/index.php',
+            type: 'POST',
+            data: { action: 'read' },
+            dataSrc: ''
+        },
+        columns: [
+            { data: 'order_id' },
+            { data: 'client_full_name' },
+            {
+                data: 'created_at',
+                render: function(data) {
+                    const date = new Date(data);
+                    return date.toLocaleDateString('en-US');
+                } 
+            },
+            { data: 'total_price' },
+            { data: 'reservation_type' },
+            {
+                data: 'status',
+                render: function(data) {
+                    const statusMap = {
+                        "for confirmation": '<span style="color: #001BCC; background-color: #81CDFF; font-size: 0.7rem;" class="p-2 rounded-pill">For Confirmation</span>',
+                        "cancelled": '<span class="text-white bg-danger p-2 rounded">Cancelled</span>',
+                        "payment": '<span class="text-dark bg-warning p-2 rounded">payment</span>',
+                        "PAID": '<span class="text-dark bg-warning p-2 rounded">Paid</span>',
+                        "booked": '<span class="text-white bg-success p-2 rounded">Booked</span>',
+                        "rate us": '<span class="text-dark bg-secondary p-2 rounded">Rate Us</span>',
+                    };
+                    return statusMap[data] || data;
+                }
+            },
+            {
+                data: null,
+                render: function(data, type, row) {
+                    return `
+                        <button class="editBtn" onclick="openUpdateModal(${row.order_id})" data-id="${data.transaction_id}" 
                         data-status="${data.status}" 
                         data-client-name="${data.client_full_name}" 
                         data-reservation-type="${data.reservation_type}" 
@@ -48,77 +49,18 @@ $(document).ready(function() {
                         data-created-at="${data.created_at}"
                         data-receipt="${data.receipt}">
                             <i class="fas fa-edit text-primary border-0"></i>
-
                         </button>
-
-                         <button class="btn btn-danger btn-sm" onclick="deleteOrder(${row.transaction_id})">
-                         <i class="fa-solid fa-trash"></i>
+                        <button class="btn btn-danger btn-sm" onclick="deleteOrder(${row.transaction_id})">
+                            <i class="fa-solid fa-trash"></i>
                         </button>
-                        `;
-                    }
+                    `;
                 }
-            ]
-        });
-    
-        window.openUpdateModal = function(orderId) {
-            // Fetch order details
-            $.ajax({
-                url: './../user/index.php',
-                type: 'POST',
-                data: {
-                    action: 'getOrderItems',
-                    order_id: orderId
-                },
-                success: function(response) {
-                    const data = JSON.parse(response);
-                    if (data.success) {
-                        const receiptPath = data.receipt ? `/kahelCafe/uploads/${data.receipt}` : null;
-                        
-                        console.log(receiptPath); // Check the URL in the console
-                        
-                        // Populate the order items table
-                        let orderItemsHtml = '';
-                        data.items.forEach((item, index) => {
-                            orderItemsHtml += `
-                                <tr>
-                                    <td>${item.item_name}</td>
-                                    <td>${item.price}</td>
-                                    <td>${item.size}</td>
-                                    <td>${item.temperature}</td>
-                                    <td>${item.quantity}</td>
-                                    ${index === 0 ? `<td rowspan="${data.items.length}">${receiptPath ? `<img src="${receiptPath}" alt="Receipt" style="width: 300px; height: auto;">` : 'Not Paid'}</td>` : ''}
-                                </tr>
-                            `;
-                        });
-                        $('#userTableUpdate tbody').html(orderItemsHtml);
-        
-                        // Check if receipt exists and display it in the summary
-                        if (receiptPath) {
-                            $('#receipt').attr('src', receiptPath);
-                        } else {
-                            $('#receipt').text('No receipt available');
-                        }
-        
-                        // Set order summary data
-                        $('#client_full_name_display').text(data.items[0].client_full_name);
-                        $('#transaction_id').text(data.items[0].transaction_id);
-                        $('#reservation_type').text(data.items[0].reservation_type);
-                        $('#created_at').text(data.items[0].created_at);
-                        $('#total_price1').text('P' + data.items[0].total_price);
-                    } else {
-                        alert('Failed to fetch order items');
-                    }
-                }
-            });
-        
-            // Open the modal
-            $('#updateUserModal').modal('show');
-        };
-        
+            }
+        ]
     });
-    
+}
 
- // Click event for the Edit button
+function setupEventHandlers(table) {
     $('#userTable').on('click', '.editBtn', function() {
         const orderId = $(this).data('id');
         const status = $(this).data('status');
@@ -137,36 +79,12 @@ $(document).ready(function() {
         $('#total_price1').text(`P ${totalPrice}`);
         $('#created_at').text(new Date(createdAt).toLocaleDateString('en-US'));
         $('#receipt').text(`P ${receipt}`);
-
-      
     });
 
-        // Delete order
-        window.deleteOrder = function(transactionId) {
-            if (confirm('Are you sure you want to delete this order?')) {
-                $.ajax({
-                    url: './../user/index.php',
-                    type: 'POST',
-                    data: { action: 'delete', id: transactionId },
-                    success: function(response) {
-                        const data = JSON.parse(response);
-                        if (data.success) {
-                            alert('Order deleted successfully.');
-                            table.ajax.reload();
-                        } else {
-                            alert('Failed to delete order.');
-                        }
-                    }
-                });
-            }
-        };
-    
-
-    // Save order status update
     $('#saveStatusBtn').on('click', function() {
         const orderId = $('#orderId').val();
         const status = $('#status').val();
-
+    
         $.ajax({
             url: './../user/index.php',
             type: 'POST',
@@ -179,12 +97,154 @@ $(document).ready(function() {
                 const result = JSON.parse(response);
                 if (result.success) {
                     $('#updateUserModal').modal('hide');
-                  
                     table.ajax.reload();  // Reload the table after update
+    
+                    // Check if the status has changed and reload the page once
+                    if (result.status) {
+                        window.location.reload();
+                    }
                 } else {
                     alert('Error updating status');
+                }
+            },
+            error: function(xhr, status, error) {
+                alert('An error occurred while updating the status.');
+            }
+        });
+    });
+
+    $('#markAsReadBtn').on('click', function() {
+        $.ajax({
+            url: './../../admin/user/index.php',
+            type: 'POST',
+            data: { action: 'markAllAsRead' },
+            success: function(response) {
+                const result = JSON.parse(response);
+                if (result.success) {
+                    alert('All notifications marked as read.');
+                    location.reload(); // Reload the page to reflect changes
+                } else {
+                    alert('Failed to mark notifications as read.');
                 }
             }
         });
     });
-});
+
+    $('#notificationModal').on('show.bs.modal', function() {
+        fetchNotifications();
+    });
+}
+
+function fetchNotifications() {
+    $.ajax({
+        url: './../../admin/user/index.php',
+        type: 'POST',
+        data: { action: 'fetchNotifications' },
+        success: function(response) {
+            const data = JSON.parse(response);
+            if (data.success) {
+                $('.notification-count').text(data.notificationCount);
+                let notificationHtml = '';
+                data.notifications.forEach(notification => {
+                    notificationHtml += `
+                        <div class="notification-item mb-3">
+                            <p>${notification.message}</p>
+                            <small class="text-muted">${notification.created_at}</small>
+                        </div>
+                    `;
+                });
+                $('#notificationModal .modal-body').html(notificationHtml);
+            }
+        },
+        error: function(xhr, status, error) {
+            alert('An error occurred while fetching notifications.');
+        }
+    });
+}
+
+function deleteOrder(transactionId) {
+    if (confirm('Are you sure you want to delete this order?')) {
+        $.ajax({
+            url: './../../admin/user/index.php',
+            type: 'POST',
+            data: { action: 'delete', id: transactionId },
+            success: function(response) {
+                const data = JSON.parse(response);
+                if (data.success) {
+                    alert('Order deleted successfully.');
+                    table.ajax.reload();
+                } else {
+                    alert('Failed to delete order.');
+                }
+            },
+            error: function(xhr, status, error) {
+                alert('An error occurred while deleting the order.');
+            }
+        });
+    }
+}
+
+
+function playNotificationSound() {
+    const audio = document.getElementById('notificationSound');
+    if (audio) {
+        audio.play().catch(error => console.error('Error playing sound:', error));
+    }
+}
+function updateNotifications(notifications) {
+    const notificationCount = notifications.length;
+    const notificationModalBody = document.querySelector('#notificationModal .modal-body');
+
+    // Update the notification count in the navbar
+    const notificationCountElement = document.querySelector('.notification-count');
+    if (notificationCount > 0) {
+        notificationCountElement.textContent = notificationCount;
+        notificationCountElement.style.display = 'inline-block';
+    } else {
+        notificationCountElement.style.display = 'none';
+    }
+
+    // Update the notification modal content
+    let notificationHtml = '';
+    notifications.forEach(notification => {
+        notificationHtml += `
+            <div class="notification-item mb-3">
+                <a href="order-track.php?notification_id=${notification.id}" style="text-decoration: none; color: inherit;">
+                    <p>${notification.message}</p>
+                    <small class="text-muted">${notification.created_at}</small>
+                </a>
+            </div>
+        `;
+    });
+
+    notificationModalBody.innerHTML = notificationHtml || '<p>No new notifications.</p>';
+}
+
+let eventSource = null;
+function connectToSSE() {
+    // Close existing connection if it exists
+    if (eventSource) {
+        eventSource.close();
+        eventSource = null;
+    }
+
+    // Establish a new SSE connection
+    eventSource = new EventSource('./../../admin/user/sse.php');
+
+    eventSource.onmessage = function(event) {
+        const data = JSON.parse(event.data);
+        console.log('Received SSE data:', data); // Debugging
+
+        // Update notifications (if applicable)
+        if (data.notifications && data.notifications.length > 0) {
+            updateNotifications(data.notifications);
+            playNotificationSound();
+        }
+    };
+
+    eventSource.onerror = function() {
+        console.error('SSE connection error. Reconnecting...');
+        eventSource.close();
+        setTimeout(connectToSSE, 5000); // Reconnect after 5 seconds
+    };
+}

@@ -1,7 +1,6 @@
 <?php
 include './../../connection/connection.php';
 include './../inc/topNav.php';
-
 require './../../vendor/autoload.php'; // Ensure you have the QR library
 
 use Endroid\QrCode\Builder\Builder;
@@ -37,6 +36,30 @@ if (!$order || $order['status'] === 'cancelled') {
             <p>We're sorry, but no current orders are available. 😔</p>
             <p>If you have any questions or believe this was a mistake, please contact us for assistance.</p>
           </div>";
+    exit();
+}
+
+// Handle timeout reservation
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['timeout_order'], $_POST['order_id'])) {
+    $orderId = $_POST['order_id'];
+
+    // Update the order status to 'cancelled'
+    $timeoutQuery = "UPDATE Orders SET status = 'cancelled' WHERE order_id = ?";
+    $stmt = $conn->prepare($timeoutQuery);
+
+    if (!$stmt) {
+        header('Content-Type: application/json');
+        http_response_code(500);
+        echo json_encode(['status' => 'error', 'message' => 'SQL Error: ' . $conn->error]);
+        exit();
+    }
+
+    $stmt->bind_param("i", $orderId);
+    $stmt->execute();
+    $stmt->close();
+    
+    header('Content-Type: application/json');
+    echo json_encode(['status' => 'success', 'message' => 'Order cancelled due to timeout']);
     exit();
 }
 
@@ -106,7 +129,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['upload_receipt'])) {
                 $stmt->execute();
                 $stmt->close();
 
-                echo "<div class='alert alert-success'>Receipt uploaded successfully!</div>";
+                // Update the order status to "paid"
+                $updateStatusQuery = "UPDATE Orders SET status = 'PAID' WHERE order_id = ?";
+                $stmt = $conn->prepare($updateStatusQuery);
+
+                if (!$stmt) {
+                    die("SQL Error: " . $conn->error);
+                }
+
+                $stmt->bind_param("i", $orderId);
+                $stmt->execute();
+                $stmt->close();
+
+                echo "<div class='alert alert-success'>Receipt uploaded successfully and order status updated to paid!</div>";
             } else {
                 echo "<div class='alert alert-danger'>Failed to upload the receipt.</div>";
             }
@@ -152,7 +187,15 @@ while ($row = $result->fetch_assoc()) {
 }
 $stmt->close();
 
-
+// Mark notification as read if notification_id is provided
+if (isset($_GET['notification_id'])) {
+    $notificationId = $_GET['notification_id'];
+    $updateQuery = "UPDATE notifications SET is_read = 1 WHERE id = ?";
+    $stmt = $conn->prepare($updateQuery);
+    $stmt->bind_param('i', $notificationId);
+    $stmt->execute();
+    $stmt->close();
+}
 
 // Handle Rating Update
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['item_id'], $_POST['rating'])) {
@@ -328,6 +371,14 @@ $note = $orderItems[0]['note'] ?? 'No notes available.';
             font-size: 24px;
             color: #12B76A;
         }
+        
+        #payment-timer {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #dc3545;
+            text-align: center;
+            margin: 10px 0;
+        }
     </style>
 </head>
 <body>
@@ -429,11 +480,71 @@ $note = $orderItems[0]['note'] ?? 'No notes available.';
                                 </div>
                                 <div class="d-flex justify-content-between w-100">
                                     <p><strong>Party Size:</strong></p>
-                                    <p><?php echo htmlspecialchars($order['party_size']); ?></p>
+                                    <p><?php echo htmlspecialchars($orderItems[0]['party_size']); ?></p>
                                 </div>
                                 <div class="d-flex justify-content-between w-100">
                                     <p><strong>Reservation Fee:</strong></p>
+                                    <p><?php echo htmlspecialchars($order['reservation_fee']); ?></p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <p><strong>Total Price:</strong> ₱<?php echo number_format($order['total_price'], 2); ?></p>
+                    </div>
+
+                    <div class="note-section mt-4">
+                        <label for="user-note" class="p-1">Notes</label>
+                        <div id="user-note" class="form-control" style="border-color: #B3B3B3; border-radius: 10px; height: 150px; overflow-y: auto; padding: 10px; background-color: #f8f9fa; pointer-events: none; user-select: none;">
+                            <?php
+                            $hasNotes = false;
+                            foreach ($orderItems as $item) {
+                                if (!empty($item['note'])) {
+                                    echo "<p>" . htmlspecialchars($item['note']) . "</p>";
+                                    $hasNotes = true;
+                                }
+                            }
+                            if (!$hasNotes) {
+                                echo "No notes available.";
+                            }
+                            ?>
+                        </div>
+                    </div>
+
+                <?php elseif ($order['status'] === 'PAID' ): ?>
+                    <div class="order-sum container-fluid">
+                        <h5 class="bold">Order Summary</h5>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="d-flex justify-content-between w-100">
+                                    <p><strong>Name:</strong></p>
                                     <p><?php echo htmlspecialchars($order['client_full_name']); ?></p>
+                                </div>
+                                <div class="d-flex justify-content-between w-100">
+                                    <p><strong>Transaction ID:</strong></p>
+                                    <p><?php echo htmlspecialchars($order['transaction_id']); ?></p>
+                                </div>
+                                <div class="d-flex justify-content-between w-100">
+                                    <p><strong>Reservation Type:</strong></p>
+                                    <p><?php echo htmlspecialchars($order['reservation_type']); ?></p>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="d-flex justify-content-between w-100">
+                                    <p><strong>Reservation Date:</strong></p>
+                                    <p><?php echo htmlspecialchars($order['reservation_date']); ?></p>
+                                </div>
+                                <div class="d-flex justify-content-between w-100">
+                                    <p><strong>Reservation Time:</strong></p>
+                                    <p><?php echo htmlspecialchars($order['reservation_time']); ?></p>
+                                </div>
+                                <div class="d-flex justify-content-between w-100">
+                                    <p><strong>Party Size:</strong></p>
+                                    <p><?php echo htmlspecialchars($orderItems[0]['party_size']); ?></p>
+                                </div>
+                                <div class="d-flex justify-content-between w-100">
+                                    <p><strong>Reservation Fee:</strong></p>
+                                    <p><?php echo htmlspecialchars($order['reservation_fee']); ?></p>
                                 </div>
                             </div>
                         </div>
@@ -480,6 +591,14 @@ $note = $orderItems[0]['note'] ?? 'No notes available.';
                 <?php if ($order['status'] === 'payment'): ?>
                     <form method="POST" enctype="multipart/form-data" class="mt-3">
                         <input type="hidden" name="order_id" value="<?php echo htmlspecialchars($order['order_id']); ?>">
+                        
+                        <!-- Timer Section -->
+                        <div class="mb-3 text-center">
+                            <h5>Time Remaining to Complete Payment</h5>
+                            <div id="payment-timer" class="fs-3 fw-bold text-danger">30:00</div>
+                            <small class="text-muted">Please complete your payment before time runs out</small>
+                        </div>
+
                         <div class="mb-3">
                             <label for="receipt" class="form-label upl-p">Upload Receipt</label>
                             <input type="file" class="form-control" id="receipt" name="receipt">
@@ -499,6 +618,36 @@ $note = $orderItems[0]['note'] ?? 'No notes available.';
                             <button type="button" class="btn btn-danger rounded mt-3 container-fluid" data-bs-toggle="modal" data-bs-target="#cancelOrderModal">Cancel Order</button>
                         </form>
                     </form>
+
+                    <!-- Timeout Modal -->
+                    <div class="modal fade" id="timeoutModal" tabindex="-1" aria-labelledby="timeoutModalLabel" aria-hidden="true">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header bg-warning">
+                                    <h5 class="modal-title" id="timeoutModalLabel">Payment Time Expired</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <p>Your payment time has expired. Would you like to:</p>
+                                    <ol>
+                                        <li>Continue with the payment (we'll give you another 30 minutes)</li>
+                                        <li>Cancel the order</li>
+                                    </ol>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" id="continuePayment">Continue Payment</button>
+                                    <button type="button" class="btn btn-danger" id="cancelAfterTimeout">Cancel Order</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                <?php elseif ($order['status'] === 'PAID'): ?>
+                    <div class="text-center p-4 rounded shadow container-fluid" style="background-color: #FF902B; color: white;">
+                        <h3 class="mb-2"><i class="bi bi-check-circle-fill"></i> Payment Successful!</h3>
+                        <p>Your payment has been received. <strong>Kahel Cafe</strong> is currently verifying your receipt. Please wait for confirmation.</p>
+                    </div>
+
                 <?php elseif ($order['status'] === 'booked'): ?>
                     <form method="POST" class="mt-3">
                         <input type="hidden" name="order_id" value="<?php echo htmlspecialchars($order['order_id']); ?>">
@@ -539,20 +688,20 @@ $note = $orderItems[0]['note'] ?? 'No notes available.';
                             <p><strong>Reservation Type:</strong></p>
                             <p><?php echo htmlspecialchars($order['reservation_type']); ?></p>
                         </div>
-                        <?php if (!empty($orderItems)): ?>
+                     
                             <div class="d-flex justify-content-between w-100">
                                 <p><strong>Reservation Date:</strong></p>
-                                <p><?php echo htmlspecialchars($orderItems[0]['reservation_date']); ?></p>
+                                <p><?php echo htmlspecialchars($order['reservation_date']); ?></p>
                             </div>
                             <div class="d-flex justify-content-between w-100">
                                 <p><strong>Reservation Time:</strong></p>
-                                <p><?php echo htmlspecialchars($orderItems[0]['reservation_time']); ?></p>
+                                <p><?php echo htmlspecialchars($order['reservation_time']); ?></p>
                             </div>
                             <div class="d-flex justify-content-between w-100">
                                 <p><strong>Party Size:</strong></p>
                                 <p><?php echo htmlspecialchars($orderItems[0]['party_size']); ?></p>
                             </div>
-                        <?php endif; ?>
+                  
                         <div class="d-flex justify-content-between w-100">
                             <p><strong>Reservation Fee:</strong></p>
                             <p><?php echo htmlspecialchars($order['reservation_fee']); ?></p>
@@ -583,20 +732,20 @@ $note = $orderItems[0]['note'] ?? 'No notes available.';
                             <p><strong>Reservation Type:</strong></p>
                             <p><?php echo htmlspecialchars($order['reservation_type']); ?></p>
                         </div>
-                        <?php if (!empty($orderItems)): ?>
+                    
                             <div class="d-flex justify-content-between w-100">
                                 <p><strong>Reservation Date:</strong></p>
-                                <p><?php echo htmlspecialchars($orderItems[0]['reservation_date']); ?></p>
+                                <p><?php echo htmlspecialchars($order['reservation_date']); ?></p>
                             </div>
                             <div class="d-flex justify-content-between w-100">
                                 <p><strong>Reservation Time:</strong></p>
-                                <p><?php echo htmlspecialchars($orderItems[0]['reservation_time']); ?></p>
+                                <p><?php echo htmlspecialchars($order['reservation_time']); ?></p>
                             </div>
                             <div class="d-flex justify-content-between w-100">
                                 <p><strong>Party Size:</strong></p>
                                 <p><?php echo htmlspecialchars($orderItems[0]['party_size']); ?></p>
                             </div>
-                        <?php endif; ?>
+                     
                         <div class="d-flex justify-content-between w-100">
                             <p><strong>Subtotal:</strong></p>
                             <p><?php echo htmlspecialchars($order['client_full_name']); ?></p>
@@ -653,6 +802,105 @@ $note = $orderItems[0]['note'] ?? 'No notes available.';
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script>
         $(document).ready(function () {
+            // Timer functionality for payment status
+            <?php if ($order['status'] === 'payment'): ?>
+                // Calculate time remaining
+                const createdTime = new Date("<?php echo $order['created_at']; ?>").getTime();
+                const currentTime = new Date().getTime();
+                const elapsedSeconds = Math.floor((currentTime - createdTime) / 1000);
+                let timeLeft = 30 * 60 - elapsedSeconds; // 30 minutes in seconds
+                
+                // If time is already expired, set to 0
+                if (timeLeft < 0) timeLeft = 0;
+                
+                const timerElement = document.getElementById('payment-timer');
+                const timeoutModal = new bootstrap.Modal(document.getElementById('timeoutModal'));
+                
+                // Function to update the timer display
+                function updateTimer() {
+                    const minutes = Math.floor(timeLeft / 60);
+                    const seconds = timeLeft % 60;
+                    timerElement.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                    
+                    if (timeLeft <= 0) {
+                        clearInterval(timerInterval);
+                        timerElement.textContent = "00:00";
+                        timeoutModal.show();
+                        handleTimeout();
+                    }
+                }
+                
+                // Start the timer
+                updateTimer();
+                let timerInterval = setInterval(() => {
+                    timeLeft--;
+                    updateTimer();
+                }, 1000);
+                
+                // Handle continue payment button
+                $('#continuePayment').click(function() {
+                    // Reset the timer for another 30 minutes
+                    timeLeft = 30 * 60;
+                    updateTimer();
+                    timerInterval = setInterval(() => {
+                        timeLeft--;
+                        updateTimer();
+                    }, 1000);
+                    
+                    // Hide the modal
+                    timeoutModal.hide();
+                });
+                
+                // Handle cancel after timeout button
+                $('#cancelAfterTimeout').click(function() {
+                    // Cancel the order
+                    $.ajax({
+                        type: 'POST',
+                        url: window.location.href,
+                        data: {
+                            cancel_order: true,
+                            order_id: <?php echo $order['order_id']; ?>
+                        },
+                        success: function(response) {
+                            window.location.reload();
+                        },
+                        error: function() {
+                            alert('Error cancelling order');
+                        }
+                    });
+                });
+                
+                // Also update the database when timer runs out
+                function handleTimeout() {
+                    $.ajax({
+                        type: 'POST',
+                        url: window.location.href,
+                        data: {
+                            timeout_order: true,
+                            order_id: <?php echo $order['order_id']; ?>
+                        },
+                        success: function(response) {
+                            // Modal will handle the UI
+                        },
+                        error: function() {
+                            console.log('Error updating order status');
+                        }
+                    });
+                }
+                
+                // Check if we need to show timeout modal on page load
+                <?php 
+                // Calculate if the payment time has expired
+                $createdTime = strtotime($order['created_at']);
+                $currentTime = time();
+                $elapsedTime = $currentTime - $createdTime;
+                if ($elapsedTime > 30 * 60) {
+                    echo 'timeoutModal.show();';
+                    echo 'handleTimeout();';
+                }
+                ?>
+            <?php endif; ?>
+            
             var totalItems = <?php echo count($orderItems); ?>;
             var ratedItems = 0;
 

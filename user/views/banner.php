@@ -1,10 +1,8 @@
 <?php
 include './../inc/topNav.php'; 
 include './../../connection/connection.php';
-
-
+include './../inc/header.php';
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
- 
     $target_dir = './../../uploads'; 
 
     if (isset($_FILES['image'])) {
@@ -23,7 +21,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $stmt->execute();
                 $stmt->close();
             }
-        }
+        } 
     } elseif (isset($_POST['delete_id'])) {
         // Handle image deletion
         $delete_id = $_POST['delete_id'];
@@ -47,54 +45,29 @@ $result = $conn->query("SELECT * FROM banners");
     <title>Carousel with Summernote</title>
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-bs4.min.css" rel="stylesheet">
-    <style>
-        #carouselExampleIndicators {
-            width: 90%;
-            height: 300px;
-            margin: 20px auto;
-            border: 2px solid #ccc;
-            border-radius: 10px;
-            overflow: hidden;
-        }
-        .carousel-item img { 
-            object-fit: cover; 
-            height: 100%; 
-        }
-        .modal-header { 
-            background-color: orange; 
-        }
-        .modal-button { 
-            position: absolute; 
-            bottom: 15px; 
-            right: 15px; 
-            z-index: 10; 
-        }
-        .image-container {
-            position: relative;
-            display: inline-block;
-            margin: 10px;
-        }
-        .delete-button {
-            position: absolute;
-            top: 5px;
-            right: 5px;
-            background-color: red;
-            color: white;
-            border: none;
-            border-radius: 50%;
-            width: 30px;
-            height: 30px;
-            text-align: center;
-            line-height: 30px; /* Center the text */
-            cursor: pointer;
-        }
-        .fa-pen {
-            color: #FF902B;
-            background-color: #ffffff;
-            border-radius: 100%;
-            padding: 0.8rem;
-        }
-    </style>
+   
+
+<style>
+    /* Your custom CSS */
+    #carouselExampleIndicators {
+        width: 90%;
+        height: 300px;
+        margin: 20px auto;
+        border: 2px solid #ccc;
+        border-radius: 10px;
+        overflow: hidden;
+    }
+    #carouselExampleIndicators .carousel-item {
+        width: 100%;
+        height: 100%;
+    }
+    #carouselExampleIndicators .carousel-item img {
+        width: 100%;
+        height: 100%;
+        object-fit: fill !important;
+    }
+</style>
+
 </head>
 <body>
 
@@ -116,9 +89,7 @@ $result = $conn->query("SELECT * FROM banners");
             <span class="carousel-control-next-icon" aria-hidden="true"></span>
             <span class="sr-only">Next</span>
         </a>
-       
     </div>
-
 
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
@@ -128,6 +99,3 @@ $result = $conn->query("SELECT * FROM banners");
 </body>
 </html>
 
-<?php
-$conn->close();
-?>

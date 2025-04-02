@@ -3,7 +3,6 @@ session_start();
 
 include './../../connection/connection.php';    
 
-
 // Fetch cart from database if session expired
 if (!isset($_SESSION['cart']) && isset($_SESSION['user_id'])) {
     $clientId = $_SESSION['user_id'];
@@ -37,19 +36,71 @@ if (!isset($_SESSION['cart']) && isset($_SESSION['user_id'])) {
 $clientFullName = 'Unknown';
 $clientId = $_SESSION['user_id'];
 
-
-// Fetch available times from the res_time table
-$times = [];
-$time_query = "SELECT * FROM res_time";
-$time_result = mysqli_query($conn, $time_query);
-if ($time_result) {
-    while ($row = mysqli_fetch_assoc($time_result)) {
-        $times[] = [
-            'time_id' => $row['id'],
-            'time' => $row['time']
-        ];
+if ($clientId) {
+    $query = "SELECT firstname, lastname FROM client WHERE id = ?";
+    $stmt = $conn->prepare($query);
+    $stmt->bind_param("i", $clientId);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    if ($result->num_rows > 0) {
+        $row = $result->fetch_assoc();
+        $clientFullName = htmlspecialchars($row['firstname'] . ' ' . $row['lastname']);
     }
+    $stmt->close();
 }
+
+function getAvailableTimes($conn, $user_id, $date = null) {
+    $times = [];
+    $timeQuery = $conn->query("SELECT id AS time_id, time FROM res_time ORDER BY time");
+    if (!$timeQuery) {
+        die("Time query failed: " . $conn->error);
+    }
+    
+    while ($row = $timeQuery->fetch_assoc()) {
+        $times[] = $row;
+    }
+    
+    if ($date) {
+        foreach ($times as &$time) {
+            $checkQuery = $conn->prepare("
+                SELECT res_status, client_id 
+                FROM reservation 
+                WHERE reservation_date = ? 
+                AND reservation_time_id = ?
+            ");
+            
+            if (!$checkQuery) {
+                die("Prepare failed: " . $conn->error);
+            }
+            
+            $checkQuery->bind_param("si", $date, $time['time_id']);
+            $checkQuery->execute();
+            $result = $checkQuery->get_result();
+            
+            if ($result->num_rows > 0) {
+                $status = $result->fetch_assoc();
+                if ($status['client_id'] == $user_id) {
+                    $time['status'] = 'your_reservation';
+                    $time['disabled'] = true;
+                } elseif ($status['res_status'] == 'booked') {
+                    $time['status'] = 'booked';
+                    $time['disabled'] = true;
+                }
+            } else {
+                $time['status'] = 'available';
+                $time['disabled'] = false;
+            }
+            
+            $checkQuery->close();
+        }
+    }
+    
+    return $times;
+}
+
+$selectedDate = $_POST['reservation_date'] ?? '';
+$times = getAvailableTimes($conn, $clientId, $selectedDate ? date('Y-m-d', strtotime($selectedDate)) : null);
+
 if (isset($_SESSION['user_id'])) {
     $user_id = $_SESSION['user_id'];
 } else {
@@ -64,18 +115,6 @@ if ($reservation_fee_result) {
     $row = mysqli_fetch_assoc($reservation_fee_result);
     $reservation_fee = $row['reservation_fee'];
 }
-
-
-// Fetch the reservation fee from the menu table
-$reservation_fee = 0;
-$reservation_fee_query = "SELECT reservation_fee FROM Orders WHERE name = 'Reservation'";
-$reservation_fee_result = mysqli_query($conn, $reservation_fee_query);
-
-if ($reservation_fee_result) {
-    $row = mysqli_fetch_assoc($reservation_fee_result);
-    $reservation_fee = $row['reservation_fee'];  // Store the reservation fee
-}
-
 
 // Handle quantity update (AJAX)
 if (isset($_POST['update_quantity'])) {
@@ -138,125 +177,119 @@ foreach ($_SESSION['cart'] as $item) {
     $totalPrice += $item['price'] * $item['quantity'];
 }
 
-// Retrieve client details
-$clientFullName = 'Unknown';
-$clientId = $_SESSION['user_id'];
-
-$query = "SELECT firstname, lastname FROM client WHERE id = ?";
-$stmt = $conn->prepare($query);
-$stmt->bind_param("i", $clientId);
-$stmt->execute();
-$result = $stmt->get_result();
-if ($result->num_rows > 0) {
-    $row = $result->fetch_assoc();
-    $clientFullName = htmlspecialchars($row['firstname'] . ' ' . $row['lastname']);
-}
-$stmt->close();
-
 // Handle checkout
 if (isset($_POST['checkout'])) {
-    $userNote = isset($_POST['note']) ? $_POST['note'] : '';
-    $reservationType = isset($_POST['reservation_type']) ? $_POST['reservation_type'] : '';
+    $userNote = $_POST['note'] ?? '';
+    $reservationType = $_POST['reservation_type'] ?? '';
     $transactionId = strtoupper(bin2hex(random_bytes(6)));
-    $reservation_date = isset($_POST['reservation_date']) ? $_POST['reservation_date'] : '';
-    $reservation_time = isset($_POST['reservation_time']) ? $_POST['reservation_time'] : '';
-    $party_size = isset($_POST['party_size']) ? $_POST['party_size'] : '';
+    $reservation_date = $_POST['reservation_date'] ?? '';
+    $reservation_time_id = $_POST['reservation_time_id'] ?? 0;
+    $party_size = $_POST['party_size'] ?? 1;
 
-    // Check for pending orders
+    // First get the actual time value from the database
+    $timeQuery = $conn->prepare("SELECT time FROM res_time WHERE id = ?");
+    $timeQuery->bind_param("i", $reservation_time_id);
+    $timeQuery->execute();
+    $timeResult = $timeQuery->get_result();
+    $timeRow = $timeResult->fetch_assoc();
+    $reservation_time = $timeRow['time'] ?? '';
+    $timeQuery->close();
+
+    // Check for pending orders - fixed query
     $pendingStatuses = ['for confirmation', 'payment', 'booked'];
-    $query = "SELECT COUNT(*) FROM Orders WHERE user_id = ? AND status IN (?, ?, ?)";
+    $placeholders = implode(',', array_fill(0, count($pendingStatuses), '?'));
+    $query = "SELECT COUNT(*) FROM Orders WHERE user_id = ? AND status IN ($placeholders)";
     $stmt = $conn->prepare($query);
-    $stmt->bind_param("isss", $clientId, ...$pendingStatuses);
+    if (!$stmt) {
+        die("Prepare failed: " . $conn->error);
+    }
+    
+    // Bind parameters correctly
+    $params = array_merge([$clientId], $pendingStatuses);
+    $types = str_repeat('s', count($pendingStatuses));
+    $stmt->bind_param("i" . $types, ...$params);
     $stmt->execute();
-    $stmt->bind_result($pendingOrderCount);
-    $stmt->fetch();
+    $result = $stmt->get_result();
+    $row = $result->fetch_array();
+    $pendingCount = $row[0];
     $stmt->close();
 
-    if ($pendingOrderCount > 0) {
-        echo json_encode(['success' => false, 'message' => 'You already have a pending order.']);
-        exit;
+    if ($pendingCount > 0) {
+        die(json_encode(['success' => false, 'message' => "You already have pending orders. Please wait for them to be processed."]));
     }
 
     // Insert into Orders table
-    $stmt = $conn->prepare("INSERT INTO Orders (user_id, client_full_name, total_price, transaction_id, reservation_type, status, reservation_fee) 
-                            VALUES (?, ?, ?, ?, ?, ?, ?)");
     $reservation_fee = 50; 
     $status = "for confirmation";
-    $stmt->bind_param("isssssi", $clientId, $clientFullName, $totalPrice, $transactionId, $reservationType, $status, $reservation_fee);
-    $stmt->execute();
+    
+    $stmt = $conn->prepare("INSERT INTO Orders (user_id, client_full_name, total_price, transaction_id, reservation_type, status, reservation_fee, reservation_time_id, reservation_time, reservation_date, party_size) 
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+
+    if (!$stmt) {
+        die("Prepare failed: " . $conn->error);
+    }
+
+    // Corrected bind_param with proper types
+    $bindResult = $stmt->bind_param(
+        "isdsssiissi",  // i=integer, s=string, d=double
+        $clientId, 
+        $clientFullName, 
+        $totalPrice, 
+        $transactionId, 
+        $reservationType, 
+        $status, 
+        $reservation_fee, 
+        $reservation_time_id, 
+        $reservation_time, 
+        $reservation_date, 
+        $party_size
+    );
+
+    if (!$bindResult) {
+        die("Bind failed: " . $stmt->error);
+    }
+
+    $executeResult = $stmt->execute();
+    if (!$executeResult) {
+        die("Execute failed: " . $stmt->error);
+    }
+
     $orderId = $stmt->insert_id;
     $stmt->close();
 
-    // Insert into Order_Items table
+    // Insert order items
     foreach ($_SESSION['cart'] as $item) {
-        $stmt_items = $conn->prepare("INSERT INTO Order_Items (order_id, item_id, item_name, size, temperature, quantity, note, price, reservation_time, party_size, reservation_date) 
-                                      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        
-        $stmt_items->bind_param(
-            "iisssisssis",  
-            $orderId, 
-            $item['id'],  
-            $item['name'],  
-            $item['size'], 
-            $item['temperature'], 
-            $item['quantity'], 
-            $userNote, 
+        $stmt = $conn->prepare("INSERT INTO order_items (order_id, item_id, item_name, size, temperature, quantity, price, note) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->bind_param(
+            "iisssids",
+            $orderId,
+            $item['id'],
+            $item['name'],
+            $item['size'],
+            $item['temperature'],
+            $item['quantity'],
             $item['price'],
-            $reservation_time, 
-            $party_size,
-            $reservation_date
+            $item['note']
         );
-        
-        $stmt_items->execute();
-        $stmt_items->close();
+        $stmt->execute();
+        $stmt->close();
     }
 
-    // Clear cart in session and database
-    unset($_SESSION['cart']);
+    // Clear cart after successful order
     $stmt = $conn->prepare("DELETE FROM cart WHERE user_id = ?");
     $stmt->bind_param("i", $clientId);
     $stmt->execute();
     $stmt->close();
+    unset($_SESSION['cart']);
 
-    if ($_SERVER['HTTP_X_REQUESTED_WITH'] === 'XMLHttpRequest') {
-        echo json_encode(['success' => true, 'redirect' => "order-track.php?transaction_id=" . $transactionId]);
-    } else {
-        header("Location: order-track.php?transaction_id=" . $transactionId);
-    }
+    // Return success response
+    echo json_encode([
+        'success' => true,
+        'redirect' => "./../../user/views/order-track.php?transaction_id=" . $transactionId
+    ]);
     exit;
 }
-
-
 ?>
-
-
-<?php if (!empty($orderStatus)): ?>
-    <div class="alert alert-info">
-        <?php
-        switch ($orderStatus) {
-            case "for confirmation":
-                echo "Your order is awaiting confirmation.";
-                break;
-            case "cancelled":
-                echo "Your order has been cancelled.";
-                break;
-            case "payment":
-                echo "Your payment is being processed.";
-                break;
-            case "booked":
-                echo "Your order has been successfully booked.";
-                break;
-            case "rate us":
-                echo "Thank you for your order! Please rate us.";
-                break;
-            default:
-                echo "Status: " . $orderStatus;
-        }
-        ?>
-    </div>
-<?php endif; ?>
-
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -280,9 +313,6 @@ if (isset($_POST['checkout'])) {
     </div>
 
     <h3>Your <span class="order-underline">Order</span></h3>
-
-
-
 
     <?php if ($cartEmpty): ?>
         <p>Your cart is empty. <a href="order-now.php">Start shopping</a></p>
@@ -319,13 +349,10 @@ if (isset($_POST['checkout'])) {
         </tbody>
     </table>
 
-   
-
     <!-- Note Form Section -->
-
 <div class="note-section mt-4">
     <label for="user-note">Notes</label>
-    <textarea id="user-note" class="form-control" placeholder="Enter your note here" name= "note"
+    <textarea id="user-note" class="form-control" placeholder="Enter your note here" name="note"
               style="border-color: #B3B3B3; border-radius: 10px; height: 150px; resize: none;"></textarea>
 </div>
 </div>
@@ -364,35 +391,32 @@ if (isset($_POST['checkout'])) {
     </div>
 </div>
 
-
-
-<div class="Available-Time pb-2">
+<div class="Available-Time">
     <h4 class="cart-right-header1">Available Time</h4>
-    <p id="date-picker" class="form-control d-none"></p>
-
-    <div class="Available-Time-show d-grid gap-2" id="Available-Time-show" style="grid-template-columns: repeat(2, 1fr);">
-    <?php foreach ($times as $i => $time): ?>
-        <button class="available-time-btn btn rounded-pill text-white p-2 small" 
-                name="reservation_time" 
-                id="time-btn-<?= $i ?>" 
-                data-time-id="<?= $time['time_id'] ?>" 
-                data-time="<?= $time['time'] ?>" 
-                style="background-color: #07D090;">
-            <?= $time['time'] ?>
-        </button>
-    <?php endforeach; ?>
+    <p id="date-picker" class="form-control" style="display: none;"></p>
+    <div class="Available-Time-show" id="Available-Time-show">
+        <?php foreach ($times as $i => $time): ?>
+            <button type="button" class="available-time-btn" id="time-btn-<?= $i ?>" 
+                   data-time-id="<?= $time['time_id'] ?>"
+                   data-time-value="<?= htmlspecialchars($time['time']) ?>"
+                   style="background-color: <?= 
+                       ($time['status'] ?? '') == 'your_reservation' ? '#9647FF' : 
+                       (($time['status'] ?? '') == 'booked' ? '#E60000' : '#07D090') ?>;"
+                   <?= ($time['disabled'] ?? false) ? 'disabled' : '' ?>>
+                <?= htmlspecialchars($time['time']) ?>
+            </button>
+        <?php endforeach; ?>
+    </div>
+    <div id="time-error" style="display: none; color: red;">Please select a time slot</div>
 </div>
-</div>
 
-
-
-        <p class="card-text d-flex justify-content-between align-items-center flex-wrap">
+<p class="card-text d-flex justify-content-between align-items-center flex-wrap">
     <label for="reservation-type" class="form-label mb-2 mb-md-0">
         <strong class="fs-6 text-dark">Reservation Type:</strong>
     </label>
-    <select id="reservation-type" class="form-control w-auto">
+    <select id="reservation-type" name="reservation_type" class="form-control w-auto">
         <option class="re-op" value="Over the counter">Over the counter</option>
-        <option  class="re-op" value="Pickup">Pick-up</option>
+        <option class="re-op" value="Pickup">Pick-up</option>
     </select>
 </p>
 
@@ -400,8 +424,7 @@ if (isset($_POST['checkout'])) {
     <strong class="fs-6 text-dark">Party Size</strong>
     <div class="input-group scale-size ms-auto w-auto">
         <button class="btn btn-outline-secondary" type="button" id="button-minus">-</button>
-        <input type="number" name="party_size" id="party_size" class="form-control text-center" value="1" id="number-input">
-
+        <input type="number" name="party_size" id="party_size" class="form-control text-center" value="1" min="1">
         <button class="btn btn-outline-secondary" type="button" id="button-plus">+</button>
     </div>
 </div>
@@ -413,7 +436,6 @@ if (isset($_POST['checkout'])) {
     <span><?php echo $clientFullName; ?></span>
 </p>
 
-
 <p class="d-flex justify-content-between">
     <strong>Reservation fee:</strong>
     <span>P 50</span>
@@ -421,24 +443,19 @@ if (isset($_POST['checkout'])) {
  
 <div class="d-flex justify-content-between">
     <strong>Date:</strong>
-    <span id="date-result" class="result-sum date-result">0</span>
-    <input type="hidden" name="reservation_date" id="reservation_date_input">
+    <span id="date-result" class="result-sum date-result">Not selected</span>
 </div>
 
 <div class="d-flex justify-content-between">
     <strong>Time:</strong>
-    <span class="result-sum time-result" id="time-result">Select time</span>
-    <input type="hidden" name="reservation_time" id="reservation_time_input">
+    <span class="result-sum time-result" id="time-result">Not selected</span>
 </div>
 
-<!-- <p class="d-flex justify-content-between">
-    <strong>Transaction ID:</strong>
-    <span><?php echo htmlspecialchars($_SESSION['transaction_id']); ?></span>
-</p> -->
+<input type="hidden" name="reservation_time_id" id="reservation_time_id">
+<input type="hidden" name="reservation_date" id="reservation_date">
 
             <p class="card-text" id="totalAmount">
             <strong class="fs-5" style="color: #616161;">Total:</strong>
-
             <strong> <span class="float-end fs-5" style="color: #FF902B;">₱<?php echo number_format($totalPrice, 2); ?></span></strong> 
             </p>
             <div class="text-end">
@@ -454,7 +471,7 @@ if (isset($_POST['checkout'])) {
 </div>
 
 <!-- Alert for Item Removed -->
-<div id="alert" class="alert alert-danger alert-dismissible fade show" role="alert">
+<div id="alert" class="alert alert-danger alert-dismissible fade show" role="alert" style="display: none;">
   Item removed from cart.
   <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
 </div>
@@ -497,129 +514,110 @@ if (isset($_POST['checkout'])) {
     </div>
 </div>
 
-<!-- Bootstrap JavaScript -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-
-
 <script>
+$(document).ready(function() {
+    // Initialize variables
+    let selectedTimeId = '';
+    let selectedDate = '';
+    let selectedTime = '';
 
+    // Handle time selection
+    $('.available-time-btn').click(function() {
+        if (!$(this).attr('disabled')) {
+            $('.available-time-btn').removeClass('selected-time');
+            $(this).addClass('selected-time');
+            selectedTimeId = $(this).data('time-id');
+            selectedTime = $(this).data('time-value');
+            $('#time-result').text(selectedTime);
+            $('#reservation_time_id').val(selectedTimeId);
+            $('#time-error').hide();
+        }
+    });
 
-document.querySelectorAll('.available-time-btn').forEach(button => {
-        button.addEventListener('click', function() {
-            const selectedTime = this.dataset.time; // Get the time from the button's data attribute
-            const selectedTimeId = this.dataset.timeId; // Get the time ID from the button's data attribute
+    // Listen for date selection from iframe
+    window.addEventListener('message', function(event) {
+        if (event.data && event.data.selectedDate) {
+            selectedDate = event.data.selectedDate;
+            $('#date-result').text(selectedDate);
+            $('#reservation_date').val(selectedDate);
+            
+            // Fetch updated times for the selected date
+            $.ajax({
+                url: '',
+                type: 'POST',
+                data: { reservation_date: selectedDate },
+                success: function(response) {
+                    // This would need to be handled by your server-side code
+                    // to return updated time slots for the selected date
+                }
+            });
+        }
+    });
 
-            // Update the hidden input field with the selected time ID
-            document.getElementById('reservation_time_input').value = selectedTimeId;
+    // Handle party size buttons
+    $('#button-plus').click(function() {
+        let currentVal = parseInt($('#party_size').val());
+        if (currentVal < 10) {
+            $('#party_size').val(currentVal + 1);
+        }
+    });
 
-            // Display the selected time in the UI
-            document.getElementById('time-result').textContent = selectedTime;
+    $('#button-minus').click(function() {
+        let currentVal = parseInt($('#party_size').val());
+        if (currentVal > 1) {
+            $('#party_size').val(currentVal - 1);
+        }
+    });
+
+    // Handle checkout button click
+    $("#checkoutBtn").click(function() {
+        const note = $("#user-note").val();
+        const reservationType = $("#reservation-type").val();
+        const partySize = $("#party_size").val();
+        
+        // Validate required fields
+        if (!selectedDate || !selectedTimeId) {
+            $('#time-error').show();
+            $('#checkoutModal').modal('hide');
+            return;
+        }
+
+        // Send AJAX request to the server
+        $.ajax({
+            url: '',
+            type: 'POST',
+            data: { 
+                checkout: true, 
+                note: note, 
+                reservation_type: reservationType, 
+                party_size: partySize,
+                reservation_date: selectedDate, 
+                reservation_time_id: selectedTimeId
+            },
+            success: function(response) {
+                try {
+                    const result = JSON.parse(response);
+                    if (result.success) {
+                        window.location.href = result.redirect;
+                    } else {
+                        alert(result.message);
+                        $('#checkoutModal').modal('hide');
+                    }
+                } catch (e) {
+                    console.error("Error parsing response:", e, response);
+                    alert("An error occurred. Please try again.");
+                    $('#checkoutModal').modal('hide');
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error("AJAX error:", status, error);
+                alert("An error occurred. Please try again.");
+                $('#checkoutModal').modal('hide');
+            }
         });
     });
 
-
-
-window.addEventListener('message', function(event) {
-        if (event.data && event.data.selectedDate) {
-            const selectedDate = event.data.selectedDate;
-            document.getElementById('reservation_date_input').value = selectedDate;
-            document.getElementById('date-result').textContent = selectedDate;
-        }
-    });
-
-    function fetchReservationStatus(date) {
-    fetch(`../user/res.php?date=${date}`)
-        .then(response => response.json())
-        .then(data => {
-            const buttons = document.querySelectorAll('.available-time-btn');
-
-            data.status_reservations.forEach((status, index) => {
-                let color = '#07D090'; // Default color
-                let isDisabled = false;
-
-                // Check if the user has a reservation or the status is booked
-                if (status.client_id == <?php echo json_encode($user_id); ?>) {
-                    color = 'purple';
-                    isDisabled = true;
-                    // Optionally, you can add an alert or a message if needed
-                    // alert("You already have a reservation for this time.");
-                } else if (status.status === 'booked') {
-                    color = 'red'; 
-                    isDisabled = true; 
-                }
-
-                // Apply the color and disable status
-                buttons[index].style.backgroundColor = color;
-                buttons[index].disabled = isDisabled;
-
-                // Only allow click if the button is available (green)
-                if (color === '#07D090') {
-                    buttons[index].disabled = false;
-                }
-
-                buttons[index].addEventListener('click', function() {
-                    // When a valid time slot is clicked, update the time input field
-                    if (color === '#07D090' && !buttons[index].disabled) {
-                        const selectedTime = buttons[index].innerText; // Get the time of the clicked button
-                        document.getElementById('time-result').innerText = `${selectedTime}`; // Display the time
-
-                        // Set the value of the hidden input to the selected time's corresponding timeId
-                        document.getElementById('reservation_time_input').value = buttons[index].dataset.timeId;
-
-                        // Any additional logic if the user has a reservation or the time is already booked
-                        if (status.client_id == <?php echo json_encode($user_id); ?>) {
-                            // Here you can do something special if the user has a reservation, e.g., show a message
-                            console.log("You already have a reservation for this time.");
-                        }
-                    }
-                });
-            });
-        })
-        .catch(error => console.error('Error fetching data:', error));
-}
-
-// Call the fetchReservationStatus function with the selected date when the page loads or when the date changes
-document.addEventListener('DOMContentLoaded', function() {
-    const selectedDate = document.getElementById('reservation_date_input').value;
-    fetchReservationStatus(selectedDate);
-});
-
-$("#checkoutBtn").click(function () {
-    const note = $("#user-note").val();
-    const reservationType = $("#reservation-type").val();
-    const partySize = $("#party_size").val();
-    const selectedDate = document.getElementById('reservation_date_input').value;
-    const selectedTimeId = document.getElementById('reservation_time_input').value;
-
-    // Ensure a time is selected
-    if (!selectedTimeId) {
-        alert("Please select a reservation time.");
-        return;
-    }
-
-    // Send AJAX request to the server
-    $.ajax({
-        url: '',
-        type: 'POST',
-        data: { 
-            checkout: true, 
-            note: note, 
-            reservation_type: reservationType, 
-            party_size: partySize,
-            reservation_date: selectedDate, 
-            reservation_time: selectedTimeId, // Pass the selected time ID
-        },
-        success: function (response) {
-            const result = JSON.parse(response);
-            if (result.success) {
-                alert("Order placed successfully! Transaction ID: " + result.redirect.split("transaction_id=")[1]);
-                window.location.href = result.redirect;
-            } else {
-                alert(result.message);
-            }
-        }
-    });
-});
+    // Quantity adjustment buttons
     $('.btn-decrease, .btn-increase').click(function() {
         let itemId = $(this).data('id');
         let $quantityInput = $(`.quantity-input[data-id="${itemId}"]`);
@@ -636,54 +634,51 @@ $("#checkoutBtn").click(function () {
         $quantityInput.val(currentQuantity);
 
         // AJAX update for new quantity
-        $.post("cart.php", { update_quantity: true, item_id: itemId, quantity: currentQuantity }, function(response) {
-            if (response.success) {
-                if (currentQuantity === 1) {
-                    $('#deleteModal').modal('show');
-                    $('#deleteBtn').data('id', itemId);  // Store item id for removal
+        $.ajax({
+            url: '',
+            type: 'POST',
+            data: { 
+                update_quantity: true, 
+                item_id: itemId, 
+                quantity: currentQuantity 
+            },
+            success: function(response) {
+                const result = JSON.parse(response);
+                if (result.success) {
+                    if (currentQuantity === 1) {
+                        $('#deleteModal').modal('show');
+                        $('#deleteBtn').data('id', itemId);
+                    }
+                    // Reload to update total price
+                    location.reload();
+                } else {
+                    alert('Failed to update quantity. Please try again.');
                 }
-            } else {
-                // Handle any errors from the server response
-                alert('Failed to update quantity. Please try again.');
             }
-        }, 'json');
+        });
     });
 
     // Handle delete button click
     $('#deleteBtn').click(function() {
         let itemId = $(this).data('id');
-
-        // Perform AJAX request to delete the item
-        $.post("cart.php", { delete_item: true, item_id: itemId }, function(response) {
-            if (response.success) {
-                // Close the modal first
-                $('#deleteModal').modal('hide');
-
-                // Reload the page after successful deletion
-                location.reload();  // This will reload the page
-            } else {
-                alert('Failed to delete item. Please try again.');
-            }
-        }, 'json');
-    });
-
-    // Confirm removal when user clicks 'Delete'
-    $('#deleteBtn').click(function() {
-        let itemId = $(this).data('id');
         
-        $.post("cart.php", { remove_item: true, item_id: itemId }, function(response) {
-            if (response.success) {
-                $(`.cart-item[data-id="${itemId}"]`).remove();
-                $('#alert').fadeIn().delay(3000).fadeOut();  // Show alert
-                $('#deleteModal').modal('hide');
-                // This will reload the current page
-                location.reload();  // Automatically reload the page after successful deletion
+        $.ajax({
+            url: '',
+            type: 'POST',
+            data: { remove_item: true, item_id: itemId },
+            success: function(response) {
+                const result = JSON.parse(response);
+                if (result.success) {
+                    $(`.cart-item[data-id="${itemId}"]`).remove();
+                    $('#alert').show().delay(3000).fadeOut();
+                    $('#deleteModal').modal('hide');
+                    location.reload();
+                }
             }
-        }, 'json');
+        });
     });
-
+});
 </script>
-
 
 </body>
 </html>

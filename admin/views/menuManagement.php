@@ -1,15 +1,9 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Menu</title>
-    <link rel="stylesheet" href="menu.css">
-    <link href="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-bs4.min.css" rel="stylesheet">
-</head>
-<body>
 <?php 
+
 ob_start(); 
+
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
 
 include "./../../admin/views/banner.php";
 include "./../../connection/connection.php";
@@ -68,18 +62,87 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['deleteMenuItem'])) {
     }
 }
 
+
 if (isset($_GET['id'])) {
     $menuId = intval($_GET['id']);
     $sql = "SELECT * FROM menu1 WHERE id = $menuId";
     $result = $conn->query($sql);
     
     if ($result->num_rows > 0) {
-        echo json_encode($result->fetch_assoc());
+        $row = $result->fetch_assoc();
+        // Clear any previous output
+        ob_clean();
+        // Set JSON header
+        header('Content-Type: application/json');
+        echo json_encode([
+            'id' => $row['id'],
+            'name' => $row['name'],
+            'description' => $row['description'],
+            'category' => $row['category'],
+            'size' => $row['size'],
+            'temperature' => $row['temperature'],
+            'quantity' => $row['quantity'],
+            'price' => $row['price'],
+            'status' => $row['status'],
+            'image' => $row['image']
+        ]);
     } else {
+        // Clear any previous output
+        ob_clean();
+        // Set JSON header
+        header('Content-Type: application/json');
         echo json_encode([]);
     }
-
+    exit(); // Stop further execution
 }
+
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['editMenuItem'])) {
+    $menuId = intval($_POST['editMenuId']);
+    $menuName = $conn->real_escape_string($_POST['editMenuName']);
+    $menuDescription = $conn->real_escape_string($_POST['editMenuDescription']);
+    $menuCategory = $conn->real_escape_string($_POST['editMenuCategory']);
+    $menuSize = isset($_POST['editMenuSize']) ? implode(',', $_POST['editMenuSize']) : '';
+    $menuTemperature = isset($_POST['editMenuTemperature']) ? implode(',', $_POST['editMenuTemperature']) : '';
+    $menuQuantity = intval($_POST['editMenuQuantity']);
+    $menuPrice = floatval($_POST['editMenuPrice']);
+    $productStatus = $conn->real_escape_string($_POST['editProductStatus']);
+
+    // Handle image upload
+    $menuImage = '';
+    if (isset($_FILES['editMenuImage']) && $_FILES['editMenuImage']['error'] == 0) {
+        $target_dir = "././../../uploads/";
+        $image_file = $target_dir . basename($_FILES["editMenuImage"]["name"]);
+        if (move_uploaded_file($_FILES["editMenuImage"]["tmp_name"], $image_file)) {
+            $menuImage = $image_file;
+        }
+    }
+
+    // Prepare SQL statement
+    $sql = "UPDATE menu1 SET 
+            name = '$menuName', 
+            description = '$menuDescription', 
+            category = '$menuCategory', 
+            size = '$menuSize', 
+            temperature = '$menuTemperature', 
+            quantity = $menuQuantity, 
+            price = $menuPrice, 
+            status = '$productStatus'";
+
+    if (!empty($menuImage)) {
+        $sql .= ", image = '$menuImage'";
+    }
+
+    $sql .= " WHERE id = $menuId";
+
+    // Execute the query
+    if ($conn->query($sql) === TRUE) {
+        header("Location: " . $_SERVER['PHP_SELF']);
+        exit();
+    } else {
+        echo "<p class='alert alert-danger'>Error updating item: " . $conn->error . "</p>";
+    }
+}
+
 
 $totalItemsResult = $conn->query("SELECT COUNT(*) as count FROM menu1" . ($selectedCategory ? " WHERE category = '$selectedCategory'" : ""));
 $totalItems = $totalItemsResult->fetch_assoc()['count'];
@@ -88,6 +151,19 @@ $sql = "SELECT * FROM menu1" . ($selectedCategory ? " WHERE category = '$selecte
 $result = $conn->query($sql);
 ob_end_flush();
 ?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Menu</title>
+    <link rel="stylesheet" href="menu.css">
+    <link href="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-bs4.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+</head>
+<body>
+
 <div class="container-fluid mb-5">
     <div class="row mt-5 justify-content-center text-center text-md-start align-items-center">
         <div class="col-12 col-md-8">
@@ -120,65 +196,174 @@ ob_end_flush();
         </div>
         <div class="container">
     <div class="row g-0" id="menu-card-container">
+
+
         <?php
-      function renderMenuItems($result) {
-        $output = '';
-    
-        if ($result->num_rows > 0) {
-            while ($row = $result->fetch_assoc()) {
-                $name = htmlspecialchars($row['name'], ENT_QUOTES, 'UTF-8');
-                $price = htmlspecialchars($row['price'], ENT_QUOTES, 'UTF-8');
-                $image = htmlspecialchars($row['image'], ENT_QUOTES, 'UTF-8');
-                $id = intval($row['id']); 
-    
-                $output .= '
-                <div class="col-12 col-sm-6 col-md-4 col-lg-3 menu-card shadow-sm">
-                    <div class="card p-2 rounded-1" style="border: none;">
-                        <div class="img-container" style="overflow: hidden; height: 150px;">
-                            <img src="' . $image . '" class="card-img-top" alt="' . $name . '" style="height: 100%; width: 100%; object-fit: cover;">
-                        </div>
-                        <div class="card-body text-center p-1">
-                            <div class="card-title" style="font-size: 1rem; display: flex; justify-content: space-between; align-items: center;">
-                                <strong><h5 style="margin: 0;">' . $name . '</h5></strong>
-                                <p class="card-text text-success" style="font-size: 0.9rem; margin: 0;">
-                                    <strong>₱' . $price . '</strong>
-                                </p>
-                            </div>
-                       
-                            <button class="btn btn-delete btn-danger" onclick="confirmDelete(' . $id . ')">
-                                <i class="fa-solid fa-trash"></i> Delete
-                            </button>
-                        </div>
+function renderMenuItems($result) {
+    $output = '';
+
+    if ($result->num_rows > 0) {
+        while ($row = $result->fetch_assoc()) {
+            $name = htmlspecialchars($row['name'], ENT_QUOTES, 'UTF-8');
+            $price = htmlspecialchars($row['price'], ENT_QUOTES, 'UTF-8');
+            $image = htmlspecialchars($row['image'], ENT_QUOTES, 'UTF-8');
+            $id = intval($row['id']); 
+
+            $output .= '
+           <div class="col-12 col-sm-6 col-md-4 col-lg-3 menu-card shadow-sm">
+              <div class="card p-2 rounded-1" style="border: none;">
+                    <div class="img-container" style="overflow: hidden; height: 150px;">
+                        <img src="' . $image . '" class="card-img-top" alt="' . $name . '" style="height: 100%; width: 100%; object-fit: cover;">
                     </div>
-                </div>';
-            }
-        } else {
-            $output .= '<div class="container d-flex justify-content-center"><p class="text-center">No menu items found.</p></div>';
+                    <div class="card-body text-center p-1">
+                        <div class="card-title" style="font-size: 1rem; display: flex; justify-content: space-between; align-items: center;">
+                            <strong><h5 style="margin: 0;">' . $name . '</h5></strong>
+                            <p class="card-text text-success" style="font-size: 0.9rem; margin: 0;">
+                                <strong>₱' . $price . '</strong>
+                            </p>
+                        </div>
+                        <button class="btn btn-edit btn-primary" style="background-color:#FF902B; border:none; border-radius:3rem; padding: 0.5rem;" onclick="openEditModal(' . $id . ', \'' . $name . '\')">
+                            <i class="fa-solid fa-edit"></i> Edit
+                        </button>
+                        <button class="btn btn-delete btn-danger" onclick="confirmDelete(' . $id . ')">
+                            <i class="fa-solid fa-trash"></i> Delete
+                        </button>
+                    </div>
+                </div>
+            </div>
+            ';
         }
-        return $output; 
+    } else {
+        $output .= '<div class="container d-flex justify-content-center"><p class="text-center">No menu items found.</p></div>';
     }
+    return $output; 
+}
         echo renderMenuItems($result);
         ?>
     </div>
 </div>
-<div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-labelledby="confirmDeleteModalLabel" aria-hidden="true">
+<!-- Add this hidden input if it doesn't exist -->
+<input type="hidden" id="deleteMenuId" name="deleteMenuId">
+
+<!-- Ensure the modal exists -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title text-light" id="confirmDeleteModalLabel">Confirm Deletion</h5>
-                <!-- Add the close button (X) here -->
-                <button type="button" class="btn-close" data-dismiss="modal" aria-label="Close"></button>
+                <h5 class="modal-title" id="deleteModalLabel">Confirm Deletion</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 Are you sure you want to delete this menu item?
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-danger" id="confirmDeleteButton">Delete</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" onclick="deleteMenuItem()">Delete</button>
             </div>
         </div>
     </div>
 </div>
 
+<!-- Edit Modal -->
+<div class="modal fade" id="editMenuModal" tabindex="-1" aria-labelledby="editMenuModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title text-light" id="editMenuModalLabel">Edit Menu Item</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editMenuForm" enctype="multipart/form-data">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editMenuImage" class="form-label">Upload Image</label>
+                                <input type="file" class="form-control" id="editMenuImage" name="editMenuImage" accept="image/*">
+                                <small class="text-muted">Leave blank to keep the current image.</small>
+                            </div>
+                            <div class="mb-3">
+                                <label for="editMenuDescription" class="form-label">Description</label>
+                                <textarea class="form-control" id="editMenuDescription" name="editMenuDescription" rows="4" required></textarea>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editMenuName" class="form-label">Menu Name</label>
+                                <input type="text" class="form-control" id="editMenuName" name="editMenuName" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="editMenuCategory" class="form-label">Category</label>
+                                <select class="form-select" id="editMenuCategory" name="editMenuCategory" required>
+                                    <option value="Coffee">Coffee</option>
+                                    <option value="Non-Coffee">Non-Coffee</option>
+                                    <option value="Signature Frappe">Signature Frappe</option>
+                                    <option value="Starters">Starters</option>
+                                    <option value="Pasta">Pasta</option>
+                                    <option value="Sandwich">Sandwich</option>
+                                    <option value="Rice Meal">Rice Meal</option>
+                                    <option value="All Day Breakfast">All Day Breakfast</option>
+                                </select>
+                            </div>
+                            <div class="mb-3 container-fluid" id="editMenuSizeContainer">
+                                <label for="editMenuSize" class="form-label">Size</label>
+                                <div class="container-fluid">
+                                    <input type="checkbox" name="editMenuSize[]" value="Small" id="editSizeSmall">
+                                    <label for="editSizeSmall" class="me-3">Small</label>
+                                    <input type="checkbox" name="editMenuSize[]" value="Medium" id="editSizeMedium">
+                                    <label for="editSizeMedium" class="me-3">Medium</label>
+                                    <input type="checkbox" name="editMenuSize[]" value="Large" id="editSizeLarge">
+                                    <label for="editSizeLarge">Large</label>
+                                </div>
+                            </div>
+                            <div class="mb-3 container-fluid" id="editMenuTemperatureContainer">
+                                <label for="editMenuTemperature" class="form-label">Temperature</label>
+                                <div class="container-fluid">
+                                    <input type="checkbox" name="editMenuTemperature[]" value="Hot" id="editTemperatureHot">
+                                    <label for="editTemperatureHot" class="me-3">Hot</label>
+                                    <input type="checkbox" name="editMenuTemperature[]" value="Warm" id="editTemperatureWarm">
+                                    <label for="editTemperatureWarm" class="me-3">Warm</label>
+                                    <input type="checkbox" name="editMenuTemperature[]" value="Cold" id="editTemperatureCold">
+                                    <label for="editTemperatureCold">Cold</label>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="editMenuQuantity" class="form-label">Quantity</label>
+                                <div class="d-flex align-items-center">
+                                    <div class="me-2" id="editQuantityValue">1</div>
+                                    <input type="range" class="form-range" id="editMenuQuantity" name="editMenuQuantity" min="1" max="100" value="1" required>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="editMenuPrice" class="form-label">Price</label>
+                                <div class="d-flex align-items-center">
+                                    <div class="me-2" id="editPriceValue">0.00</div>
+                                    <input type="range" class="form-range" id="editMenuPrice" name="editMenuPrice" min="0" max="1000" value="0" step="0.01" required>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="editProductStatus" class="form-label">Status</label>
+                                <select class="form-select" id="editProductStatus" name="editProductStatus" required>
+                                    <option value="Available">Available</option>
+                                    <option value="Unavailable">Unavailable</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <input type="hidden" id="editMenuId" name="editMenuId">
+                </form>
+            </div>
+            <!-- Buttons at the bottom -->
+            <div class="row m-2 mb-3">
+                <div class="col-6">
+                    <button type="button" class="container-fluid close-add" data-bs-dismiss="modal" aria-label="Close">Close</button>
+                </div>
+                <div class="col-6">
+                    <button type="button" class="btn-add-item container-fluid text-light" onclick="saveEdit()">Save Changes</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
 <div class="modal fade" id="addMenuModal" tabindex="-1" aria-labelledby="addMenuModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
@@ -263,66 +448,15 @@ ob_end_flush();
         </div>
     </div>
 </div>
-</div></form></div></div></div></div>
-<div class="modal fade" id="updateMenuModal" tabindex="-1" aria-labelledby="updateMenuModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="updateMenuModalLabel">Update Menu Item</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <form id="updateMenuForm" enctype="multipart/form-data">
-                    <input type="hidden" id="updateMenuId" name="menuId">
-                    <input type="hidden" id="existingImage" name="existingImage">
-                    <div class="mb-3">
-                        <label for="updateMenuName" class="form-label">Name</label>
-                        <input type="text" class="form-control" id="updateMenuName" name="menuName" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="updateMenuDescription" class="form-label">Description</label>
-                        <textarea class="form-control" id="updateMenuDescription" name="menuDescription" rows="3" required></textarea>
-                    </div>
-                    <div class="mb-3">
-                        <label for="updateMenuCategory" class="form-label">Category</label>
-                        <input type="text" class="form-control" id="updateMenuCategory" name="menuCategory" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="updateMenuImage" class="form-label">Image</label>
-                        <input type="file" class="form-control" id="updateMenuImage" name="menuImage">
-                    </div>
-                    <div class="mb-3">
-                        <label for="updateMenuQuantity" class="form-label">Quantity</label>
-                        <input type="number" class="form-control" id="updateMenuQuantity" name="menuQuantity" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="updateMenuPrice" class="form-label">Price</label>
-                        <input type="number" class="form-control" id="updateMenuPrice" name="menuPrice" step="0.01" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="updateProductStatus" class="form-label">Status</label><select class="form-select" id="updateProductStatus" name="productStatus" required><option value="available">Available</option><option value="unavailable">Unavailable</option></select></div><button type="submit" name="updateMenuItem" class="btn btn-primary">Update Menu Item</button>
-                </form></div></div></div></div>
-
-                <div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="deleteModalLabel">Confirm Delete</h5>
-                <button type="button" class="btn-close" data-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                Are you sure you want to delete this menu item?
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-                <form method="POST">
-                    <input type="hidden" name="menuId" id="deleteMenuId" value="">
-                    <button type="submit" name="deleteMenuItem" class="btn btn-danger">Delete</button>
-                </form>
-            </div>
-        </div>
-    </div>
 </div>
+</form>
+</div>
+</div>
+</div>
+</div>
+
+
+
 <div class="pagination-container d-flex justify-content-center my-4">
     <nav>
         <ul class="pagination">
@@ -356,6 +490,8 @@ ob_end_flush();
 </div>
 <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
 <script src="https://stackpath.bootstrapcdn.com/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
+<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/summernote/0.8.18/summernote.min.js"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function () {
@@ -367,7 +503,7 @@ ob_end_flush();
         // Function to check the category and toggle the size and temperature fields
         function toggleFields() {
             const selectedCategory = categorySelect.value;
-            if (selectedCategory !== 'Coffee' && selectedCategory !== 'Non-Coffee') {
+            if (selectedCategory !== 'Coffee' && selectedCategory !== 'Non-Coffee' && selectedCategory !== 'Signature Frappe')  {
                 sizeContainer.style.display = 'none';
                 temperatureContainer.style.display = 'none';
             } else {
@@ -382,38 +518,89 @@ ob_end_flush();
         // Add an event listener to run the function whenever the category changes
         categorySelect.addEventListener('change', toggleFields);
     });
+
+    function openEditModal(id) {
+    $.ajax({
+        url: 'menuManagement.php?id=' + id,
+        method: 'GET',
+        success: function(response) {
+            console.log(response); // Log the response to see what is being returned
+            try {
+                // No need to parse the response, it's already an object
+                const data = response;
+
+                // Populate the modal fields with the data
+                document.getElementById('editMenuName').value = data.name;
+                document.getElementById('editMenuDescription').value = data.description;
+                document.getElementById('editMenuCategory').value = data.category;
+                document.getElementById('editMenuQuantity').value = data.quantity;
+                document.getElementById('editQuantityValue').innerText = data.quantity;
+                document.getElementById('editMenuPrice').value = data.price;
+                document.getElementById('editPriceValue').innerText = parseFloat(data.price).toFixed(2);
+                document.getElementById('editProductStatus').value = data.status;
+                document.getElementById('editMenuId').value = data.id;
+
+                // Handle checkboxes for size
+                const sizeCheckboxes = document.querySelectorAll('input[name="editMenuSize[]"]');
+                sizeCheckboxes.forEach(checkbox => {
+                    checkbox.checked = data.size.includes(checkbox.value);
+                });
+
+                 // Show or hide size and temperature containers based on the category
+                 const selectedCategory = data.category;
+                const editSizeContainer = document.getElementById('editMenuSizeContainer');
+                const editTemperatureContainer = document.getElementById('editMenuTemperatureContainer');
+
+                if (selectedCategory === 'Signature Frappe' || selectedCategory === 'Non-Coffee' || selectedCategory === 'Coffee') {
+                    editSizeContainer.style.display = 'block';
+                    editTemperatureContainer.style.display = 'block';
+                } else {
+                    editSizeContainer.style.display = 'none';
+                    editTemperatureContainer.style.display = 'none';
+                }
+
+                // Handle checkboxes for temperature
+                const temperatureCheckboxes = document.querySelectorAll('input[name="editMenuTemperature[]"]');
+                temperatureCheckboxes.forEach(checkbox => {
+                    checkbox.checked = data.temperature.includes(checkbox.value);
+                });
+
+                // Show the modal
+                var editModal = new bootstrap.Modal(document.getElementById('editMenuModal'));
+                editModal.show();
+            } catch (error) {
+                console.error('Error processing response:', error);
+                console.log('Server response:', response);
+                alert('Error fetching item details. Please check the console for more information.');
+            }
+        },
+        error: function(xhr, status, error) {
+            console.error('AJAX error:', error);
+            alert('Error fetching item details: ' + error);
+        }
+    });
+}
+function saveEdit() {
+    const formData = new FormData(document.getElementById('editMenuForm'));
+    formData.append('editMenuItem', true);
+
+    $.ajax({
+        url: '',
+        method: 'POST',
+        data: formData,
+        processData: false,
+        contentType: false,
+        success: function(response) {
+            window.location.reload();
+        },
+        error: function(xhr, status, error) {
+            alert('Error updating item: ' + error);
+        }
+    });
+}
 </script>
 
 <script>
-function openUpdateMenuModal(menuId) {
-    fetch(`?id=${menuId}`)
-        .then(response => response.json())
-        .then(data => {
-            if (data) {
-                document.getElementById('updateMenuId').value = data.id; document.getElementById('updateMenuName').value = data.name;document.getElementById('updateMenuDescription').value = data.description;document.getElementById('updateMenuCategory').value = data.category;document.getElementById('existingImage').value = data.image;
-                $('#updateMenuModal').modal('show');
-            } else {
-                alert('Menu item not found.');
-            }
-        })
-        .catch(error => console.error('Error fetching menu item:', error));
-}
-document.getElementById('updateMenuForm').addEventListener('submit', function(event) {
-    event.preventDefault(); // Prevent default form submission
-    const formData = new FormData(this);
-    fetch('', {
-        method: 'POST',
-        body: formData
-    })
-    .then(response => {
-        if (response.ok) {
-            location.reload(); // Reload the page after successful update
-        } else {
-            alert('Error updating menu item.');
-        }
-    })
-    .catch(error => console.error('Error updating menu item:', error));
-});
     $(document).ready(function () {
         $('#search').on('keyup', function () {
             var value = $(this).val().toLowerCase();
@@ -423,40 +610,66 @@ document.getElementById('updateMenuForm').addEventListener('submit', function(ev
         });
     });
     let menuIdToDelete;
+
     function confirmDelete(menuId) {
-    $('#confirmDeleteModal').modal('show');
-    $('#confirmDeleteButton').off('click').on('click', function() {
-        // Send the delete request using AJAX or form submission
-        $.ajax({
-            url: '', // This should be the same page
-            method: 'POST',
-            data: { 
-                deleteMenuItem: true,
-                menuId: menuId 
-            },
-            success: function(response) {
-                window.location.reload();
-            },
-            error: function(xhr, status, error) {
-                alert('Error deleting item: ' + error);
-            }
-        });
-        
-        // Close the modal after sending the request
-        $('#confirmDeleteModal').modal('hide');
-    });
-}
-function confirmDelete(menuId) {
-        document.getElementById("deleteMenuId").value = menuId;
-        var deleteModal = new bootstrap.Modal(document.getElementById("deleteModal"));
-        deleteModal.show();
+    const deleteMenuIdElement = document.getElementById("deleteMenuId");
+    if (deleteMenuIdElement) {
+        deleteMenuIdElement.value = menuId;
+    } else {
+        console.error("Element with ID 'deleteMenuId' not found.");
     }
+    var deleteModal = new bootstrap.Modal(document.getElementById("deleteModal"));
+    deleteModal.show();
+}
+
+function deleteMenuItem() {
+    const menuId = document.getElementById("deleteMenuId").value;
+    $.ajax({
+        url: '', // This should be the same page
+        method: 'POST',
+        data: { 
+            deleteMenuItem: true,
+            menuId: menuId 
+        },
+        success: function(response) {
+            window.location.reload();
+        },
+        error: function(xhr, status, error) {
+            alert('Error deleting item: ' + error);
+        }
+    });
+} 
 
 function filterByCategory() {var selectedCategory = document.getElementById('categoryFilter').value;window.location.href = '?category=' + selectedCategory}
-</script><script>const quantitySlider = document.getElementById('menuQuantity');
-const quantityValue = document.getElementById('quantityValue');quantitySlider.oninput = function() {quantityValue.innerText = this.value;};
-const priceSlider = document.getElementById('menuPrice');const priceValue = document.getElementById('priceValue');
+</script>
+<script>
+const quantitySlider = document.getElementById('menuQuantity');
+const quantityValue = document.getElementById('quantityValue');
+quantitySlider.oninput = function() {quantityValue.innerText = this.value;};
+
+const priceSlider = document.getElementById('menuPrice');
+const priceValue = document.getElementById('priceValue');
 priceSlider.oninput = function() {priceValue.innerText = parseFloat(this.value).toFixed(2);};
+
+
+
+// Quantity Slider for Edit Menu
+const editQuantitySlider = document.getElementById('editMenuQuantity');
+const editQuantityValue = document.getElementById('editQuantityValue');
+if (editQuantitySlider && editQuantityValue) {
+    editQuantitySlider.oninput = function() {
+        editQuantityValue.innerText = this.value;
+    };
+}
+
+// Price Slider for Edit Menu
+const editPriceSlider = document.getElementById('editMenuPrice');
+const editPriceValue = document.getElementById('editPriceValue');
+if (editPriceSlider && editPriceValue) {
+    editPriceSlider.oninput = function() {
+        editPriceValue.innerText = parseFloat(this.value).toFixed(2);
+    };
+}
 </script>
 <script>
     // Add event listeners to the dropdown to toggle the filter icon button visibility

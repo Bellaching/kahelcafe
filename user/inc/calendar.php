@@ -7,50 +7,26 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
     <style>
-        .reservation-page
-        {
+        .reservation-page {
             height: 100%;
             background-color: transparent;
         }
+
         .calendar-container {
-            padding: 15px;
-            border-radius: 3rem;
-            border: 2px solid #ddd;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            overflow: hidden;
-            background-color: white;
-            width: 100%;
-            height: 100%;
-            margin: auto;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .reservation-page .calendar-container {
-            max-width: 70%;
-            height: 25rem;
-        }
-
-        .calendar-table {
-            width: 100%;
-            height: 100%;
-            border-collapse: collapse;
-            display: table;
-        }
-
-        .calendar-table td, .calendar-table th {
-            border: none;
-            padding: .2rem;
-            text-align: center;
-            vertical-align: middle;
-        }
-
-        .calendar-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: .5rem;
-        }
+    padding: 15px;
+    border-radius: 3rem;
+    border: 2px solid #ddd;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    overflow-x: auto; /* Allows scrolling if content overflows */
+    background-color: white;
+    width: 100%;
+    min-width: 300px; /* Prevents it from being cut off */
+    max-width: 100%;
+    height: auto;
+    display: flex;
+    flex-direction: column;
+    flex-wrap: wrap; /* Ensures items wrap properly */
+}
 
         .calendar-title {
             font-size: 1.2em;
@@ -60,7 +36,7 @@
             background-color: orange;
             padding: 1rem;
             border-radius: 1rem;
-            flex-grow: .5;
+            flex-grow: 1;
         }
 
         .calendar-nav {
@@ -77,11 +53,6 @@
             align-items: center;
             justify-content: center;
             text-align: center;
-        }
-
-        .calendar-table tbody {
-            overflow-y: auto;
-            height: calc(100% - 3.5rem);
         }
 
         .today {
@@ -104,14 +75,14 @@
 </head>
 <body class="reservation-page">
 
-<div class="container mt-5">
-    <div id="calendar" class="calendar-container">
-        <div class="calendar-header">
-        <span id="prev-month" class="calendar-nav"><i class="fas fa-chevron-left"></i></span>
+<div class="container d-flex justify-content-center align-items-center mt-5">
+    <div id="calendar" class="calendar-container col-lg-8 col-md-10 col-sm-12">
+        <div class="calendar-header d-flex justify-content-between align-items-center">
+            <span id="prev-month" class="calendar-nav"><i class="fas fa-chevron-left"></i></span>
             <span id="calendar-title" class="fw-bold"></span>
             <span id="next-month" class="calendar-nav"><i class="fas fa-chevron-right"></i></span>
         </div>
-        <table class="calendar-table">
+        <table class="calendar-table table text-center">
             <thead>
                 <tr>
                     <th>Sun</th>
@@ -124,7 +95,7 @@
                 </tr>
             </thead>
             <tbody id="calendar-body">
-                <!-- automatic dates here -->
+                <!-- Automatic dates here -->
             </tbody>
         </table>
     </div>

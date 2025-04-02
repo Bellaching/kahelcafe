@@ -54,9 +54,14 @@ position: relative; /* Makes the input group a positioning context */
     flex-direction: row;
 }
 
-.btn-delete{
+.btn-delete,
+.btn-edit{
     border-radius: 3rem !important;
     padding: 0.5rem;
+}
+
+.btn-edit{
+    background-color: #FF902B;
 }
 /* Responsive adjustments */
 @media (max-width: 768px) {
@@ -118,6 +123,7 @@ position: relative; /* Makes the input group a positioning context */
 
 .close-add:hover{
     background-color: #FF902B !important;
+    color: #ffff;
 }
 
 .close-add{

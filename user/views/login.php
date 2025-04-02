@@ -103,6 +103,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['login'])) {
                                     <div class="text-danger small"><?php echo $errors['password']; ?></div>
                                 <?php endif; ?>
                             </div>
+
+                            <div class="text-right">
+    <a href="forgot-pass.php" class="text-danger fs-6" style="text-decoration: none;">Forgot password?</a>
+</div>
+
+
+
+                           
+
+
                             <div class="d-grid">
                                 <button type="submit" name="login" class="btn btn-warning btn-login text-light">Login</button>
                             </div>

@@ -14,12 +14,8 @@
 ob_start(); // Start output buffering
 include "banner.php";
 include "./../../connection/connection.php";
-// Redirect if not logged in
-if (!isset($_SESSION['user_id'])) {
-    $_SESSION['cart_error'] = "You need to log in to add items to the cart.";
-    header("Location: /login.php");
-    exit();
-}
+
+
 
 $itemsPerPage = 6; 
 $current_page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
@@ -40,12 +36,6 @@ if (isset($_SESSION['user_id'])) {
 $userVerified = isset($_SESSION['user_id']) ? 1 : 0;
 $selectedCategory = isset($_GET['category']) ? $conn->real_escape_string($_GET['category']) : '';
 
-// Redirect if not logged in
-if (!isset($_SESSION['user_id'])) {
-    $_SESSION['cart_error'] = "You need to log in to add items to the cart.";
-    header("Location: /login.php");
-    exit();
-}
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['add_to_cart'])) {
     $item_id = intval($_POST['item_id']);
@@ -62,25 +52,52 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['add_to_cart'])) {
     if ($item) {
         $user_id = $_SESSION['user_id'];
 
-        // Insert into cart
-        $insertSql = "INSERT INTO cart (user_id, item_id, quantity, size, temperature, price) 
-                      VALUES ('$user_id', '$item_id', '$quantity', '$size', '$temperature', '$price')";
-        if ($conn->query($insertSql) === TRUE) {
-            $_SESSION['cart_success'] = "Item added to cart successfully!";
+        // Check if the item already exists in the cart
+        $checkSql = "SELECT * FROM cart WHERE user_id = '$user_id' AND item_id = '$item_id' AND size = '$size' AND temperature = '$temperature'";
+        $checkResult = $conn->query($checkSql);
+
+        if ($checkResult->num_rows > 0) {
+            // Item exists, update the quantity
+            $existingItem = $checkResult->fetch_assoc();
+            $newQuantity = $existingItem['quantity'] + $quantity;
+
+            $updateSql = "UPDATE cart SET quantity = '$newQuantity' WHERE id = " . $existingItem['id'];
+            if ($conn->query($updateSql) === TRUE) {
+                $_SESSION['cart_success'] = "Item quantity updated in cart successfully!";
+            } else {
+                $_SESSION['cart_error'] = "Error updating item quantity: " . $conn->error;
+            }
         } else {
-            $_SESSION['cart_error'] = "Error: " . $conn->error;
+            // Item does not exist, insert new row
+            $insertSql = "INSERT INTO cart (user_id, item_id, quantity, size, temperature, price) 
+                          VALUES ('$user_id', '$item_id', '$quantity', '$size', '$temperature', '$price')";
+            if ($conn->query($insertSql) === TRUE) {
+                $_SESSION['cart_success'] = "Item added to cart successfully!";
+            } else {
+                $_SESSION['cart_error'] = "Error: " . $conn->error;
+            }
         }
 
         // Update session cart
         if (isset($_SESSION['cart'])) {
-            $_SESSION['cart'][] = [
-                'id' => $item['id'],
-                'name' => $item['name'],
-                'price' => $item['price'],
-                'quantity' => $quantity,
-                'size' => $size,
-                'temperature' => $temperature
-            ];
+            $itemFound = false;
+            foreach ($_SESSION['cart'] as &$cartItem) {
+                if ($cartItem['id'] == $item['id'] && $cartItem['size'] == $size && $cartItem['temperature'] == $temperature) {
+                    $cartItem['quantity'] += $quantity;
+                    $itemFound = true;
+                    break;
+                }
+            }
+            if (!$itemFound) {
+                $_SESSION['cart'][] = [
+                    'id' => $item['id'],
+                    'name' => $item['name'],
+                    'price' => $item['price'],
+                    'quantity' => $quantity,
+                    'size' => $size,
+                    'temperature' => $temperature
+                ];
+            }
         } else {
             $_SESSION['cart'] = [
                 [

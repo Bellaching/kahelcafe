@@ -1,9 +1,253 @@
 <?php
+// Enable full error reporting
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
+
+ob_start();
 include './../inc/topNav.php'; 
-
 include './../../connection/connection.php';
-include '../views/reserve.php'
 
+// First, verify the reservation_time table exists
+$tableCheck = $conn->query("SHOW TABLES LIKE 'resservation_time'");
+if ($tableCheck->num_rows == 0) {
+    die("Error: The reservation_time table does not exist in the database.");
+}
+
+$clientFullName = "";
+$user_id = $_SESSION['user_id'] ?? 0;
+
+if ($user_id) {
+    $clientQuery = $conn->prepare("SELECT CONCAT(firstname, ' ', lastname) AS full_name FROM client WHERE id = ?");
+    $clientQuery->bind_param("i", $user_id);
+    $clientQuery->execute();
+    $result = $clientQuery->get_result();
+    if ($row = $result->fetch_assoc()) {
+        $clientFullName = $row['full_name'];
+    }
+    $clientQuery->close();
+}
+
+function getAvailableTimes($conn, $user_id, $date = null) {
+    $times = [];
+    $timeQuery = $conn->query("SELECT id, time FROM res_time ORDER BY time");
+    while ($row = $timeQuery->fetch_assoc()) {
+        $times[] = $row;
+    }
+    
+    if ($date) {
+        foreach ($times as &$time) {
+            $checkQuery = $conn->prepare("
+                SELECT r.id, r.res_status, r.client_id, rt.time
+                FROM reservation r
+                JOIN res_time rt ON r.reservation_time_id = rt.id
+                WHERE r.reservation_date = ? 
+                AND r.reservation_time_id = ?
+            ");
+            $checkQuery->bind_param("si", $date, $time['id']);
+            $checkQuery->execute();
+            $result = $checkQuery->get_result();
+            
+            if ($result->num_rows > 0) {
+                $res_status = $result->fetch_assoc();
+                if ($res_status['client_id'] == $user_id) {
+                    $time['res_status'] = 'your_reservation';
+                    $time['disabled'] = true;
+                } elseif ($res_status['res_status'] == 'booked') {
+                    $time['res_status'] = 'booked';
+                    $time['disabled'] = true;
+                }
+            } else {
+                $time['res_status'] = 'available';
+                $time['disabled'] = false;
+            }
+        }
+    }
+    
+    return $times;
+}
+
+$selectedDate = $_POST['reservation_date'] ?? '';
+$times = getAvailableTimes($conn, $user_id, $selectedDate);
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $client_id = (int)$_POST['client_id'];
+    $party_size = (int)$_POST['party_size'];
+    $reservation_date = $conn->real_escape_string($_POST['reservation_date']);
+    $reservation_time_id = (int)$_POST['reservation_id'];
+    $note = $conn->real_escape_string($_POST['note_area'] ?? '');
+    $amount = 50;
+    $transaction_code = 'RES-' . strtoupper(uniqid());
+
+    try {
+        if (empty($client_id) || empty($reservation_date) || empty($reservation_time_id)) {
+            throw new Exception("Missing required fields");
+        }
+
+        // Get time slot details
+        $timeQuery = $conn->prepare("SELECT id, time FROM res_time WHERE id = ?");
+        $timeQuery->bind_param("i", $reservation_time_id);
+        $timeQuery->execute();
+        $timeResult = $timeQuery->get_result();
+        
+        if ($timeResult->num_rows === 0) {
+            throw new Exception("Invalid time slot selected");
+        }
+        
+        $timeData = $timeResult->fetch_assoc();
+        $time_slot = $timeData['time'];
+
+        $conn->begin_transaction();
+
+        try {
+                                // To this:
+                $stmt = $conn->prepare("
+                INSERT INTO reservation (
+                    transaction_code,
+                    client_id,
+                    clientFullName,
+                    reservation_date,
+                    reservation_time_id,
+                    reservation_time,
+                    party_size,
+                    note_area,
+                    amount,
+                    res_status,
+                    date_created
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'for confirmation', NOW())
+                ");
+                if (!$stmt) {
+                // Handle prepare error
+                die("Prepare failed: " . $conn->error);
+                }
+
+                $stmt->bind_param(
+                    "sissssisi",
+                    $transaction_code,
+                    $client_id,
+                    $clientFullName,
+                    $reservation_date,
+                    $reservation_time_id,
+                    $time_slot,  // Use the variable that contains the time value
+                    $party_size,
+                    $note,
+                    $amount
+                );
+
+            if (!$stmt->execute()) {
+                throw new Exception("Reservation failed: " . $stmt->error);
+            }
+            
+            $new_reservation_id = $conn->insert_id;
+            
+            // 2. Insert into reservation_time table
+            $timeStmt = $conn->prepare("
+                INSERT INTO resservation_time (
+                    id,
+                    reservation_time,
+                    reservation_time_id
+                ) VALUES (?, ?, ?)
+            ");
+            
+            $timeStmt->bind_param(
+                "isi",
+                $new_reservation_id,
+                $time_slot,
+                $reservation_time_id
+            );
+            
+            if (!$timeStmt->execute()) {
+                throw new Exception("Failed to save time details: " . $timeStmt->error);
+            }
+            
+            $conn->commit();
+            
+            ob_end_clean();
+            
+            echo '<!DOCTYPE html>
+            <html lang="en">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Reservation Confirmation</title>
+                <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+                <style>
+                    .success-modal {
+                        position: fixed;
+                        top: 0;
+                        left: 0;
+                        width: 100%;
+                        height: 100%;
+                        background-color: rgba(0,0,0,0.5);
+                        display: flex;
+                        justify-content: center;
+                        align-items: center;
+                        z-index: 1050;
+                    }
+                    .success-modal-content {
+                        background: white;
+                        padding: 30px;
+                        border-radius: 10px;
+                        text-align: center;
+                        max-width: 500px;
+                        width: 90%;
+                    }
+                    .success-icon {
+                        font-size: 60px;
+                        color: #4CAF50;
+                        margin-bottom: 20px;
+                    }
+                    .success-message {
+                        font-size: 18px;
+                        margin-bottom: 20px;
+                    }
+                    .redirect-message {
+                        font-size: 14px;
+                        color: #666;
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="success-modal">
+                    <div class="success-modal-content">
+                        <div class="success-icon">✓</div>
+                        <h3>Reservation Confirmed!</h3>
+                        <p class="success-message">Your reservation has been successfully created.</p>
+                        <p class="redirect-message">You will be redirected to your reservation details in <span id="countdown">3</span> seconds...</p>
+                    </div>
+                </div>
+                
+                <script>
+                    let seconds = 3;
+                    const countdownElement = document.getElementById("countdown");
+                    const countdown = setInterval(() => {
+                        seconds--;
+                        countdownElement.textContent = seconds;
+                        if (seconds <= 0) {
+                            clearInterval(countdown);
+                            window.location.href = "reservation_track.php?reservation_id='.$new_reservation_id.'";
+                        }
+                    }, 1000);
+                </script>
+            </body>
+            </html>';
+            $stmt->close();
+            $timeStmt->close();
+            exit();
+        } catch (Exception $e) {
+            $conn->rollback();
+            throw $e;
+        }
+
+    } catch (Exception $e) {
+        error_log("RESERVATION ERROR: " . $e->getMessage());
+        ob_end_clean();
+        echo "<div class='alert alert-danger'>Error: " . htmlspecialchars($e->getMessage()) . "</div>";
+    }
+}
+
+ob_end_flush();
 ?>
 
 <!DOCTYPE html>
@@ -17,273 +261,324 @@ include '../views/reserve.php'
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
     <link rel="stylesheet" href="../asset/css/resrvation.css">
- 
-   
+    <style>
+        .available-time-btn:disabled {
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+        .error-message {
+            color: red;
+            margin: 10px 0;
+        }
+        .selected-time {
+            border: 2px solid #000 !important;
+        }
+        #time-error {
+            color: red;
+            margin-top: 5px;
+            display: none;
+        }
+        /* Confirmation Modal Styles */
+        #confirmationModal {
+            z-index: 1060;
+        }
+        .confirmation-icon {
+            font-size: 60px;
+            color: #f39c12;
+            margin-bottom: 20px;
+        }
+        .confirmation-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 20px;
+        }
+    </style>
 </head>
-<body class="reservation ">
+<body class="reservation">
+    <!-- Confirmation Modal -->
+    <div class="modal fade" id="confirmationModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-body text-center">
+                    <div class="confirmation-icon">?</div>
+                    <h4>Confirm Reservation</h4>
+                    <p>Are you sure you want to reserve your table?</p>
+                    <div class="confirmation-buttons">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-primary" id="confirmReservation">Yes, Confirm</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="res-body">
         <div class="reservation-left">
             <div class="left-header">
                 <h1 id="title">Reservation</h1>
             </div>
-
             <div class="calendar">
                 <iframe src="../inc/calendar2.php"></iframe>
             </div>
-
-         
         </div>
 
-        <div class="reservation-right  ">
+        <div class="reservation-right">
+            <?php if (!empty($error_message)): ?>
+                <div class="alert alert-danger"><?php echo htmlspecialchars($error_message); ?></div>
+            <?php endif; ?>
+
             <div class="seat-reservation">
                 <h4 class="cart-right-header1 px-4">Seat Reservation</h4>
-
-                <div class="reservation-color ">
+                <div class="reservation-color">
                     <p class="color-coding text-light p-2" style="background-color:#07D090;">Available</p>
                     <p class="color-coding text-light p-2" style="background-color:#E60000;">Fully Booked</p>
                     <p class="color-coding text-light p-2" style="background-color:#9647FF;">Your Reservation</p>
                 </div>
             </div>
 
-              
             <div class="Available-Time">
                 <h4 class="cart-right-header1">Available Time</h4>
-                <!-- <input type="date" id="date-picker" class="form-control">    -->
-                <p id="date-picker" class="form-control" style="display: none;"> </p>
+                <p id="date-picker" class="form-control" style="display: none;"></p>
                 <div class="Available-Time-show" id="Available-Time-show">
-                <?php foreach ($times as $i => $time): ?>
-                    <button class="available-time-btn" id="time-btn-<?= $i ?>" data-time-id="<?= $time['time_id'] ?>" style="background-color: #07D090;">
-                        <?= $time['time'] ?>
-                    </button>
-                <?php endforeach; ?>
+                    <?php foreach ($times as $i => $time): ?>
+                        <button type="button" class="available-time-btn" id="time-btn-<?= $i ?>" 
+                               data-time-id="<?= $time['id'] ?>"
+                                data-time-value="<?= htmlspecialchars($time['time']) ?>"
+                                style="background-color: #07D090;">
+                            <?= htmlspecialchars($time['time']) ?>
+                        </button>
+                    <?php endforeach; ?>
                 </div>
+                <div id="time-error">Please select a time slot</div>
             </div>
     
             <div class="party-size" id="party-size">
                 <small>Party Size</small>
                 <div class="input-group scale-size">
                     <button class="btn btn-outline-secondary" type="button" id="button-minus">-</button>
-                    <input type="number" class="form-control" value="1" id="number-input" min="0">
+                    <input type="number" class="form-control" value="1" id="number-input" min="1" max="20">
                     <button class="btn btn-outline-secondary" type="button" id="button-plus">+</button>
                 </div>
             </div>
 
-
             <div class="order-summary-container container-fluid px-4">
-    <h1 class="cart-right-header1">Reservation Summary</h1>
+                <h1 class="cart-right-header1">Reservation Summary</h1>
+                <div class="order-summary-info">
+                    <form action="" method="POST" id="reservation-form">
+                        <input type="hidden" name="client_id" value="<?php echo htmlspecialchars($user_id); ?>">
 
-    <div class="order-summary-info">
-        <form action="" method="POST">
-            <!-- Client ID (hidden) -->
-            <input type="hidden" name="client_id" value="<?php echo $user_id; ?>">
+                        <div class="reservation-info" id="reservation-info-name">
+                            <p class="name">Name</p> 
+                            <p class="result-sum name-result"><?php echo htmlspecialchars($clientFullName) ?></p>
+                        </div>
 
-            <div class="reservation-info" id="reservation-info-name">
-                <p class="name" id="name">Name</p> 
-                <p class="result-sum name-result" id="name-result"> <?php echo $clientFullName ?></p>
-            </div>
+                        <div class="reservation-info" id="reservation-info-party-size">
+                            <p class="party-size-info">Party Size</p>
+                            <p class="result-sum party-size-result">1</p>
+                            <input type="hidden" name="party_size" id="party_size_input" value="1">
+                        </div>
 
-            <div class="reservation-info" id="reservation-info-party-size">
-                <p class="party-size-info" id="party-size">Party Size</p>
-                <p class="result-sum party-size-result" id="party-size-result"></p>
-                <input type="hidden" name="party_size" id="party_size_input">
-            </div>
+                        <div class="reservation-info" id="reservation-info-date">
+                            <p class="date">Date</p>
+                            <p id="date-result" class="result-sum date-result">Not selected</p>
+                            <input type="hidden" name="reservation_date" id="reservation_date_input">
+                        </div>
 
-            <div class="reservation-info" id="reservation-info-date">
-                <p class="date" id="date">Date</p>
-                <p id="date-result" class="result-sum date-result">0</p>
-                <input type="hidden" name="reservation_date" id="reservation_date_input">
-            </div>
+                        <div class="reservation-info" id="reservation-info-time">
+                            <p class="time">Time</p>
+                            <p id="time-result" class="result-sum time-result">Not selected</p>
+                            <input type="hidden" name="reservation_id" id="reservation_time_input">
+                        </div>
 
-            <div class="reservation-info" id="reservation-info-time">
-                <p class="time" id="time">Time</p>
-                <p class="result-sum time-result" id="time-result">Select time</p>
-                <input type="hidden" name="reservation_time" id="reservation_time_input">
-            </div>
+                        <div class="reservation-info" id="reservation-info-reservation-fee">
+                            <p class="reservation-fee">Reservation Fee</p>
+                            <p class="result-sum reservation-fee-result">₱ 50</p>
+                            <input type="hidden" name="amount" value="50">
+                        </div>
 
-            <div class="reservation-info" id="reservation-info-reservation-fee">
-                <p class="reservation-fee" id="reservation-fee">Reservation Fee</p>
-                <p class="result-sum reservation-fee-result" id="reservation-fee-result">
-                    ₱ 50
-                </p>
-                <input type="hidden" name="amount" value="<?php echo '₱' . number_format($reservation_fee, 2); ?>">
-            </div>
-
-          
-
-                  <div class="con-reser mb-3">
-
-                  <div class="note my-2 container-fluid">
-                  <label for="user-note">Notes</label>
-          <textarea name="note_area" id="" maxlength="500" class="container-fluid " style="border-color: #B3B3B3; border-radius: 10px; height: 150px; resize: none;" placeholder="Additional notes..."></textarea>
-         
-      
-      
-                  </div>
-                  <button type="submit" class="container-fluid" id="confirm-order" class="mb-3" >Confirm Order</button>
-                  </div>
-
-       
-        </form>
-
-
-                    
+                        <div class="con-reser mb-3">
+                            <div class="note my-2 container-fluid">
+                                <label for="user-note">Notes</label>
+                                <textarea name="note_area" maxlength="500" class="container-fluid" 
+                                          style="border-color: #B3B3B3; border-radius: 10px; height: 150px; resize: none;" 
+                                          placeholder="Additional notes..."></textarea>
+                            </div>
+                            <button type="button" class="container-fluid btn btn-primary" id="confirm-order">Confirm Reservation</button>
+                        </div>
+                    </form>
                 </div>
-                </div>
-       
+            </div>
+        </div>
     </div>
 
     <script>
-              // Listener to handle date selection from the calendar iframe
-window.addEventListener('message', function(event) {
-    if (event.data && event.data.selectedDate) {
-        const selectedDate = event.data.selectedDate;
-        
-        // Set the selected date in the hidden input field
-        document.getElementById('reservation_date_input').value = selectedDate; // Pass the date to the hidden input
-
-        // Update the date result in the UI
-        const resultElement = document.getElementById("date-result");
-        const today = new Date();
-        const todayFormatted = today.toISOString().split('T')[0];  // Format as yyyy-mm-dd
-
-        if (selectedDate === todayFormatted) {
-            resultElement.textContent = "Select another date";
-        } else {
-            resultElement.textContent = selectedDate;
-            document.getElementById('time-result').innerText = 'Select Time';  // Clear time result
-        }
-
-        // Fetch reservation status
-        fetchReservationStatus(selectedDate);
-    }
-});
-
-
-
-// Fetch reservation status based on selected date
-function fetchReservationStatus(date) {
-    fetch(`../user/res.php?date=${date}`)
-        .then(response => response.json())
-        .then(data => {
-            const buttons = document.querySelectorAll('.available-time-btn');
-
-            data.status_reservations.forEach((status, index) => {
-                let color = '#07D090'; // Default color
-                let isDisabled = false;
-
-                // Check if the user has a reservation or the status is booked
-                if (status.client_id == <?php echo json_encode($user_id); ?>) {
-                    color = 'purple';
-                    isDisabled = true;
-                    // Optionally, you can add an alert or a message if needed
-                    // alert("You already have a reservation for this time.");
-                } else if (status.status === 'booked') {
-                    color = 'red'; 
-                    isDisabled = true; 
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize variables
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('date-picker').value = today;
+            
+            // Form elements
+            const reservationForm = document.getElementById("reservation-form");
+            const numberInput = document.getElementById("number-input");
+            const partySizeResult = document.querySelector(".party-size-result");
+            const partySizeInput = document.getElementById("party_size_input");
+            const dateResult = document.getElementById("date-result");
+            const timeResult = document.getElementById("time-result");
+            const reservationDateInput = document.getElementById("reservation_date_input");
+            const reservationTimeInput = document.getElementById("reservation_time_input");
+            const timeError = document.getElementById("time-error");
+            const confirmOrderBtn = document.getElementById("confirm-order");
+            const confirmationModal = new bootstrap.Modal(document.getElementById('confirmationModal'));
+            
+            // Set initial values
+            numberInput.value = 1;
+            partySizeResult.textContent = numberInput.value;
+            partySizeInput.value = numberInput.value;
+            
+            // Fetch initial reservation status
+            fetchReservationStatus(today);
+            
+            // Party size controls
+            document.getElementById("button-plus").addEventListener("click", function() {
+                if (parseInt(numberInput.value) < 20) {
+                    numberInput.value = parseInt(numberInput.value) + 1;
+                    updatePartySize();
                 }
-
-                // Apply the color and disable status
-                buttons[index].style.backgroundColor = color;
-                buttons[index].disabled = isDisabled;
-
-                // Only allow click if the button is available (green)
-                if (color === '#07D090') {
-                    buttons[index].disabled = false;
+            });
+            
+            document.getElementById("button-minus").addEventListener("click", function() {
+                if (parseInt(numberInput.value) > 1) {
+                    numberInput.value = parseInt(numberInput.value) - 1;
+                    updatePartySize();
                 }
-
-                buttons[index].addEventListener('click', function() {
-                    // When a valid time slot is clicked, update the time input field
-                    if (color === '#07D090' && !buttons[index].disabled) {
-                        const selectedTime = buttons[index].innerText; // Get the time of the clicked button
-                        document.getElementById('time-result').innerText = `${selectedTime}`; // Display the time
-
-                        // Set the value of the hidden input to the selected time's corresponding timeId
-                        document.getElementById('reservation_time_input').value = buttons[index].dataset.timeId;
-
-                        // Any additional logic if the user has a reservation or the time is already booked
-                        if (status.client_id == <?php echo json_encode($user_id); ?>) {
-                            // Here you can do something special if the user has a reservation, e.g., show a message
-                            console.log("You already have a reservation for this time.");
-                        }
-                    }
+            });
+            
+            numberInput.addEventListener("change", function() {
+                let value = parseInt(this.value);
+                if (isNaN(value) || value < 1) value = 1;
+                if (value > 20) value = 20;
+                this.value = value;
+                updatePartySize();
+            });
+            
+            function updatePartySize() {
+                partySizeResult.textContent = numberInput.value;
+                partySizeInput.value = numberInput.value;
+            }
+            
+            // Time button selection
+            document.querySelectorAll('.available-time-btn').forEach(button => {
+                button.addEventListener('click', function() {
+                    // Remove selection from all buttons
+                    document.querySelectorAll('.available-time-btn').forEach(btn => {
+                        btn.classList.remove('selected-time');
+                    });
+                    
+                    // Add selection to clicked button
+                    this.classList.add('selected-time');
+                    
+                    // Get time data
+                    const timeId = this.getAttribute('data-time-id');
+                    const timeValue = this.getAttribute('data-time-value');
+                    
+                    // Update form fields
+                    timeResult.textContent = timeValue;
+                    reservationTimeInput.value = timeId;
+                    timeError.style.display = 'none';
+                    
+                    console.log("Selected Time ID:", timeId, "Value:", timeValue);
                 });
             });
-        })
-        .catch(error => console.error('Error fetching data:', error));
-}
-
-
-
-                // Initial fetch when page loads (for today's date)
-                document.addEventListener('DOMContentLoaded', function() {
-                    const today = new Date().toISOString().split('T')[0];
-                    document.getElementById('date-picker').value = today;
-                    fetchReservationStatus(today);
-                });
-
-                // Initial setup when the page loads
-                document.addEventListener('DOMContentLoaded', function() {
-                    const numberInput = document.getElementById("number-input");
-                    const partySizeResult = document.getElementById("party-size-result");
-
-                    // Set initial value of the number input to 1
-                    numberInput.value = 1;
-
-                    // Update the party size result
-                    partySizeResult.textContent = numberInput.value;
-                    document.getElementById('party-size-result').textContent = document.getElementById('number-input').value;
+            
+            // Calendar iframe communication
+            window.addEventListener('message', function(event) {
+                if (event.data && event.data.selectedDate) {
+                    const selectedDate = event.data.selectedDate;
+                    reservationDateInput.value = selectedDate;
                     
+                    const today = new Date();
+                    const todayFormatted = today.toISOString().split('T')[0];
                     
-                });
-
-                // Update the party size result when the number input changes
-                document.getElementById("button-plus").addEventListener("click", function() {
-                    const numberInput = document.getElementById("number-input");
-                    const partySizeResult = document.getElementById("party-size-result");
-                    document.getElementById("party_size_input").value=partySizeResult;
-
-                    // Increment the value
-                    numberInput.value = parseInt(numberInput.value) + 1;
-
-                    // Update the result text
-                    partySizeResult.textContent = numberInput.value;
-                });
-
-                document.getElementById("button-minus").addEventListener("click", function() {
-                    const numberInput = document.getElementById("number-input");
-                    const partySizeResult = document.getElementById("party-size-result");
-
-                    // Decrement the value, but prevent going below 1
-                    if (parseInt(numberInput.value) > 1) {
-                        numberInput.value = parseInt(numberInput.value) - 1;
+                    if (selectedDate === todayFormatted) {
+                        dateResult.textContent = "Select another date";
+                        reservationDateInput.value = "";
+                    } else {
+                        dateResult.textContent = selectedDate;
+                        timeResult.textContent = 'Not selected';
+                        reservationTimeInput.value = "";
+                        
+                        // Clear time selection
+                        document.querySelectorAll('.available-time-btn').forEach(btn => {
+                            btn.classList.remove('selected-time');
+                        });
                     }
-
-                    // Update the result text
-                    partySizeResult.textContent = numberInput.value;
-                });
-
-           // JavaScript - Updated click handler for selecting reservation time
-const timeButtons = document.querySelectorAll('.time-button');
-timeButtons.forEach(button => {
-    button.addEventListener('click', function () {
-        const selectedTime = this.textContent.trim(); // Get the actual time
-        document.getElementById('reservation_time_input').value = selectedTime;
-        console.log("Selected Time:", selectedTime); // Debugging
-    });
-});
-
-document.querySelector('#confirm-order').addEventListener('click', function() {
-    console.log("Reservation Time Input:", document.getElementById('reservation_time_input').value);
-});
-
-
-
-
-
-
-
+                    
+                    fetchReservationStatus(selectedDate);
+                }
+            });
+            
+            // Form validation and submission
+            confirmOrderBtn.addEventListener('click', function() {
+                let isValid = true;
                 
-
+                if (!reservationDateInput.value) {
+                    alert('Please select a date');
+                    isValid = false;
+                }
+                
+                if (!reservationTimeInput.value) {
+                    timeError.style.display = 'block';
+                    isValid = false;
+                }
+                
+                if (isValid) {
+                    // Show confirmation modal
+                    confirmationModal.show();
+                }
+            });
+            
+            // Confirm reservation button in modal
+            document.getElementById('confirmReservation').addEventListener('click', function() {
+                confirmationModal.hide();
+                reservationForm.submit();
+            });
+            
+            // Fetch reservation status for a date
+            function fetchReservationStatus(date) {
+                if (!date) return;
+                
+                fetch(`../user/res.php?date=${date}`)
+                    .then(response => {
+                        if (!response.ok) throw new Error('Network response was not ok');
+                        return response.json();
+                    })
+                    .then(data => {
+                        const buttons = document.querySelectorAll('.available-time-btn');
+                        
+                        if (data.status_reservations && data.status_reservations.length === buttons.length) {
+                            data.status_reservations.forEach((res_status, index) => {
+                                let color = '#07D090'; // Available
+                                let isDisabled = false;
+                                
+                                if (res_status.client_id == <?php echo json_encode($user_id); ?>) {
+                                    color = '#9647FF'; // Your reservation
+                                    isDisabled = true;
+                                } else if (res_status.res_status === 'booked') {
+                                    color = '#E60000'; // Booked
+                                    isDisabled = true;
+                                }
+                                
+                                buttons[index].style.backgroundColor = color;
+                                buttons[index].disabled = isDisabled;
+                            });
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error fetching reservation status:', error);
+                    });
+            }
+        });
     </script>
 </body>
 </html>

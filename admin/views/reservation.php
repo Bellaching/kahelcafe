@@ -37,7 +37,7 @@ include './../inc/topNav.php';
             display: flex;
             flex-direction: row;
         }
-
+ 
         .order-s {
             color: #FF902B;
         }
@@ -76,7 +76,7 @@ include './../inc/topNav.php';
         <div class="row mt-5 ms-5">
             <div class="col-12 col-md-10 col-lg-8">
                 <p class="account-text">
-                    Order <span class="management-underline">Management</span>
+                    Reservation <span class="management-underline">Management</span>
                 </p>
             </div>
         </div>
@@ -122,86 +122,83 @@ include './../inc/topNav.php';
         </div>
     </div>
 
-    <!-- Modal for Update User Status -->
-    <div class="modal fade container-fluid" id="updateUserModal" tabindex="-1" role="dialog" aria-labelledby="updateUserModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg" role="document">
-            <div class="modal-content container-fluid">
-                <div class="modal-body container-fluid">
-                    <form id="updateStatusForm">
-                        <div class="form-group update-down d-flex flex-column">
-                            <h5 class="order-s">Order Summary</h5>
-                            <div class="form-group order-sum d-flex flex-row">
-                                <div class="d-flex flex-column gap-3 m-3">
-                                    <div class="d-flex flex-row mb-3 align-items-baseline">
-                                        <label class="l mr-5">Client Name</label>
-                                        <p id="client_full_name_display" class="p mb-0 ml-auto text-right"></p>
-                                    </div>
-
-                                    <div class="d-flex flex-row mb-3 align-items-baseline">
-                                        <label class="l mr-5">Transaction no.</label>
-                                        <p id="transaction_id" class="p mb-0 ml-auto text-right"></p>
-                                    </div>
-
-                                    <div class="d-flex flex-row mb-3 align-items-baseline">
-                                        <label class="l mr-5">Reservation Type</label>
-                                        <p id="reservation_type" class="p mb-0 ml-auto text-right"></p>
-                                    </div>
-
-                                    <div class="d-flex flex-row mb-3 align-items-baseline">
-                                        <label class="l mr-5">Party Size</label>
-                                        <p id="party_size" class="p mb-0 ml-auto text-right"></p>
-                                    </div>
-
-                                    <div class="d-flex flex-row mb-1 align-items-baseline mt-2">
-                                        <label class="l mr-5 fs-5 bold">Total Price</label>
-                                        <p id="total_price1" class="p1 mb-0 ml-auto bold text-right">P</p>
-                                    </div>
+   <!-- Modal for Update User Status -->
+<div class="modal fade container-fluid" id="updateUserModal" tabindex="-1" role="dialog" aria-labelledby="updateUserModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content container-fluid">
+            <div class="modal-body container-fluid">
+                <form id="updateStatusForm">
+                    <div class="form-group update-down d-flex flex-column">
+                        <h5 class="order-s">Order Summary</h5>
+                        <div class="form-group order-sum d-flex flex-row">
+                            <div class="d-flex flex-column gap-3 m-3">
+                                <div class="d-flex flex-row mb-3 align-items-baseline">
+                                    <label class="l mr-5">Client Name</label>
+                                    <p id="client_full_name_display" class="p mb-0 ml-auto text-right"></p>
                                 </div>
 
-                                <div class="d-flex flex-column gap-3 m-3">
-                                    <div class="d-flex flex-row mb-3 align-items-baseline">
-                                        <label class="l mr-5">Date</label>
-                                        <p id="created_at" class="p mb-0 ml-auto text-right"></p>
-                                    </div>
-
-                                    <div class="d-flex flex-row mb-3 align-items-baseline">
-                                        <label class="l mr-5">Time</label>
-                                        <p id="transaction_id" class="p mb-0 ml-auto text-right"></p>
-                                    </div>
-
-                                    <div class="d-flex flex-row mb-3 align-items-baseline">
-                                        <label class="l mr-5">Sub total</label>
-                                        <p id="total_price" class="p mb-0 ml-auto bold text-right">P</p>
-                                    </div>
-
-                                    <div class="d-flex flex-row mb-3 align-items-baseline">
-                                        <label class="l mr-5">Reservation fee</label>
-                                        <p id="party_size" class="p mb-0 ml-auto text-right"></p>
-                                    </div>
+                                <div class="d-flex flex-row mb-3 align-items-baseline">
+                                    <label class="l mr-5">Transaction no.</label>
+                                    <p id="transaction_code_display" class="p mb-0 ml-auto text-right"></p>
                                 </div>
+
+                            
+
+                                <div class="d-flex flex-row mb-3 align-items-baseline">
+                                    <label class="l mr-5">Party Size</label>
+                                    <p id="party_size_display" class="p mb-0 ml-auto text-right"></p>
+                                </div>
+
+                                <div class="d-flex flex-row mb-1 align-items-baseline mt-2">
+                                    <label class="l mr-5 fs-5 bold">Total Price</label>
+                                    <p id="total_price_display" class="p1 mb-0 ml-auto bold text-right"></p>
+                                </div>
+
                             </div>
 
-                            <div class="form-group p-3 mb-5 mx-5">
-                                <label for="status" class="fw-bold">Order Status</label>
-                                <select class="form-control container-fluid" id="status" name="status">
-                                    <option value="for confirmation">For Confirmation</option>
-                                    <option value="for payment">Payment</option>
-                                    <option value="booked">Booked</option>
-                                    <option value="rate us">Rate Us</option>
-                                    <option value="cancelled">Cancelled</option>
-                                </select>
+                            <div class="d-flex flex-column gap-3 m-3">
+
+                                <div class="d-flex flex-row mb-3 align-items-baseline">
+                                    <label class="l mr-5">Reservation Date</label>
+                                    <p id="reservation_date_display" class="p mb-0 ml-auto text-right"></p>
+                                </div>
+
+                                <div class="d-flex flex-row mb-3 align-items-baseline">
+                                    <label class="l mr-5">Time</label>
+                                    <p id="reservation_time_display" class="p mb-0 ml-auto text-right"></p>
+                                </div>
+
+                               
+
+                                <div class="d-flex flex-row mb-3 align-items-baseline">
+                                    <label class="l mr-5">Reservation fee</label>
+                                    <p id="reservation_fee_display" class="p mb-0 ml-auto text-right"></p>
+                                </div>
+
                             </div>
                         </div>
 
-                        <input type="hidden" id="transactionCode" name="transactionCode">
-                    </form>
-                </div>
-                <div class="mx-auto m-5">
-                    <button type="button" class="upsta btn btn-primary rounded-pill px-5 container-fluid" id="saveStatusBtn">Update Status</button>
-                </div>
+                        <div class="form-group p-3 mb-5 mx-5">
+                            <label for="status" class="fw-bold">Order Status</label>
+                            <select class="form-control container-fluid" id="status" name="status">
+                                <option value="for confirmation">For Confirmation</option>
+                                <option value="payment">Payment</option>
+                                <option value="booked">Booked</option>
+                                <option value="rate us">Rate Us</option>
+                                <option value="cancel">Cancelled</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <input type="hidden" id="transactionCode" name="transactionCode">
+                </form>
+            </div>
+            <div class="mx-auto m-5">
+                <button type="button" class="upsta btn btn-primary rounded-pill px-5 container-fluid" id="saveStatusBtn">Update Status</button>
             </div>
         </div>
     </div>
+</div>
 
     <!-- jQuery, DataTable, and Bootstrap JS -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>

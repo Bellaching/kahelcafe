@@ -24,7 +24,7 @@ include './../inc/topNav.php';
         }
 
         .modal-body {
-            display: flex;
+            display: flex; 
             flex-direction: column;
         }
 

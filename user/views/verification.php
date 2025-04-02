@@ -5,6 +5,14 @@ require 'PHPMailer/src/PHPMailer.php';
 require 'PHPMailer/src/SMTP.php'; 
 require 'PHPMailer/src/Exception.php'; 
 
+session_start();
+
+if (!isset($_GET['email']) || empty($_GET['email'])) {
+    header("Location: login.php"); // Redirect to login page if email is missing
+    exit();
+}
+
+
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 

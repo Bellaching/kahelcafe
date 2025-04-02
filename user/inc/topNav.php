@@ -27,7 +27,6 @@ if (isset($_SESSION['user_id'])) {
     $stmt->fetch();
     $stmt->close();
 
-    // Fetch the cart count specific to the logged-in user
     $sql = "SELECT COUNT(*) FROM cart WHERE user_id = ?";
     $stmt = $conn->prepare($sql);
     $stmt->bind_param("i", $userId);
@@ -35,9 +34,35 @@ if (isset($_SESSION['user_id'])) {
     $stmt->bind_result($cartCount);
     $stmt->fetch();
     $stmt->close();
+
+    // Fetch the notification count (unread notifications)
+    $sql = "SELECT COUNT(*) FROM notifications WHERE user_id = ? AND is_read = 0";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("i", $userId);
+    $stmt->execute();
+    $stmt->bind_result($notificationCount);
+    $stmt->fetch();
+    $stmt->close();
+
+    // Fetch all notifications for the user
+    $sql = "SELECT id, message, created_at FROM notifications WHERE user_id = ? ORDER BY created_at DESC";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("i", $userId);
+    $stmt->execute();
+    $notifications = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $stmt->close();
 } else {
     $cartCount = 0; // Default if the user is not logged in
+    $notificationCount = 0; // Default if the user is not logged in
+    $notifications = []; // Empty array if the user is not logged in
 }
+
+$sql = "SELECT id, message, created_at, is_read FROM notifications WHERE user_id = ? ORDER BY created_at DESC ";
+$stmt = $conn->prepare($sql);
+$stmt->bind_param("i", $userId);
+$stmt->execute();
+$notifications = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+$stmt->close();
 
 include '../views/change_profile.php';
 ?>
@@ -49,11 +74,10 @@ include '../views/change_profile.php';
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-
     <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/slick-carousel/slick/slick.css"/>
-<link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/slick-carousel/slick/slick-theme.css"/>
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/slick-carousel/slick/slick.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/slick-carousel/slick/slick-theme.css"/>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/slick-carousel/slick/slick.min.js"></script>
 
     <style>
         .navbar-default {
@@ -76,8 +100,8 @@ include '../views/change_profile.php';
             min-width: 200px;
         }
         
-        /* Cart count styling */
-        .cart-count {
+        /* Cart and Notification count styling */
+        .cart-count, .notification-count {
             position: absolute;
             top: -5px;
             right: -10px;
@@ -90,7 +114,7 @@ include '../views/change_profile.php';
             animation: bounce 0.5s ease-in-out;
         }
 
-        /* Animation for cart count */
+        /* Animation for cart and notification count */
         @keyframes bounce {
             0% {
                 transform: scale(0.5);
@@ -102,6 +126,45 @@ include '../views/change_profile.php';
                 transform: scale(1);
             }
         }
+
+        /* Toast notification styling */
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1050;
+        }
+
+         /* Style for unread notifications */
+    .unread-notification {
+        background-color: #FF902B; /* Orange background */
+        border-radius: 5px; /* Rounded corners */
+        padding: 10px; /* Add some padding */
+        color: white;
+    }
+
+    /* Hover effect for unread notifications */
+    .unread-notification:hover {
+        background-color: #e67e22; /* Darker orange on hover */
+    }
+
+    /* Custom scrollbar styling */
+.modal-body::-webkit-scrollbar {
+    width: 8px; /* Width of the scrollbar */
+}
+
+.modal-body::-webkit-scrollbar-track {
+    background: #f1f1f1; /* Color of the track */
+}
+
+.modal-body::-webkit-scrollbar-thumb {
+    background: #888; /* Color of the scrollbar */
+    border-radius: 4px; /* Rounded corners */
+}
+
+.modal-body::-webkit-scrollbar-thumb:hover {
+    background: #555; /* Color of the scrollbar on hover */
+}
     </style>
     <title>Change Profile</title>
 </head>
@@ -126,12 +189,25 @@ include '../views/change_profile.php';
                 <li class="nav-item">
                     <a class="nav-link" href="./../../user/views/order-now.php">Order-now</a>
                 </li>
+              <!-- Notification Icon -->
+<li class="nav-item position-relative">
+    <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#notificationModal">
+        <i class="fa-solid fa-bell"></i>
+        <?php if ($notificationCount > 0): ?>
+            <span class="notification-count"><?= $notificationCount; ?></span>
+        <?php endif; ?>
+
+        <audio id="notificationSound" src="./../../admin/user/notification-sound.mp3"></audio>
+    </a>
+</li>
+
+                <!-- Cart Icon -->
                 <li class="nav-item position-relative">
                     <a class="nav-link" href="./../../user/views/cart.php">
                         <i class="fa-solid fa-cart-shopping"></i>
                         <?php if ($cartCount > 0): ?>
-                            <span class="cart-count"><?= $cartCount; ?></span>
-                        <?php endif; ?>
+    <span class="cart-count"><?= $cartCount; ?></span>
+<?php endif; ?>
                     </a>
                 </li>
                 <?php if ($firstName): ?>
@@ -173,8 +249,107 @@ include '../views/change_profile.php';
     </div>
 </div>
 
+<!-- Notification Modal -->
+
+<!-- Notification Modal -->
+<div class="modal fade" id="notificationModal" tabindex="-1" aria-labelledby="notificationModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title text-light" id="notificationModalLabel">Notifications</h5>
+                <button type="button" class="btn-close text-light" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" style="max-height: 400px; overflow-y: auto;">
+                <?php if (!empty($notifications)): ?>
+                    <?php foreach ($notifications as $notification): ?>
+                        <div class="notification-item mb-3 p-3 <?= $notification['is_read'] == 0 ? 'unread-notification' : ''; ?>">
+                            <a href="order-track.php?notification_id=<?= $notification['id']; ?>" style="text-decoration: none; color: inherit;">
+                                <p><?= htmlspecialchars($notification['message']); ?></p>
+                                <small class="text-muted"><?= $notification['created_at']; ?></small>
+                            </a>
+                        </div>
+                    <?php endforeach; ?>
+                <?php else: ?>
+                    <p>No new notifications.</p>
+                <?php endif; ?>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" id="markAsReadBtn">Mark All as Read</button>
+            </div>
+        </div>
+    </div>
+</div>
 <!-- Bootstrap JS Bundle -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+$(document).ready(function() {
+    // Mark all notifications as read
+    $('#markAsReadBtn').on('click', function() {
+        $.ajax({
+            url: './../../admin/user/index.php',
+            type: 'POST',
+            data: { action: 'markAllAsRead' },
+            success: function(response) {
+                const result = JSON.parse(response);
+                if (result.success) {
+                    alert('All notifications marked as read.');
+                    location.reload(); // Reload the page to reflect changes
+                } else {
+                    alert('Failed to mark notifications as read.');
+                }
+            }
+        });
+    });
+});
+
+$(document).ready(function() {
+    function updateCartCount() {
+        $.ajax({
+            url: '',
+            type: 'GET',
+            success: function(response) {
+                const data = JSON.parse(response);
+                if (data.cartCount > 0) {
+                    $('.cart-count').text(data.cartCount).show();
+                } else {
+                    $('.cart-count').hide();
+                }
+            }
+        });
+    }
+
+    // Update cart count every 10 seconds
+    setInterval(updateCartCount, 10000);
+
+    // Initial call to update cart count
+    updateCartCount();
+});
+
+function addToCart(productId) {
+    $.ajax({
+        url: 'add_to_cart.php',
+        type: 'POST',
+        data: { productId: productId },
+        success: function(response) {
+            // Handle success response
+            updateCartCount(); // Update cart count immediately
+        }
+    });
+}
+
+function removeFromCart(cartItemId) {
+    $.ajax({
+        url: 'remove_from_cart.php',
+        type: 'POST',
+        data: { cartItemId: cartItemId },
+        success: function(response) {
+            // Handle success response
+            updateCartCount(); // Update cart count immediately
+        }
+    });
+}
+</script>
 
 </body>
 </html>

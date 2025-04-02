@@ -4,30 +4,51 @@ $(document).ready(function() {
             url: './../user/reservation.php',
             type: 'POST',
             data: { action: 'read' },
-            dataSrc: ''
+            dataSrc: '',
+            error: function(xhr, error, thrown) {
+                console.error('DataTables error:', xhr.responseText, error, thrown);
+                alert('Failed to load reservation data. Please check console for details.');
+            }
         },
         columns: [
             { data: 'transaction_code' },
             { data: 'clientFullName' },
-            { data: 'amount' },
+            { 
+                data: 'amount',
+                render: function(data) {
+                    return '₱' + parseFloat(data).toFixed(2);
+                }
+            },
             {
                 data: 'res_status',
                 render: function(data) {
                     const statusMap = {
                         "for confirmation": '<span style="color: #001BCC; background-color: #81CDFF; font-size: 0.7rem;" class="p-2 rounded-pill">For Confirmation</span>',
                         "payment": '<span class="text-dark bg-warning p-2 rounded">Payment</span>',
+                        "paid": '<span style="color: #fff; background-color: #28a745; font-size: 0.7rem;" class="p-2 rounded-pill">Paid</span>',
                         "booked": '<span class="text-white bg-success p-2 rounded">Booked</span>',
                         "rate us": '<span class="text-dark bg-secondary p-2 rounded">Rate Us</span>',
-                        "cancel": '<span class="text-white bg-danger p-2 rounded">Cancelled</span>'
+                        "cancelled": '<span class="text-white bg-danger p-2 rounded">Cancelled</span>'
                     };
                     return statusMap[data] || data;
-                }
+                } 
             },
             {
                 data: null,
                 render: function(data, type, row) {
+                    // For time format like "7:00pm- 8:00pm", we'll display it as-is
+                  
+                    
                     return `
-                        <button class="editBtn" data-id="${data.transaction_code}" data-res_status="${data.res_status}" data-client-name="${data.clientFullName}">
+                        <button class="editBtn" data-id="${data.transaction_code || data.reservation_time_id}" 
+                                data-res_status="${data.res_status}" 
+                                data-client-name="${data.clientFullName}"
+                                data-amount="${data.amount}"
+                                data-party-size="${data.party_size}"
+                                data-created-at="${data.date_created}"
+                                data-reservation-date="${data.reservation_date || ''}"
+                                data-reservation-time="${data.reservation_time || ''}"
+                                data-reservation-fee="${data.amount}">
                             <i class="fas fa-edit text-primary border-0"></i>
                         </button>
                         <button class="btn btn-danger btn-sm" onclick="deleteOrder('${data.transaction_code}')">
@@ -39,20 +60,37 @@ $(document).ready(function() {
         ]
     });
 
-    // Click event for the Edit button
+    // Edit button click handler
     $('#userTable').on('click', '.editBtn', function() {
         const transactionCode = $(this).data('id');
         const res_status = $(this).data('res_status');
         const clientName = $(this).data('client-name');
+        const amount = $(this).data('amount');
+        const partySize = $(this).data('party-size');
+        const createdAt = $(this).data('created-at');
+        const reservationDate = $(this).data('reservation-date');
+        const reservationTime = $(this).data('reservation-time'); // Will be in format "7:00pm- 8:00pm"
+        const reservationFee = $(this).data('reservation-fee');
 
-        // Set modal data
+        const subTotal = parseFloat(amount) - parseFloat(reservationFee || 0);
+        const formattedCreatedAt = createdAt ? new Date(createdAt).toLocaleDateString() : '';
+        const formattedReservationDate = reservationDate ? new Date(reservationDate).toLocaleDateString() : '';
+
         $('#updateUserModal').modal('show');
-        $('#transactionCode').val(transactionCode); // Hidden input for transaction code
-        $('#status').val(res_status); // Set the status dropdown
-        $('#client_full_name_display').text(clientName); // Display client name in the modal
+        $('#transactionCode').val(transactionCode);
+        $('#status').val(res_status);
+        $('#client_full_name_display').text(clientName);
+        $('#transaction_code_display').text(transactionCode);
+        $('#party_size_display').text(partySize);
+        $('#total_price_display').text('₱' + parseFloat(amount).toFixed(2));
+        $('#created_at_display').text(formattedCreatedAt);
+        $('#reservation_date_display').text(formattedReservationDate);
+        $('#reservation_time_display').text(reservationTime); // Display the time as-is
+        $('#sub_total_display').text('₱' + subTotal.toFixed(2));
+        $('#reservation_fee_display').text('₱' + parseFloat(reservationFee || 0).toFixed(2));
     });
 
-    // Delete order
+    // Delete function
     window.deleteOrder = function(id) {
         if (confirm('Are you sure you want to delete this order?')) {
             $.ajax({
@@ -63,7 +101,7 @@ $(document).ready(function() {
                     const data = JSON.parse(response);
                     if (data.success) {
                         alert('Order deleted successfully.');
-                        table.ajax.reload();
+                        location.reload(); // Reload the page
                     } else {
                         alert('Failed to delete order.');
                     }
@@ -72,11 +110,9 @@ $(document).ready(function() {
         }
     };
 
-    // Save status button click event
     $('#saveStatusBtn').on('click', function() {
         const transactionCode = $('#transactionCode').val();
-        const res_status = $('#status').val(); // Get the status from the select element
-        const clientFullName = $('#client_full_name_display').text(); // Get the client name from the displayed text
+        const res_status = $('#status').val();
 
         $.ajax({
             url: './../user/reservation.php',
@@ -84,17 +120,25 @@ $(document).ready(function() {
             data: {
                 action: 'update',
                 id: transactionCode,
-                res_status: res_status,
-                clientFullName: clientFullName
+                res_status: res_status
             },
             success: function(response) {
-                const result = JSON.parse(response);
-                if (result.success) {
-                    $('#updateUserModal').modal('hide');
-                    table.ajax.reload(); // Reload the table after update
-                } else {
-                    alert('Error updating status');
+                try {
+                    const result = JSON.parse(response);
+                    if (result.success) {
+                        $('#updateUserModal').modal('hide');
+                        // Force a hard reload from the server
+                        window.location.href = window.location.href;
+                    } else {
+                        alert('Error updating status: ' + (result.message || 'Unknown error'));
+                    }
+                } catch (e) {
+                    window.location.href = window.location.href;
                 }
+            },
+            error: function(xhr, status, error) {
+                console.error('AJAX error:', status, error);
+                alert('Failed to update status. Please check console for details.');
             }
         });
     });

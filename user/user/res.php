@@ -1,6 +1,8 @@
 <?php
 include '../../connection/connection.php';
 
+header('Content-Type: application/json');
+
 $date = isset($_GET['date']) ? $_GET['date'] : date('Y-m-d');  // Default to today's date if no date is provided
 
 // Initialize arrays to store the reservation status for each time slot
@@ -17,14 +19,14 @@ if ($result) {
         $time = $row['time'];
         
         // Check if a reservation exists for this time slot on the selected date
-        $status_query = "SELECT client_id FROM reservation WHERE reservation_time = '$time_id' AND reservation_date = '$date'";
+        $status_query = "SELECT client_id, res_status FROM reservation WHERE reservation_time_id = '$time_id' AND reservation_date = '$date'";
         $status_result = mysqli_query($conn, $status_query);
         
-        if (mysqli_num_rows(result: $status_result) > 0) {
-            // Reservation exists; get the client_id
+        if (mysqli_num_rows($status_result) > 0) {
+            // Reservation exists; get the client_id and status
             $reservation = mysqli_fetch_assoc($status_result);
             $client_id = $reservation['client_id'];
-            $status = 'booked';
+            $status = ($reservation['res_status'] === 'pending' || $reservation['res_status'] === 'confirmed') ? 'booked' : 'available';
         } else {
             // No reservation exists
             $client_id = null;
