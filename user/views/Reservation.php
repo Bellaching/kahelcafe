@@ -259,6 +259,14 @@ ob_end_flush();
     <title>Reservation</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+
+    <style>
+        .order-h4{
+color: #FF902A;
+font-weight: bold;
+}
+
+    </style>
 </head>
 <body class="bg-light">
     <!-- Confirmation Modal -->
@@ -298,17 +306,37 @@ ob_end_flush();
                             <div class="alert alert-danger"><?php echo htmlspecialchars($error_message); ?></div>
                         <?php endif; ?>
 
-                        <div class="mb-4">
-                            <h4 class="mb-3">Seat Reservation</h4>
-                            <div class="d-flex flex-wrap gap-2 mb-3">
-                                <span class="badge bg-success text-white p-2">Available</span>
-                                <span class="badge bg-danger text-white p-2">Fully Booked</span>
-                                <span class="badge bg-primary text-white p-2">Your Reservation</span>
-                            </div>
-                        </div>
+                        <div class="card ">
+                        <strong><h4 class="m-3 order-h4">Seat Reservation</h4></strong> 
+        <div class="card-body">
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <div class="p-1 text-white text-center" style="background-color: #17A1FA; border-radius: 5px;">
+                No Slots
+              </div>
+            </div>
+            <div class="col-md-6 mb-3">
+              <div class="p-1 text-white text-center" style="background-color: #07D090; border-radius: 5px;">
+                Available
+              </div>
+            </div>
+            <div class="col-md-6 mb-3">
+              <div class="p-1 text-white text-center" style="background-color: #E60000; border-radius: 5px;">
+                Fully Booked
+              </div>
+            </div>
+            <div class="col-md-6 mb-3">
+              <div class="p-1 text-white text-center" style="background-color: #9647FF; border-radius: 5px;">
+                Your Reservation
+              </div>
+            </div>
+          </div>
+        </div>
 
+     
                         <div class="mb-4">
-                            <h4 class="mb-3">Available Time</h4>
+                            <h4 class="mb-3 order-h4">Available Time</h4>
                             <p id="date-picker" class="d-none"></p>
                             <div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-3 g-2" id="Available-Time-show">
                                 <?php foreach ($times as $i => $time): ?>
@@ -318,7 +346,7 @@ ob_end_flush();
                                             data-time-id="<?= $time['id'] ?>"
                                             data-time-value="<?= htmlspecialchars($time['time']) ?>"
                                             style="background-color: #07D090;">
-                                            <span class="text-truncate d-block"><?= htmlspecialchars($time['time']) ?></span>
+                                            <span class="text-truncate d-block text-light border-0"><?= htmlspecialchars($time['time']) ?></span>
                                         </button>
                                     </div>
                                 <?php endforeach; ?>
@@ -326,52 +354,53 @@ ob_end_flush();
                             <div id="time-error" class="text-danger mt-2 d-none">Please select a time slot</div>
                         </div>
             
-                        <div class="mb-4">
-                            <label class="form-label">Party Size</label>
-                            <div class="input-group" style="max-width: 150px;">
-                                <button class="btn btn-outline-secondary" type="button" id="button-minus">-</button>
-                                <input type="number" class="form-control text-center" value="1" id="number-input" min="1" max="20">
-                                <button class="btn btn-outline-secondary" type="button" id="button-plus">+</button>
-                            </div>
-                        </div>
+                        <div class="mb-4 d-flex align-items-center justify-content-between">
+    <label class="form-label mb-0">Party Size</label>
+    <div class="input-group" style="max-width: 150px;">
+        <button class="btn btn-outline-secondary" type="button" id="button-minus">-</button>
+        <input type="number" class="form-control text-center" value="1" id="number-input" min="1" max="20">
+        <button class="btn btn-outline-secondary" type="button" id="button-plus">+</button>
+    </div>
+</div>
 
-                        <div class="card">
+
+                        <div class="card border-0">
                             <div class="card-body">
-                                <h4 class="card-title mb-3">Reservation Summary</h4>
+                                <h4 class=" mb-3 order-h4">Reservation Summary</h4>
                                 <form action="" method="POST" id="reservation-form">
                                     <input type="hidden" name="client_id" value="<?php echo htmlspecialchars($user_id); ?>">
 
                                     <div class="d-flex justify-content-between mb-2">
-                                        <span>Name</span>
-                                        <span class="fw-bold name-result"><?php echo htmlspecialchars($clientFullName) ?></span>
+                                        <span class="fw-bold">Name</span>
+                                        <span class=" name-result"><?php echo htmlspecialchars($clientFullName) ?></span>
                                     </div>
 
                                     <div class="d-flex justify-content-between mb-2">
-                                        <span>Party Size</span>
-                                        <span class="fw-bold party-size-result">1</span>
+                                        <span class="fw-bold">Party Size</span>
+                                        <span class=" party-size-result">1</span>
                                         <input type="hidden" name="party_size" id="party_size_input" value="1">
                                     </div>
 
                                     <div class="d-flex justify-content-between mb-2">
-                                        <span>Date</span>
-                                        <span class="fw-bold date-result" id="date-result">Not selected</span>
+                                        <span class="fw-bold">Date</span>
+                                        <span class="date-result" id="date-result">Not selected</span>
                                         <input type="hidden" name="reservation_date" id="reservation_date_input">
                                     </div>
 
                                     <div class="d-flex justify-content-between mb-2">
-                                        <span>Time</span>
-                                        <span class="fw-bold time-result" id="time-result">Not selected</span>
+                                        <span class="fw-bold">Time</span>
+                                        <span class="time-result" id="time-result">Not selected</span>
                                         <input type="hidden" name="reservation_id" id="reservation_time_input">
                                     </div>
 
                                     <div class="d-flex justify-content-between mb-3">
-                                        <span>Reservation Fee</span>
-                                        <span class="fw-bold reservation-fee-result">₱ 50</span>
+                                        <span class="fw-bold">Reservation Fee</span>
+                                        <span class="reservation-fee-result">₱ 50</span>
                                         <input type="hidden" name="amount" value="50">
                                     </div>
 
                                     <div class="mb-3">
-                                        <label for="user-note" class="form-label">Notes</label>
+                                        <label for="user-note fw-bold" class="form-label"><strong>Notes</strong></label>
                                         <textarea name="note_area" maxlength="500" class="form-control" rows="3" placeholder="Additional notes..."></textarea>
                                     </div>
                                     <button type="button" class="btn btn-primary w-100 py-2" id="confirm-order">Confirm Reservation</button>

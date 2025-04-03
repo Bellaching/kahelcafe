@@ -18,11 +18,8 @@ try {
                     r.reservation_date,
                     r.amount,
                     r.reservation_time
-                  
                   FROM reservation r
-                --    LEFT JOIN resservation_time rt ON r.reservation_time_id = rt.id
-                "
-                ;
+                  ORDER BY r.date_created DESC"; // Added ORDER BY to ensure latest first
         
         $result = $conn->query($query);
         

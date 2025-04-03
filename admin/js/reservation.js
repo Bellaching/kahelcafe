@@ -1,4 +1,5 @@
 $(document).ready(function() {
+    // Initialize DataTable
     const table = $('#userTable').DataTable({
         ajax: {
             url: './../user/reservation.php',
@@ -10,6 +11,7 @@ $(document).ready(function() {
                 alert('Failed to load reservation data. Please check console for details.');
             }
         },
+        order: [[5, 'desc']], // Sort by date_created (column index 5) in descending order
         columns: [
             { data: 'transaction_code' },
             { data: 'clientFullName' },
@@ -28,7 +30,7 @@ $(document).ready(function() {
                         "paid": '<span style="color: #fff; background-color: #28a745; font-size: 0.7rem;" class="p-2 rounded-pill">Paid</span>',
                         "booked": '<span class="text-white bg-success p-2 rounded">Booked</span>',
                         "rate us": '<span class="text-dark bg-secondary p-2 rounded">Rate Us</span>',
-                        "cancelled": '<span class="text-white bg-danger p-2 rounded">Cancelled</span>'
+                        "cancel": '<span class="text-white bg-danger p-2 rounded">Cancelled</span>'
                     };
                     return statusMap[data] || data;
                 } 
@@ -36,9 +38,6 @@ $(document).ready(function() {
             {
                 data: null,
                 render: function(data, type, row) {
-                    // For time format like "7:00pm- 8:00pm", we'll display it as-is
-                  
-                    
                     return `
                         <button class="editBtn" data-id="${data.transaction_code || data.reservation_time_id}" 
                                 data-res_status="${data.res_status}" 
@@ -56,8 +55,29 @@ $(document).ready(function() {
                         </button>
                     `;
                 }
+            },
+            { 
+                data: 'date_created',
+                visible: false // Hide this column but still use it for sorting
             }
         ]
+    });
+
+    // Function to refresh DataTable
+    function refreshTable() {
+        table.ajax.reload(null, false); // false means don't reset user paging
+    }
+
+    // Set up polling to check for updates every 30 seconds
+    const pollInterval = 30000; // 30 seconds
+    let pollingTimer = setInterval(refreshTable, pollInterval);
+
+    // Optionally, you can stop polling when the tab is not active
+    $(window).blur(function() {
+        clearInterval(pollingTimer);
+    }).focus(function() {
+        pollingTimer = setInterval(refreshTable, pollInterval);
+        refreshTable(); // Also refresh immediately when tab gains focus
     });
 
     // Edit button click handler
@@ -69,7 +89,7 @@ $(document).ready(function() {
         const partySize = $(this).data('party-size');
         const createdAt = $(this).data('created-at');
         const reservationDate = $(this).data('reservation-date');
-        const reservationTime = $(this).data('reservation-time'); // Will be in format "7:00pm- 8:00pm"
+        const reservationTime = $(this).data('reservation-time');
         const reservationFee = $(this).data('reservation-fee');
 
         const subTotal = parseFloat(amount) - parseFloat(reservationFee || 0);
@@ -85,7 +105,7 @@ $(document).ready(function() {
         $('#total_price_display').text('₱' + parseFloat(amount).toFixed(2));
         $('#created_at_display').text(formattedCreatedAt);
         $('#reservation_date_display').text(formattedReservationDate);
-        $('#reservation_time_display').text(reservationTime); // Display the time as-is
+        $('#reservation_time_display').text(reservationTime);
         $('#sub_total_display').text('₱' + subTotal.toFixed(2));
         $('#reservation_fee_display').text('₱' + parseFloat(reservationFee || 0).toFixed(2));
     });
@@ -101,7 +121,7 @@ $(document).ready(function() {
                     const data = JSON.parse(response);
                     if (data.success) {
                         alert('Order deleted successfully.');
-                        location.reload(); // Reload the page
+                        refreshTable(); // Refresh table after delete
                     } else {
                         alert('Failed to delete order.');
                     }
@@ -127,13 +147,12 @@ $(document).ready(function() {
                     const result = JSON.parse(response);
                     if (result.success) {
                         $('#updateUserModal').modal('hide');
-                        // Force a hard reload from the server
-                        window.location.href = window.location.href;
+                        refreshTable(); // Refresh table after update
                     } else {
                         alert('Error updating status: ' + (result.message || 'Unknown error'));
                     }
                 } catch (e) {
-                    window.location.href = window.location.href;
+                    refreshTable(); // Refresh table if there's any response
                 }
             },
             error: function(xhr, status, error) {

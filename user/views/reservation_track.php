@@ -30,8 +30,8 @@ $result = $stmt->get_result();
 $reservation = $result->fetch_assoc();
 $stmt->close();
 
-// Check if reservation exists and is not cancelled
-if (!$reservation || $reservation['res_status'] === 'cancelled') {
+// Check if reservation exists and is not cancel
+if (!$reservation || $reservation['res_status'] === 'cancel') {
     echo "<div class='container text-center mt-5'>
             <h4>No reservation found.</h4>
             <p>We're sorry, but no current reservations are available. 😔</p>
@@ -83,7 +83,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['timeout_reservation']
 
     // Update reservation status
     $timeoutQuery = "UPDATE reservation SET 
-                    res_status = 'cancelled', 
+                    res_status = 'cancel', 
                     reservation_date = NULL 
                     WHERE id = ?";
     $stmt = $conn->prepare($timeoutQuery);
@@ -108,7 +108,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['timeout_reservation']
     $stmt2->close();
     
     header('Content-Type: application/json');
-    echo json_encode(['status' => 'success', 'message' => 'Reservation cancelled due to timeout']);
+    echo json_encode(['status' => 'success', 'message' => 'Reservation cancel due to timeout']);
     exit();
 }
 
@@ -117,7 +117,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['cancel_reservation'],
     $reservationId = $_POST['id'];
 
     $cancelQuery = "UPDATE reservation SET 
-                    res_status = 'cancelled', 
+                    res_status = 'cancel', 
                     reservation_date = NULL 
                     WHERE id = ?";
     $stmt = $conn->prepare($cancelQuery);
@@ -140,7 +140,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['cancel_reservation'],
     if ($stmt->execute()) {
         ob_clean();
         header('Content-Type: application/json');
-        echo json_encode(['status' => 'success', 'message' => 'Reservation cancelled successfully']);
+        echo json_encode(['status' => 'success', 'message' => 'Reservation cancel successfully']);
         exit();
     } else {
         header('Content-Type: application/json');
@@ -157,54 +157,111 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['cancel_reservation'],
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['upload_receipt'])) {
     $reservationId = $_POST['reservation_id'] ?? null;
     if (!$reservationId) {
-        die("Error: Reservation ID is missing.");
+        header('Content-Type: application/json');
+        echo json_encode(['status' => 'error', 'message' => 'Reservation ID is missing']);
+        exit();
     }
 
     if (!empty($_FILES['receipt']['name'])) {
         $allowedTypes = ['image/jpeg', 'image/png', 'image/jpg'];
         $fileType = $_FILES['receipt']['type'];
-        $fileName = uniqid() . '_' . basename($_FILES['receipt']['name']); // Add unique ID to filename
+        $fileName = uniqid() . '_' . basename($_FILES['receipt']['name']);
         $targetDir = './../../uploads/';
         $targetFile = $targetDir . $fileName;
 
+        // Create uploads directory if it doesn't exist
+        if (!file_exists($targetDir)) {
+            mkdir($targetDir, 0755, true);
+        }
+
         if (in_array($fileType, $allowedTypes)) {
             if (move_uploaded_file($_FILES['receipt']['tmp_name'], $targetFile)) {
-                // Update both receipt and status to 'paid'
-                $uploadQuery = "UPDATE reservation SET receipt = ?, res_status = 'paid' WHERE id = ?";
-                $stmt = $conn->prepare($uploadQuery);
+                // Start transaction
+                $conn->begin_transaction();
+                
+                try {
+                    // Update both receipt and status to 'paid'
+                    $uploadQuery = "UPDATE reservation SET receipt = ?, res_status = 'paid' WHERE id = ?";
+                    $stmt = $conn->prepare($uploadQuery);
 
-                if ($stmt) {
-                    $stmt->bind_param("si", $fileName, $reservationId);
-                    if ($stmt->execute()) {
-                        // Check if rows were affected
-                        if ($stmt->affected_rows > 0) {
-                            echo "<div class='alert alert-success'>Receipt uploaded successfully and status updated to Paid!</div>";
-                            // Refresh the page to show updated status
-                            echo "<script>setTimeout(function(){ window.location.reload(); }, 1500);</script>";
+                    if ($stmt) {
+                        $stmt->bind_param("si", $fileName, $reservationId);
+                        if ($stmt->execute()) {
+                            // Check if rows were affected
+                            if ($stmt->affected_rows > 0) {
+                                $conn->commit();
+                                $_SESSION['payment_success'] = true;
+                                header('Content-Type: application/json');
+                                echo json_encode([
+                                    'status' => 'success', 
+                                    'message' => 'Receipt uploaded successfully and status updated to Paid!'
+                                ]);
+                                exit();
+                            } else {
+                                $conn->rollback();
+                                header('Content-Type: application/json');
+                                echo json_encode([
+                                    'status' => 'warning', 
+                                    'message' => 'No changes were made to the database. Maybe the record wasn\'t found?'
+                                ]);
+                                exit();
+                            }
                         } else {
-                            echo "<div class='alert alert-warning'>No changes were made to the database. Maybe the record wasn't found?</div>";
+                            $conn->rollback();
+                            header('Content-Type: application/json');
+                            echo json_encode([
+                                'status' => 'error', 
+                                'message' => 'Database error: ' . $stmt->error
+                            ]);
+                            exit();
                         }
+                        $stmt->close();
                     } else {
-                        echo "<div class='alert alert-danger'>Database error: " . $stmt->error . "</div>";
+                        $conn->rollback();
+                        header('Content-Type: application/json');
+                        echo json_encode([
+                            'status' => 'error', 
+                            'message' => 'Failed to prepare database statement.'
+                        ]);
+                        exit();
                     }
-                    $stmt->close();
-                } else {
-                    echo "<div class='alert alert-danger'>Failed to prepare database statement.</div>";
+                } catch (Exception $e) {
+                    $conn->rollback();
+                    header('Content-Type: application/json');
+                    echo json_encode([
+                        'status' => 'error', 
+                        'message' => 'Transaction failed: ' . $e->getMessage()
+                    ]);
+                    exit();
                 }
             } else {
-                echo "<div class='alert alert-danger'>Failed to move uploaded file. Check directory permissions.</div>";
-                error_log("Failed to move uploaded file. Target: " . $targetFile);
+                header('Content-Type: application/json');
+                echo json_encode([
+                    'status' => 'error', 
+                    'message' => 'Failed to move uploaded file. Check directory permissions.'
+                ]);
+                exit();
             }
         } else {
-            echo "<div class='alert alert-danger'>Only JPG, JPEG, and PNG files are allowed.</div>";
+            header('Content-Type: application/json');
+            echo json_encode([
+                'status' => 'error', 
+                'message' => 'Only JPG, JPEG, and PNG files are allowed.'
+            ]);
+            exit();
         }
     } else {
-        echo "<div class='alert alert-danger'>Please select a file to upload.</div>";
+        header('Content-Type: application/json');
+        echo json_encode([
+            'status' => 'error', 
+            'message' => 'Please select a file to upload.'
+        ]);
+        exit();
     }
 }
 
-// 6. Display cancellation message if reservation is cancelled
-if ($reservation['res_status'] === 'cancelled'): ?>
+// 6. Display cancellation message if reservation is cancel
+if ($reservation['res_status'] === 'cancel'): ?>
     <div class='container text-center mt-5'>
         <h4>No Order Tracking History</h4>
         <p>We're sorry, but no current orders are available. 😔</p>
@@ -226,6 +283,12 @@ if ($reservationId && $reservation['res_status'] === 'booked' || $reservationId 
         ->build();
 
     $qrFile = './../../uploads/qrcodes/reservation_' . $reservationId . '.png';
+    
+    // Create directory if it doesn't exist
+    if (!file_exists(dirname($qrFile))) {
+        mkdir(dirname($qrFile), 0755, true);
+    }
+    
     file_put_contents($qrFile, $qrCode->getString());
 }
 
@@ -295,29 +358,37 @@ if ($reservationId) {
     }
 }
 
-$note = $orderItems[0]['note'] ?? 'No notes available.';
+$note = $reservation['note_area'] ?? 'No notes available.';
 
 // Display the reservation information
-?>
-<!DOCTYPE html>
+?><!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Reservation Confirmation</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
+        body {
+            -webkit-text-size-adjust: 100%;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
         .order-tracking {
             display: flex;
             justify-content: space-between;
             position: relative;
             margin-bottom: 50px;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
         }
         .order-tracking .step {
             position: relative;
             text-align: center;
-            width: 24%;
+            min-width: 80px;
+            flex: 1;
         }
         .order-tracking .step:before {
             content: '';
@@ -352,10 +423,12 @@ $note = $orderItems[0]['note'] ?? 'No notes available.';
         .order-tracking .step .title {
             font-weight: bold;
             font-size: 14px;
+            word-break: break-word;
         }
         .order-tracking .step .description {
             font-size: 12px;
             color: #888;
+            word-break: break-word;
         }
 
         .custom-table thead th {
@@ -375,17 +448,16 @@ $note = $orderItems[0]['note'] ?? 'No notes available.';
             padding: 1rem;
             box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
             border-radius: 0.5rem;
+            margin-bottom: 1rem;
         }
 
         .down-con {
             display: flex;
-            flex-direction: row;
-            justify-content: center;
-            align-items: center;
+            flex-direction: column;
         }
 
-        .right {
-            height: 100%;
+        .right-content {
+            margin-top: 1rem;
         }
 
         .upl-p {
@@ -404,7 +476,7 @@ $note = $orderItems[0]['note'] ?? 'No notes available.';
 
         .back-btn {
             border: none;
-            background-color: 07D090;
+            background-color: #07D090;
         }
         
         #payment-timer {
@@ -421,7 +493,6 @@ $note = $orderItems[0]['note'] ?? 'No notes available.';
         }
 
         .payment-success {
-      
             background-color: #fff;
             border: 1px solid  #FF902B;
             color:  #FF902B;
@@ -432,7 +503,7 @@ $note = $orderItems[0]['note'] ?? 'No notes available.';
         }
         
         .payment-success i {
-            color:  #FF902Bf;
+            color:  #FF902B;
             font-size: 3rem;
             margin-bottom: 15px;
         }
@@ -464,10 +535,67 @@ $note = $orderItems[0]['note'] ?? 'No notes available.';
             transform: translate(-50%, -50%);
         }
 
+        .qr-container {
+            margin-top: 1rem;
+            text-align: center;
+        }
+
+        .qr-container img {
+            max-width: 100%;
+            height: auto;
+        }
+
+        /* Center content for confirmation status */
+        .confirmation-center {
+            text-align: center;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        @media (min-width: 768px) {
+            .down-con {
+                flex-direction: row;
+                align-items: flex-start;
+            }
+            
+            .left-content {
+                flex: 0 0 60%;
+                max-width: 60%;
+                padding-right: 15px;
+            }
+            
+            .right-content {
+                flex: 0 0 40%;
+                max-width: 40%;
+                margin-top: 0;
+                padding-left: 15px;
+            }
+        }
+
+        /* Android touch target sizes */
+        button, .btn, [role="button"] {
+            min-height: 48px;
+            min-width: 48px;
+            padding: 12px 16px;
+        }
+        
+        input, select, textarea {
+            font-size: 16px !important; /* Prevent zooming on focus */
+        }
+        
+        /* Prevent long press actions */
+        a, button, img {
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            -khtml-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+        }
     </style>
 </head>
 <body>
-    <div class="container mt-5">
+    <div class="container mt-3">
         <h3>Reservation Tracking</h3>
 
         <!-- Reservation Tracking Steps -->
@@ -490,139 +618,91 @@ $note = $orderItems[0]['note'] ?? 'No notes available.';
             <div class="step <?php echo ($reservation['res_status'] === 'rate us' ? 'active' : ''); ?>">
                 <div class="icon fs-5"></div>
                 <div class="title">Complete</div>
-                
+                <div class="description">Thankyou!</div>
             </div>
         </div>
 
-        <div class="down-con container-fluid d-flex flex-column">
-
-            <?php if ($reservation['res_status'] === 'booked'): ?>
-                <div class="order-sum container-fluid">
-                    <h5 class="bold">Reservation Summary</h5>
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="d-flex justify-content-between w-100">
-                                <p><strong>Name:</strong></p>
-                                <p><?php echo htmlspecialchars($reservation['clientFullName']); ?></p>
+        <div class="down-con">
+            <div class="left-content">
+                <?php if ($reservation['res_status'] === 'booked' || $reservation['res_status'] === 'paid' || $reservation['res_status'] === 'payment' || $reservation['res_status'] === 'for confirmation' || $reservation['res_status'] === 'rate us'): ?>
+                    <div class="order-sum">
+                        <h5 class="bold">Reservation Summary</h5>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="d-flex justify-content-between w-100">
+                                    <p><strong>Name:</strong></p>
+                                    <p><?php echo htmlspecialchars($reservation['clientFullName']); ?></p>
+                                </div>
+                                <div class="d-flex justify-content-between w-100">
+                                    <p><strong>Transaction ID:</strong></p>
+                                    <p><?php echo htmlspecialchars($reservation['transaction_code']); ?></p>
+                                </div>
                             </div>
-                            <div class="d-flex justify-content-between w-100">
-                                <p><strong>Transaction ID:</strong></p>
-                                <p><?php echo htmlspecialchars($reservation['transaction_code']); ?></p>
+                            <div class="col-md-6">
+                                <div class="d-flex justify-content-between w-100">
+                                    <p><strong>Reservation Date:</strong></p>
+                                    <p><?php echo htmlspecialchars($reservation['reservation_date']); ?></p>
+                                </div>
+                                <div class="d-flex justify-content-between w-100">
+                                    <p><strong>Reservation Time:</strong></p>
+                                    <p><?php echo htmlspecialchars($res); ?></p>
+                                </div>
+                                <div class="d-flex justify-content-between w-100">
+                                    <p><strong>Party Size:</strong></p>
+                                    <p><?php echo htmlspecialchars($reservation['party_size']); ?></p>
+                                </div>
+                                <div class="d-flex justify-content-between w-100">
+                                    <p><strong>Reservation Fee:</strong></p>
+                                    <p><?php echo htmlspecialchars($reservation['clientFullName']); ?></p>
+                                </div>
                             </div>
                         </div>
-
-                        <div class="col-md-6">
-                            <div class="d-flex justify-content-between w-100">
-                                <p><strong>Reservation Date:</strong></p>
-                                <p><?php echo htmlspecialchars($reservation['reservation_date']); ?></p>
-                            </div>
-                            <div class="d-flex justify-content-between w-100">
-                                <p><strong>Reservation Time:</strong></p>
-                                <p><?php echo htmlspecialchars($res); ?></p>
-                            </div>
-                            <div class="d-flex justify-content-between w-100">
-                                <p><strong>Party Size:</strong></p>
-                                <p><?php echo htmlspecialchars($reservation['party_size']); ?></p>
-                            </div>
-                            <div class="d-flex justify-content-between w-100">
-                                <p><strong>Reservation Fee:</strong></p>
-                                <p><?php echo htmlspecialchars($reservation['clientFullName']); ?></p>
-                            </div>
-                        </div>
+                        <p><strong>Total Price:</strong> ₱<?php echo number_format($reservation['amount'], 2); ?></p>
                     </div>
 
-                    <p><strong>Total Price:</strong> ₱<?php echo number_format($reservation['amount'], 2); ?></p>
-                </div>
-
-                <div class="note-section mt-4 container-fluid">
-                    <label for="user-note" class="p-1">Notes</label>
-                    <div id="user-note" class="form-control"
-                        style="border-color: #B3B3B3; border-radius: 10px; height: 150px; overflow-y: auto; padding: 10px; 
-                        background-color: #f8f9fa; pointer-events: none; user-select: none;">
-                        <?php 
-                        $hasNotes = false;
-                        foreach ($reservationDetails as $item) {
-                            if (!empty($item['note'])) {
-                                echo "<p>" . htmlspecialchars($item['note']) . "</p>";
-                                $hasNotes = true;
+                    <div class="note-section mt-4">
+                        <label for="user-note" class="p-1">Notes</label>
+                        <div id="user-note" class="form-control"
+                            style="border-color: #B3B3B3; border-radius: 10px; height: 150px; overflow-y: auto; padding: 10px; 
+                            background-color: #f8f9fa; pointer-events: none; user-select: none;">
+                            <?php 
+                            if (!empty($reservation['note_area'])) {
+                                echo "<p>" . htmlspecialchars($reservation['note_area']) . "</p>";
+                            } else {
+                                echo "No notes available.";
                             }
-                        }
-                        if (!$hasNotes) {
-                            echo "No notes available.";
-                        }
-                        ?>
-                    </div>
-                </div>
-
-            <?php elseif ($reservation['res_status'] === 'for confirmation'): ?>
-                <!-- Content for "for confirmation" status -->
-            <?php endif; ?>
-
-            <?php if ($reservation['res_status'] === 'payment'): ?>
-                <div class="container-fluid">
-                    <div class="row">
-                        <!-- Left Side: Reservation Summary -->
-                        <div class="col-md-7">
-                            <div class="order-sum">
-                                <h5 class="bold">Reservation Summary</h5>
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <div class="d-flex justify-content-between w-100">
-                                            <p><strong>Name:</strong></p>
-                                            <p><?php echo htmlspecialchars($reservation['clientFullName']); ?></p>
-                                        </div>
-                                        <div class="d-flex justify-content-between w-100">
-                                            <p><strong>Transaction ID:</strong></p>
-                                            <p><?php echo htmlspecialchars($reservation['transaction_code']); ?></p>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <div class="d-flex justify-content-between w-100">
-                                            <p><strong>Reservation Date:</strong></p>
-                                            <p><?php echo htmlspecialchars($reservation['reservation_date']); ?></p>
-                                        </div>
-                                        <div class="d-flex justify-content-between w-100">
-                                            <p><strong>Reservation Time:</strong></p>
-                                            <p><?php echo htmlspecialchars($res); ?></p>
-                                        </div>
-                                        <div class="d-flex justify-content-between w-100">
-                                            <p><strong>Party Size:</strong></p>
-                                            <p><?php echo htmlspecialchars($reservation['party_size']); ?></p>
-                                        </div>
-                                        <div class="d-flex justify-content-between w-100">
-                                            <p><strong>Reservation Fee:</strong></p>
-                                            <p><?php echo htmlspecialchars($reservation['clientFullName']); ?></p>
-                                        </div>
-                                    </div>
-                                </div>
-                                <p><strong>Total Price:</strong> ₱<?php echo number_format($reservation['amount'], 2); ?></p>
-                            </div>
-                            <div class="note-section mt-4">
-                                <label for="user-note" class="p-1">Notes</label>
-                                <div id="user-note" class="form-control"
-                                    style="border-color: #B3B3B3; border-radius: 10px; height: 150px; overflow-y: auto; padding: 10px; 
-                                    background-color: #f8f9fa; pointer-events: none; user-select: none;">
-                                    <?php 
-                                    $hasNotes = false;
-                                    foreach ($reservationDetails as $item) {
-                                        if (!empty($item['note'])) {
-                                            echo "<p>" . htmlspecialchars($item['note']) . "</p>";
-                                            $hasNotes = true;
-                                        }
-                                    }
-                                    if (!$hasNotes) {
-                                        echo "No notes available.";
-                                    }
-                                    ?>
-                                </div>
-                            </div>
+                            ?>
                         </div>
+                    </div>
+                    
+                    <?php if ($reservation['res_status'] === 'for confirmation'): ?>
+                        <div class="mt-4 text-center">
+                            <form method="POST">
+                                <input type="hidden" name="id" value="<?php echo htmlspecialchars($reservation['id']); ?>">
+                                <button type="button" class="btn btn-danger rounded mt-3 container-fluid" data-bs-toggle="modal" data-bs-target="#cancelReservationModal">
+                                    Cancel Reservation
+                                </button>
+                            </form>
+                        </div>
+                    <?php endif; ?>
+                <?php endif; ?>
+            </div>
 
-                        <!-- Right Side: Form -->
-                       
-                        <div class="col-md-5  text-center">
-
-                        <form method="POST" enctype="multipart/form-data" class="mt-3" id="receiptForm">
+            <div class="right-content">
+                <?php if ($reservation['res_status'] === 'payment'): ?>
+                    <?php if (isset($_SESSION['payment_success']) || $reservation['res_status'] === 'paid'): ?>
+                        <?php unset($_SESSION['payment_success']); ?>
+                        <div class="payment-success">
+                            <div class="check-circle">
+                                <i class="fas fa-check"></i>
+                            </div>
+                            <h4>Thank You for Your Payment!</h4>
+                            <p>Your payment has been received successfully.</p>
+                            <p>Please wait for the shop to confirm your reservation.</p>
+                        </div>
+                    <?php else: ?>
+                        <div class="border rounded shadow-sm p-3">
+                            <form method="POST" enctype="multipart/form-data" class="mt-3" id="receiptForm">
                              <input type="hidden" name="reservation_id" value="<?php echo htmlspecialchars($reservation['id']); ?>">
                              <input type="hidden" name="upload_receipt" value="1">
                              
@@ -645,266 +725,86 @@ $note = $orderItems[0]['note'] ?? 'No notes available.';
                                         <li>3. Failure to do so will result in cancellation of reservation.</li>
                                     </ul>
                                 </div>
-                                <button type="submit" class="btn rounded send text-light fw-bold container-fluid" id="sendReceiptBtn" disabled>Send Receipt</button>
+                                <button type="submit" class="btn rounded send text-light fw-bold w-100" id="sendReceiptBtn" disabled>Send Receipt</button>
                             </form>
                             <form method="POST" class="mt-3">
                                 <input type="hidden" name="id" value="<?php echo htmlspecialchars($reservation['id']); ?>">
-                                <button type="button" class="btn btn-danger rounded mt-3 container-fluid" data-bs-toggle="modal" data-bs-target="#cancelReservationModal">Cancel Reservation</button>
+                                <button type="button" class="btn btn-danger rounded mt-3 w-100" data-bs-toggle="modal" data-bs-target="#cancelReservationModal">Cancel Reservation</button>
                             </form>
-                           
-                    </div>
-                </div>
-
+                        </div>
+                    <?php endif; ?>
                 <?php elseif ($reservation['res_status'] === 'paid'): ?>
-                <div class="container-fluid">
-                    <div class="row">
-                        <!-- Left Side: Reservation Summary -->
-                        <div class="col-md-7">
-                            <div class="order-sum">
-                                <h5 class="bold">Reservation Summary</h5>
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <div class="d-flex justify-content-between w-100">
-                                            <p><strong>Name:</strong></p>
-                                            <p><?php echo htmlspecialchars($reservation['clientFullName']); ?></p>
-                                        </div>
-                                        <div class="d-flex justify-content-between w-100">
-                                            <p><strong>Transaction ID:</strong></p>
-                                            <p><?php echo htmlspecialchars($reservation['transaction_code']); ?></p>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <div class="d-flex justify-content-between w-100">
-                                            <p><strong>Reservation Date:</strong></p>
-                                            <p><?php echo htmlspecialchars($reservation['reservation_date']); ?></p>
-                                        </div>
-                                        <div class="d-flex justify-content-between w-100">
-                                            <p><strong>Reservation Time:</strong></p>
-                                            <p><?php echo htmlspecialchars($res); ?></p>
-                                        </div>
-                                        <div class="d-flex justify-content-between w-100">
-                                            <p><strong>Party Size:</strong></p>
-                                            <p><?php echo htmlspecialchars($reservation['party_size']); ?></p>
-                                        </div>
-                                        <div class="d-flex justify-content-between w-100">
-                                            <p><strong>Reservation Fee:</strong></p>
-                                            <p><?php echo htmlspecialchars($reservation['clientFullName']); ?></p>
-                                        </div>
-                                    </div>
-                                </div>
-                                <p><strong>Total Price:</strong> ₱<?php echo number_format($reservation['amount'], 2); ?></p>
-                            </div>
-                            <div class="note-section mt-4">
-                                <label for="user-note" class="p-1">Notes</label>
-                                <div id="user-note" class="form-control"
-                                    style="border-color: #B3B3B3; border-radius: 10px; height: 150px; overflow-y: auto; padding: 10px; 
-                                    background-color: #f8f9fa; pointer-events: none; user-select: none;">
-                                    <?php 
-                                    $hasNotes = false;
-                                    foreach ($reservationDetails as $item) {
-                                        if (!empty($item['note'])) {
-                                            echo "<p>" . htmlspecialchars($item['note']) . "</p>";
-                                            $hasNotes = true;
-                                        }
-                                    }
-                                    if (!$hasNotes) {
-                                        echo "No notes available.";
-                                    }
-                                    ?>
-                                </div>
-                            </div>
+                    <div class="payment-success">
+                        <div class="check-circle">
+                            <i class="fas fa-check"></i>
                         </div>
-
-                        <!-- Right Side: Form -->
-                       
-                        <div class="col-md-5  text-center">
-
-                   
-                          
-                        
-                             
-                             <div class="payment-success">
-                                    <div class="check-circle">
-                                        <i class="fas fa-check"></i>
-                                    </div>
-                                    <h4>Thank You for Your Payment!</h4>
-                                    <p>Your payment has been received successfully.</p>
-                                    <p>Please wait for the shop to confirm your reservation.</p>
-                                </div>
-
-
-                      
+                        <h4>Thank You for Your Payment!</h4>
+                        <p>Your payment has been received successfully.</p>
+                        <p>Please wait for the shop to confirm your reservation.</p>
                     </div>
-                </div>
-
-              
-
-                <!-- Timeout Modal -->
-                <div class="modal fade" id="timeoutModal" tabindex="-1" aria-labelledby="timeoutModalLabel" aria-hidden="true">
-                    <div class="modal-dialog">
-                        <div class="modal-content">
-                            <div class="modal-header bg-warning">
-                                <h5 class="modal-title" id="timeoutModalLabel">Payment Time Expired</h5>
-                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                            </div>
-                            <div class="modal-body">
-                                <p>Your payment time has expired. Would you like to:</p>
-                                <ol>
-                                    <li>Continue with the payment (we'll give you another 30 minutes)</li>
-                                    <li>Cancel the reservation</li>
-                                </ol>
-                            </div>
-                            <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary" id="continuePayment">Continue Payment</button>
-                                <button type="button" class="btn btn-danger" id="cancelAfterTimeout">Cancel Reservation</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-            <?php elseif ($reservation['res_status'] === 'booked' ): ?>
-                <form method="POST" class="mt-3">
-                    <input type="hidden" name="reservation_id" value="<?php echo htmlspecialchars($reservation['id']); ?>">
-                    <div class="text-center mt-4">
+                <?php elseif ($reservation['res_status'] === 'booked' || $reservation['res_status'] === 'rate us'): ?>
+                    <div class="qr-container">
                         <h5>Scan to View Reservation Details</h5>
                         <img src="<?php echo $qrFile; ?>" alt="Reservation QR Code" class="img-fluid" />
-                        <br>
-                    </div>
-                    <div class="mb-3 text-left">
-    <label class="form-label upl-p">Important</label>
-    <div class="alert alert-info">
-        <strong>Please show this QR code to the cashier.</strong>
-    </div>
-</div>
-                    <div class="qr container-fluid my-4 d-flex justify-content-center rounded-pill">
-                        <a href="<?php echo $qrFile; ?>" download="reservation_qr_<?php echo $reservation['id']; ?>.png" class="btn btn-primary mt-2">
+                        <div class="alert alert-info mt-2">
+                            <strong>Please show this QR code to the cashier.</strong>
+                        </div>
+                        <a href="<?php echo $qrFile; ?>" download="reservation_qr_<?php echo $reservation['id']; ?>.png" class="btn p-2 w-100 rounded-pill text-light" style="background-color: #FF902B;">
                             Download QR Code
                         </a>
                     </div>
-                </form>
-            <?php elseif ($reservation['res_status'] === 'for confirmation'): ?>
-                <div class="order-sum">
-                    <h5 class="bold">Reservation Summary</h5>
-                    <div class="row container-fluid">
-                        <div class="col-md-6 ">
-                            <div class="d-flex justify-content-between w-100">
-                                <p><strong>Name:</strong></p>
-                                <p><?php echo htmlspecialchars($reservation['clientFullName']); ?></p>
-                            </div>
-                            <div class="d-flex justify-content-between w-100">
-                                <p><strong>Transaction ID:</strong></p>
-                                <p><?php echo htmlspecialchars($reservation['transaction_code']); ?></p>
-                            </div>
+                    <?php if ($reservation['res_status'] === 'rate us'): ?>
+                        <div class="back mt-3">
+                            <button class="back-btn p-2 w-100 rounded-pill text-light" onclick="window.location.href='../../user/views/index.php'">Back to home</button>
                         </div>
-                        <div class="col-md-6">
-                        <div class="d-flex justify-content-between w-100">
-                                <p><strong>Reservation Date:</strong></p>
-                                <p><?php echo htmlspecialchars($reservation['reservation_date']); ?></p>
-                            </div>
-                            <div class="d-flex justify-content-between w-100">
-                                <p><strong>Reservation Time:</strong></p>
-                                <p><?php echo htmlspecialchars($res); ?></p>
-                            </div>
-                            <div class="d-flex justify-content-between w-100">
-                                <p><strong>Party Size:</strong></p>
-                                <p><?php echo htmlspecialchars($reservation['party_size']); ?></p>
-                            </div>
-                            <div class="d-flex justify-content-between w-100">
-                                <p><strong>Reservation Fee:</strong></p>
-                                <p><?php echo htmlspecialchars($reservation['clientFullName']); ?></p>
-                            </div>
-                        </div>
-                    </div>
-                    <form method="POST" class="mt-3">
-                        <input type="hidden" name="reservation_id" value="<?php echo htmlspecialchars($reservation['id']); ?>">
-                        <button type="button" class="btn btn-danger container-fluid rounded-pill" data-bs-toggle="modal" data-bs-target="#cancelReservationModal">Cancel Reservation</button>
-                    </form>
-                    <?php elseif ($reservation['res_status'] === 'rate us'): ?>
-    <div class="order-sums container-fluid">
-        <h5 class="bold py-3">Reservation Summary</h5>
-
-        <div class="d-flex justify-content-between w-100">
-            <p><strong>Name:</strong></p>
-            <p><?php echo htmlspecialchars($reservation['clientFullName']); ?></p>
-        </div>
-        <div class="d-flex justify-content-between w-100">
-            <p><strong>Transaction ID:</strong></p>
-            <p><?php echo htmlspecialchars($reservation['transaction_code']); ?></p>
-        </div>
-    
-        <?php if (!empty($reservationDetails)): ?>
-            <div class="d-flex justify-content-between w-100">
-                <p><strong>Reservation Date:</strong></p>
-                <p><?php echo htmlspecialchars($reservationDetails[0]['reservation_date']); ?></p>
+                    <?php endif; ?>
+                <?php endif; ?>
             </div>
-            <div class="d-flex justify-content-between w-100">
-                <p><strong>Reservation Time:</strong></p>
-                <p><?php echo htmlspecialchars($res); ?></p>
-            </div>
-            <div class="d-flex justify-content-between w-100">
-                <p><strong>Party Size:</strong></p>
-                <p><?php echo htmlspecialchars($reservationDetails[0]['party_size']); ?></p>
-            </div>
-        <?php endif; ?>
-        <div class="d-flex justify-content-between w-100">
-            <p><strong>Subtotal:</strong></p>
-            <p><?php echo htmlspecialchars($reservation['clientFullName']); ?></p>
-        </div>
-        <div class="d-flex justify-content-between w-100">
-            <p><strong>Reservation Fee:</strong></p>
-            <p><?php echo htmlspecialchars($reservation['clientFullName']); ?></p>
-        </div>
-        <div class="d-flex justify-content-between w-100">
-            <p><strong>Total Price:</strong></p>
-            <p class="amount"> ₱<?php echo number_format($reservation['amount'], 2); ?></p>
         </div>
 
-        <form method="POST" class="mt-3">
-                    <input type="hidden" name="reservation_id" value="<?php echo htmlspecialchars($reservation['id']); ?>">
-                    <div class="text-center mt-4">
-                        <h5>Scan to View Reservation Details</h5>
-                        <img src="<?php echo $qrFile; ?>" alt="Reservation QR Code" class="img-fluid" />
-                        <br>
+        <!-- Timeout Modal -->
+        <div class="modal fade" id="timeoutModal" tabindex="-1" aria-labelledby="timeoutModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header bg-warning">
+                        <h5 class="modal-title" id="timeoutModalLabel">Payment Time Expired</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
-                    <div class="mb-3 text-left">
-    <label class="form-label upl-p">Important</label>
-    <div class="alert alert-info">
-        <strong>Please show this QR code to the cashier.</strong>
-    </div>
-</div>
-                    <div class="qr container-fluid my-4 d-flex justify-content-center rounded-pill">
-                        <a href="<?php echo $qrFile; ?>" download="reservation_qr_<?php echo $reservation['id']; ?>.png" class="btn btn-primary mt-2">
-                            Download QR Code
-                        </a>
+                    <div class="modal-body">
+                        <p>Your payment time has expired. Would you like to:</p>
+                        <ol>
+                            <li>Continue with the payment (we'll give you another 30 minutes)</li>
+                            <li>Cancel the reservation</li>
+                        </ol>
                     </div>
-                </form>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" id="continuePayment">Continue Payment</button>
+                        <button type="button" class="btn btn-danger" id="cancelAfterTimeout">Cancel Reservation</button>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-       
-        <div class="back">
-            <button class="back-btn m-3 p-2 container-fluid rounded-pill text-light" onclick="window.location.href='../../user/views/index.php'">Back to home</button>
-        </div>
-    </div>
-<?php endif; ?>
-       <!-- Modal Structure -->
-<div class="modal fade" id="cancelReservationModal" tabindex="-1" aria-labelledby="cancelReservationModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="cancelReservationModalLabel">Confirm Cancellation</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                Are you sure you want to cancel this reservation?
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                <button type="button" id="confirmCancel" class="btn btn-danger">Yes, Cancel Reservation</button>
+        <!-- Cancel Reservation Modal -->
+        <div class="modal fade" id="cancelReservationModal" tabindex="-1" aria-labelledby="cancelReservationModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="cancelReservationModalLabel">Confirm Cancellation</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        Are you sure you want to cancel this reservation?
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <button type="button" id="confirmCancel" class="btn btn-danger">Yes, Cancel Reservation</button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
-</div>
-    </div>
-    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js">
     <!-- Bootstrap JavaScript -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <!-- Loading Indicator -->
@@ -920,31 +820,66 @@ $note = $orderItems[0]['note'] ?? 'No notes available.';
             }
         });
         
-        // Validate file type before submission
+        // Handle receipt upload form submission with better error handling
         $('#receiptForm').on('submit', function(e) {
-            const fileInput = $('#receipt')[0];
-            if (fileInput.files.length > 0) {
-                const file = fileInput.files[0];
-                const validTypes = ['image/jpeg', 'image/png', 'image/jpg'];
-                if (!validTypes.includes(file.type)) {
-                    alert('Only JPG, JPEG, and PNG files are allowed.');
-                    e.preventDefault();
-                    return false;
+            e.preventDefault();
+            
+            // Show loading state
+            const submitBtn = $('#sendReceiptBtn');
+            submitBtn.prop('disabled', true);
+            submitBtn.html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Uploading...');
+            
+            // Create FormData object
+            const formData = new FormData(this);
+            
+            $.ajax({
+                url: window.location.href,
+                type: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                dataType: 'json',
+                success: function(response) {
+                    if (response.status === 'success') {
+                        // Show success message and reload page
+                        alert(response.message);
+                        window.location.reload();
+                    } else {
+                        // Show error message
+                        alert(response.message || 'Error uploading receipt');
+                        submitBtn.prop('disabled', false);
+                        submitBtn.text('Send Receipt');
+                    }
+                },
+                error: function(xhr, status, error) {
+                    // Handle AJAX errors
+                    let errorMessage = 'Error uploading receipt. Please try again.';
+                    try {
+                        const response = JSON.parse(xhr.responseText);
+                        if (response.message) {
+                            errorMessage = response.message;
+                        }
+                    } catch (e) {
+                        console.error('Error parsing response:', e);
+                    }
+                    
+                    alert(errorMessage);
+                    submitBtn.prop('disabled', false);
+                    submitBtn.text('Send Receipt');
                 }
-            }
-            return true;
+            });
         });
-
+        
         // Timer functionality for payment status
         <?php if ($reservation['res_status'] === 'payment'): ?>
-            // Calculate time remaining
+            // Get the exact server time when the page loads
+            const serverTime = new Date("<?php echo date('Y-m-d H:i:s'); ?>").getTime();
             const createdTime = new Date("<?php echo $reservation['date_created']; ?>").getTime();
-            const currentTime = new Date().getTime();
-            const elapsedSeconds = Math.floor((currentTime - createdTime) / 1000);
-            let timeLeft = 30 * 60 - elapsedSeconds; // 30 minutes in seconds
             
-            // If time is already expired, set to 0
-            if (timeLeft < 0) timeLeft = 0;
+            // Calculate time remaining more accurately
+            const timeLimit = 30 * 60 * 1000; // 30 minutes in milliseconds
+            const timeElapsed = serverTime - createdTime;
+            let timeLeft = Math.max(0, timeLimit - timeElapsed) / 1000; // Convert to seconds
             
             const timerElement = document.getElementById('payment-timer');
             const timeoutModal = new bootstrap.Modal(document.getElementById('timeoutModal'));
@@ -952,7 +887,7 @@ $note = $orderItems[0]['note'] ?? 'No notes available.';
             // Function to update the timer display
             function updateTimer() {
                 const minutes = Math.floor(timeLeft / 60);
-                const seconds = timeLeft % 60;
+                const seconds = Math.floor(timeLeft % 60);
                 timerElement.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
                 
                 if (timeLeft <= 0) {
@@ -991,7 +926,7 @@ $note = $orderItems[0]['note'] ?? 'No notes available.';
                     type: 'POST',
                     url: window.location.href,
                     data: {
-                        cancel_reservation: true,
+                        timeout_reservation: true,
                         id: <?php echo $reservation['id']; ?>
                     },
                     success: function(response) {
@@ -1034,55 +969,18 @@ $note = $orderItems[0]['note'] ?? 'No notes available.';
             ?>
         <?php endif; ?>
         
-        // Cancel reservation handler
+        // Cancel reservation handler - FIXED
         $('#confirmCancel').on('click', function () {
             var reservationId = <?php echo json_encode($reservation['id']); ?>;
             
             console.log('Attempting to cancel reservation ID:', reservationId);
             
-            // Create a hidden form to submit the request
-            var form = $('<form>', {
-                'method': 'POST',
-                'action': window.location.href
-            }).append(
-                $('<input>', {
-                    'type': 'hidden',
-                    'name': 'cancel_reservation',
-                    'value': 'true'
-                }),
-                $('<input>', {
-                    'type': 'hidden',
-                    'name': 'id',
-                    'value': reservationId
-                })
-            );
+            // Create form data
+            var formData = new FormData();
+            formData.append('cancel_reservation', 'true');
+            formData.append('id', reservationId);
             
-            // Submit the form
-            $.ajax({
-                type: 'POST',
-                url: window.location.href,
-                data: form.serialize(),
-                dataType: 'json',
-                success: function(response) {
-                    console.log('Response:', response);
-                    if (response && response.status === 'success') {
-                        alert('Reservation cancelled successfully');
-                        window.location.reload();
-                    } else {
-                        alert('Error: ' + (response.message || 'Unknown error occurred'));
-                    }
-                },
-                error: function(xhr, status, error) {
-                    location.reload(); 
-                }
-            });
-        });
-        
-        // Receipt upload form handler
-        $('#receiptForm').on('submit', function (e) {
-            e.preventDefault();
-            var formData = new FormData(this);
-            
+            // Submit the request
             $.ajax({
                 type: 'POST',
                 url: window.location.href,
@@ -1090,64 +988,95 @@ $note = $orderItems[0]['note'] ?? 'No notes available.';
                 processData: false,
                 contentType: false,
                 success: function(response) {
-                    // Check if the response contains our success message
-                    if (response.indexOf('alert-success') !== -1) {
-                        // Reload the page after a short delay
-                        setTimeout(function() {
+                    try {
+                        // Try to parse JSON response
+                        var jsonResponse = JSON.parse(response);
+                        if (jsonResponse.status === 'success') {
+                            alert('Reservation canceled successfully');
                             window.location.reload();
-                        }, 1500);
-                    } else {
-                        // Show error message if something went wrong
-                        alert('Error uploading receipt. Please try again.');
+                        } else {
+                            alert('Error: ' + (jsonResponse.message || 'Unknown error occurred'));
+                        }
+                    } catch (e) {
+                        // If not JSON, check for HTML response
+                        if (response.indexOf('success') !== -1) {
+                            alert('Reservation canceled successfully');
+                            window.location.reload();
+                        } else {
+                            alert('Error canceling reservation');
+                        }
                     }
                 },
-                error: function() {
-                    alert('Error uploading receipt. Please try again.');
+                error: function(xhr, status, error) {
+                    console.error('Error:', error);
+                    alert('Error canceling reservation. Please try again.');
                 }
             });
         });
 
-       // Add real-time status checking with better error handling and logging
-function checkReservationStatus() {
-    console.log('Checking reservation status...');
-    
-    $.ajax({
-        url: 'check_reservation_status.php',
-        type: 'GET',
-        data: {
-            reservation_id: <?php echo $reservation['id']; ?>
-        },
-        dataType: 'json',
-        success: function(response) {
-            console.log('Current status:', response.status, 'Original status:', '<?php echo $reservation['res_status']; ?>');
+        // Add real-time status checking with better error handling and logging
+        function checkReservationStatus() {
+            console.log('Checking reservation status...');
             
-            if (response.status && response.status !== '<?php echo $reservation['res_status']; ?>') {
-                console.log('Status changed to:', response.status, '- Reloading page...');
-                window.location.reload();
-            } else {
-                console.log('Status unchanged');
-            }
-        },
-        error: function(xhr, status, error) {
-            console.error('Error checking status:', error);
-            // Retry after delay even if error occurs
-            setTimeout(checkReservationStatus, 5000);
-        },
-        complete: function() {
-            // Check again after 3 seconds (more frequent checking)
-            setTimeout(checkReservationStatus, 3000);
+            $.ajax({
+                url: 'check_reservation_status.php',
+                type: 'GET',
+                data: {
+                    reservation_id: <?php echo $reservation['id']; ?>
+                },
+                dataType: 'json',
+                success: function(response) {
+                    console.log('Current status:', response.status, 'Original status:', '<?php echo $reservation['res_status']; ?>');
+                    
+                    if (response.status && response.status !== '<?php echo $reservation['res_status']; ?>') {
+                        console.log('Status changed to:', response.status, '- Reloading page...');
+                        window.location.reload();
+                    } else {
+                        console.log('Status unchanged');
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('Error checking status:', error);
+                    // Retry after delay even if error occurs
+                    setTimeout(checkReservationStatus, 5000);
+                },
+                complete: function() {
+                    // Check again after 3 seconds (more frequent checking)
+                    setTimeout(checkReservationStatus, 3000);
+                }
+            });
         }
-    });
-}
 
-// Start checking status if not in final states
-<?php if (!in_array($reservation['res_status'], ['cancelled', 'rate us'])): ?>
-    // Start checking after short delay to let page fully load
-    $(document).ready(function() {
-        setTimeout(checkReservationStatus, 1000);
+        // Start checking status if not in final states
+        <?php if (!in_array($reservation['res_status'], ['cancel', 'rate us'])): ?>
+            // Start checking after short delay to let page fully load
+            setTimeout(checkReservationStatus, 1000);
+        <?php endif; ?>
     });
-<?php endif; ?>
-    });
+    </script>
+
+<script>
+        // Android-friendly touch events
+        document.addEventListener('DOMContentLoaded', function() {
+            // Make buttons more responsive to touch
+            const buttons = document.querySelectorAll('button, .btn, [role="button"]');
+            buttons.forEach(button => {
+                button.addEventListener('touchstart', function() {
+                    this.classList.add('active');
+                });
+                button.addEventListener('touchend', function() {
+                    this.classList.remove('active');
+                });
+            });
+            
+            // Prevent zooming on input focus
+            const inputs = document.querySelectorAll('input, select, textarea');
+            inputs.forEach(input => {
+                input.addEventListener('focus', function() {
+                    this.style.fontSize = '16px';
+                });
+            });
+        });
     </script>
 </body>
 </html>
