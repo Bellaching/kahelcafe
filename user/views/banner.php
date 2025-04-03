@@ -1,7 +1,7 @@
 <?php
 include './../inc/topNav.php'; 
 include './../../connection/connection.php';
-include './../inc/header.php';
+
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $target_dir = './../../uploads'; 
 
