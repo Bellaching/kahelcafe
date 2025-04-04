@@ -367,9 +367,10 @@ $note = $reservation['note_area'] ?? 'No notes available.';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Reservation Confirmation</title>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         body {
             -webkit-text-size-adjust: 100%;
@@ -523,7 +524,7 @@ $note = $reservation['note_area'] ?? 'No notes available.';
             width: 80px;
             height: 80px;
             border-radius: 50%;
-            border: 5px solid  #FF902B;
+            border: 5px solid  #ffff;
             position: relative;
             margin-bottom: 20px;
         }
@@ -535,7 +536,7 @@ $note = $reservation['note_area'] ?? 'No notes available.';
             transform: translate(-50%, -50%);
         }
 
-        .qr-container {
+        /* .qr-container {
             margin-top: 1rem;
             text-align: center;
         }
@@ -543,7 +544,7 @@ $note = $reservation['note_area'] ?? 'No notes available.';
         .qr-container img {
             max-width: 100%;
             height: auto;
-        }
+        } */
 
         /* Center content for confirmation status */
         .confirmation-center {
@@ -595,11 +596,11 @@ $note = $reservation['note_area'] ?? 'No notes available.';
     </style>
 </head>
 <body>
-    <div class="container mt-3">
+    <div class="container mt-5 ">
         <h3>Reservation Tracking</h3>
 
         <!-- Reservation Tracking Steps -->
-        <div class="order-tracking">
+        <div class="order-tracking ">
             <div class="step <?php echo ($reservation['res_status'] === 'for confirmation' ? 'active' : ''); ?>">
                 <div class="icon"></div>
                 <div class="title">For Confirmation</div>
@@ -622,7 +623,7 @@ $note = $reservation['note_area'] ?? 'No notes available.';
             </div>
         </div>
 
-        <div class="down-con">
+        <div class="down-con  mx-4">
             <div class="left-content">
                 <?php if ($reservation['res_status'] === 'booked' || $reservation['res_status'] === 'paid' || $reservation['res_status'] === 'payment' || $reservation['res_status'] === 'for confirmation' || $reservation['res_status'] === 'rate us'): ?>
                     <div class="order-sum">
@@ -688,19 +689,9 @@ $note = $reservation['note_area'] ?? 'No notes available.';
                 <?php endif; ?>
             </div>
 
-            <div class="right-content">
+            <div class="right-content col-md-4 px-5 ">
                 <?php if ($reservation['res_status'] === 'payment'): ?>
-                    <?php if (isset($_SESSION['payment_success']) || $reservation['res_status'] === 'paid'): ?>
-                        <?php unset($_SESSION['payment_success']); ?>
-                        <div class="payment-success">
-                            <div class="check-circle">
-                                <i class="fas fa-check"></i>
-                            </div>
-                            <h4>Thank You for Your Payment!</h4>
-                            <p>Your payment has been received successfully.</p>
-                            <p>Please wait for the shop to confirm your reservation.</p>
-                        </div>
-                    <?php else: ?>
+                
                         <div class="border rounded shadow-sm p-3">
                             <form method="POST" enctype="multipart/form-data" class="mt-3" id="receiptForm">
                              <input type="hidden" name="reservation_id" value="<?php echo htmlspecialchars($reservation['id']); ?>">
@@ -732,27 +723,37 @@ $note = $reservation['note_area'] ?? 'No notes available.';
                                 <button type="button" class="btn btn-danger rounded mt-3 w-100" data-bs-toggle="modal" data-bs-target="#cancelReservationModal">Cancel Reservation</button>
                             </form>
                         </div>
-                    <?php endif; ?>
+                   
                 <?php elseif ($reservation['res_status'] === 'paid'): ?>
-                    <div class="payment-success">
-                        <div class="check-circle">
+                    <div class="text-center p-4 rounded shadow container-fluid" style="background-color: #FF902B; color: white;">
+                    <div class="check-circle">
                             <i class="fas fa-check"></i>
                         </div>
-                        <h4>Thank You for Your Payment!</h4>
-                        <p>Your payment has been received successfully.</p>
-                        <p>Please wait for the shop to confirm your reservation.</p>
+                        <h4 class="mb-2"><i class="bi bi-check-circle-fill"></i> Payment Successful!</h4>
+                        <p>Your payment has been received. <strong>Kahel Cafe</strong> is currently verifying your receipt. Please wait for confirmation.</p>
                     </div>
+                   
                 <?php elseif ($reservation['res_status'] === 'booked' || $reservation['res_status'] === 'rate us'): ?>
-                    <div class="qr-container">
+                    <form method="POST" class="mt-3">
+                  
+                    <div class="text-center mt-4">
                         <h5>Scan to View Reservation Details</h5>
                         <img src="<?php echo $qrFile; ?>" alt="Reservation QR Code" class="img-fluid" />
-                        <div class="alert alert-info mt-2">
+                        <br>
+                        </div>
+                        </form>
+                        <div class="alert alert-info mt-2 text-center">
                             <strong>Please show this QR code to the cashier.</strong>
                         </div>
+                      
+                        <div class="qr container-fluid my-4 d-flex justify-content-center rounded-pill">
                         <a href="<?php echo $qrFile; ?>" download="reservation_qr_<?php echo $reservation['id']; ?>.png" class="btn p-2 w-100 rounded-pill text-light" style="background-color: #FF902B;">
                             Download QR Code
                         </a>
-                    </div>
+                   
+                        </div>
+                   
+
                     <?php if ($reservation['res_status'] === 'rate us'): ?>
                         <div class="back mt-3">
                             <button class="back-btn p-2 w-100 rounded-pill text-light" onclick="window.location.href='../../user/views/index.php'">Back to home</button>
@@ -804,7 +805,7 @@ $note = $reservation['note_area'] ?? 'No notes available.';
             </div>
         </div>
     </div>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <!-- Bootstrap JavaScript -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <!-- Loading Indicator -->
@@ -853,7 +854,9 @@ $note = $reservation['note_area'] ?? 'No notes available.';
                 },
                 error: function(xhr, status, error) {
                     // Handle AJAX errors
-                    let errorMessage = 'Error uploading receipt. Please try again.';
+                    // let errorMessage = 'Error uploading receipt. Please try again.';
+                    alert(response.message);
+                    window.location.reload();
                     try {
                         const response = JSON.parse(xhr.responseText);
                         if (response.message) {
@@ -872,15 +875,13 @@ $note = $reservation['note_area'] ?? 'No notes available.';
         
         // Timer functionality for payment status
         <?php if ($reservation['res_status'] === 'payment'): ?>
-            // Get the exact server time when the page loads
-            const serverTime = new Date("<?php echo date('Y-m-d H:i:s'); ?>").getTime();
+            // Calculate the exact time remaining in seconds
+            const paymentTimeLimit = 30 * 60; // 30 minutes in seconds
             const createdTime = new Date("<?php echo $reservation['date_created']; ?>").getTime();
-            
-            // Calculate time remaining more accurately
-            const timeLimit = 30 * 60 * 1000; // 30 minutes in milliseconds
-            const timeElapsed = serverTime - createdTime;
-            let timeLeft = Math.max(0, timeLimit - timeElapsed) / 1000; // Convert to seconds
-            
+            const currentTime = new Date().getTime();
+            const elapsedSeconds = Math.floor((currentTime - createdTime) / 1000);
+            let timeLeft = Math.max(0, paymentTimeLimit - elapsedSeconds);
+
             const timerElement = document.getElementById('payment-timer');
             const timeoutModal = new bootstrap.Modal(document.getElementById('timeoutModal'));
             
@@ -900,7 +901,7 @@ $note = $reservation['note_area'] ?? 'No notes available.';
             
             // Start the timer
             updateTimer();
-            let timerInterval = setInterval(() => {
+            const timerInterval = setInterval(() => {
                 timeLeft--;
                 updateTimer();
             }, 1000);
@@ -910,12 +911,11 @@ $note = $reservation['note_area'] ?? 'No notes available.';
                 // Reset the timer for another 30 minutes
                 timeLeft = 30 * 60;
                 updateTimer();
+                clearInterval(timerInterval);
                 timerInterval = setInterval(() => {
                     timeLeft--;
                     updateTimer();
                 }, 1000);
-                
-                // Hide the modal
                 timeoutModal.hide();
             });
             

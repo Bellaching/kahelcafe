@@ -244,6 +244,7 @@ $note = $orderItems[0]['note'] ?? 'No notes available.';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Order Confirmation</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
@@ -379,6 +380,24 @@ $note = $orderItems[0]['note'] ?? 'No notes available.';
             text-align: center;
             margin: 10px 0;
         }
+
+        .check-circle {
+            display: inline-block;
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            border: 5px solid  #ffff;
+            position: relative;
+            margin-bottom: 20px;
+        }
+        
+        .check-circle i {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
     </style>
 </head>
 <body>
@@ -480,7 +499,7 @@ $note = $orderItems[0]['note'] ?? 'No notes available.';
                                 </div>
                                 <div class="d-flex justify-content-between w-100">
                                     <p><strong>Party Size:</strong></p>
-                                    <p><?php echo htmlspecialchars($orderItems[0]['party_size']); ?></p>
+                                    <p><?php echo htmlspecialchars($order['party_size']); ?></p>
                                 </div>
                                 <div class="d-flex justify-content-between w-100">
                                     <p><strong>Reservation Fee:</strong></p>
@@ -540,7 +559,7 @@ $note = $orderItems[0]['note'] ?? 'No notes available.';
                                 </div>
                                 <div class="d-flex justify-content-between w-100">
                                     <p><strong>Party Size:</strong></p>
-                                    <p><?php echo htmlspecialchars($orderItems[0]['party_size']); ?></p>
+                                    <p><?php echo htmlspecialchars($order['party_size']); ?></p>
                                 </div>
                                 <div class="d-flex justify-content-between w-100">
                                     <p><strong>Reservation Fee:</strong></p>
@@ -644,11 +663,15 @@ $note = $orderItems[0]['note'] ?? 'No notes available.';
 
                 <?php elseif ($order['status'] === 'PAID'): ?>
                     <div class="text-center p-4 rounded shadow container-fluid" style="background-color: #FF902B; color: white;">
-                        <h3 class="mb-2"><i class="bi bi-check-circle-fill"></i> Payment Successful!</h3>
+                    <div class="check-circle">
+                            <i class="fas fa-check"></i>
+                        </div>
+                        <h4 class="mb-2"><i class="bi bi-check-circle-fill"></i> Payment Successful!</h4>
                         <p>Your payment has been received. <strong>Kahel Cafe</strong> is currently verifying your receipt. Please wait for confirmation.</p>
                     </div>
 
                 <?php elseif ($order['status'] === 'booked'): ?>
+                    
                     <form method="POST" class="mt-3">
                         <input type="hidden" name="order_id" value="<?php echo htmlspecialchars($order['order_id']); ?>">
                         <div class="text-center mt-4">
@@ -658,17 +681,12 @@ $note = $orderItems[0]['note'] ?? 'No notes available.';
                         </div>
                     </form>
 
-                    <div class="mb-3 text-left">
-                        <label for="receipt" class="form-label upl-p">Instructions</label>
-                        <ul>
-                            <li>1. Please upload receipt upon confirmation</li>
-                            <li>2. Upon confirmation, there will be an allotted time of 30 minutes to confirm payment.</li>
-                            <li>3. Failure to do so will result in cancellation of order/reservation.</li>
-                        </ul>
-                    </div>
+                    <div class="alert alert-info mt-2">
+                            <strong>Please show this QR code to the cashier.</strong>
+                        </div>
 
                     <div class="qr container-fluid my-4 d-flex justify-content-center rounded-pill">
-                        <a href="<?php echo $qrFile; ?>" download="order_qr_<?php echo $order['order_id']; ?>.png" class="btn btn-primary mt-2">
+                    <a href="<?php echo $qrFile; ?>" download="reservation_qr_<?php echo $reservation['id']; ?>.png" class="btn p-2 w-100 rounded-pill text-light" style="background-color: #FF902B;">
                             Download QR Code
                         </a>
                     </div>
@@ -699,7 +717,7 @@ $note = $orderItems[0]['note'] ?? 'No notes available.';
                             </div>
                             <div class="d-flex justify-content-between w-100">
                                 <p><strong>Party Size:</strong></p>
-                                <p><?php echo htmlspecialchars($orderItems[0]['party_size']); ?></p>
+                                <p><?php echo htmlspecialchars($order['party_size']); ?></p>
                             </div>
                   
                         <div class="d-flex justify-content-between w-100">
@@ -743,7 +761,7 @@ $note = $orderItems[0]['note'] ?? 'No notes available.';
                             </div>
                             <div class="d-flex justify-content-between w-100">
                                 <p><strong>Party Size:</strong></p>
-                                <p><?php echo htmlspecialchars($orderItems[0]['party_size']); ?></p>
+                                <p><?php echo htmlspecialchars($order['party_size']); ?></p>
                             </div>
                      
                         <div class="d-flex justify-content-between w-100">
