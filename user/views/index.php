@@ -32,10 +32,29 @@ if (isset($_SESSION['user_id'])) {
     $stmt->bind_result($firstName, $lastName, $email, $contactNumber);
     $stmt->fetch();
     $stmt->close();
-}
+} 
 
 $userVerified = isset($_SESSION['user_id']) ? 1 : 0;
 $selectedCategory = isset($_GET['category']) ? $conn->real_escape_string($_GET['category']) : '';
+
+// Build the base query
+$baseQuery = "SELECT * FROM menu1";
+$countQuery = "SELECT COUNT(*) as count FROM menu1";
+
+// Add category filter if selected
+if (!empty($selectedCategory)) {
+    $baseQuery .= " WHERE category = '$selectedCategory'";
+    $countQuery .= " WHERE category = '$selectedCategory'";
+}
+
+// Get total items count
+$totalItemsResult = $conn->query($countQuery);
+$totalItems = $totalItemsResult->fetch_assoc()['count'];
+$totalPages = ceil($totalItems / $itemsPerPage);
+
+// Add pagination to the main query
+$sql = $baseQuery . " LIMIT $offset, $itemsPerPage";
+$result = $conn->query($sql);
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['add_to_cart'])) {
     if (!isset($_SESSION['user_id'])) {
@@ -99,9 +118,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['add_to_cart'])) {
     }
 }
 
-$totalItemsResult = $conn->query("SELECT COUNT(*) as count FROM menu1" . ($selectedCategory ? " WHERE category = '$selectedCategory'" : ""));
+// Get total count of all items or filtered items
+$whereClause = !empty($selectedCategory) ? " WHERE category = '$selectedCategory'" : "";
+$totalItemsResult = $conn->query("SELECT COUNT(*) as count FROM menu1 $whereClause");
 $totalItems = $totalItemsResult->fetch_assoc()['count'];
 $totalPages = ceil($totalItems / $itemsPerPage);
+
+// Fetch menu items with pagination
+$sql = "SELECT * FROM menu1 $whereClause ORDER BY name ASC LIMIT $offset, $itemsPerPage";
 ?>
 
 <!DOCTYPE html>
@@ -112,6 +136,7 @@ $totalPages = ceil($totalItems / $itemsPerPage);
     <title>Bootstrap Layout</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
     <style>
         .add-index {
             background-color: #FF902A;
@@ -157,8 +182,8 @@ $totalPages = ceil($totalItems / $itemsPerPage);
     </header>
     <div class="container my-5">
         <h2 class="fw-bold mb-6" style="text-align: left; margin-bottom: 3rem;">
-            Popular <span style="position: relative; color: #E48700;">
-                Now
+            Try our new <span style="position: relative; color: #E48700;">
+                Menu
                 <span style="position: absolute; left: 0; bottom: -4px; width: 100%; height: 3px; background-color: #E48700; border-radius: 2px;"></span>
             </span>
         </h2>
@@ -194,7 +219,7 @@ $totalPages = ceil($totalItems / $itemsPerPage);
                                                 style="background-color: #E48700; color: white;" 
                                                 data-bs-toggle="modal" 
                                                 data-bs-target="#itemModal<?php echo $menu['id']; ?>">
-                                            <i class="fas fa-shopping-cart me-2"></i> Add Order
+                                            <i class="fas fa-shopping-cart me-2"></i> Add to Cart
                                         </button>
                                     </div>
                                 </div>
@@ -210,18 +235,32 @@ $totalPages = ceil($totalItems / $itemsPerPage);
                                         </div>
                                         <div class="modal-body">
                                             <div class="row">
-                                                <div class="col-md-6">
-                                                    <img src="<?php echo $menu['image']; ?>" class="img-fluid" alt="<?php echo $menu['name']; ?>">
-                                                    <p><?php echo $menu['description']; ?></p>
-                                                </div>
+                                            <div class="col-md-6 mb-4">
+    <div class="card h-100 border-0">
+        <!-- Fixed container with filled image -->
+        <div style="height: 250px; overflow: hidden;">
+            <img src="<?php echo $menu['image']; ?>" 
+                 class="img-fluid h-100 w-100" 
+                 style="object-fit: cover; object-position: center;"
+                 alt="<?php echo $menu['name']; ?>">
+        </div>
+        <div class="card-body">
+            <p class="card-text description-text"><?php echo $menu['description']; ?></p>
+        </div>
+    </div>
+</div>
                                                 <div class="col-md-6">
                                                     <!-- Form for Adding to Cart -->
                                                     <form method="post" action="<?php echo $_SERVER['REQUEST_URI']; ?>">
                                                         <input type="hidden" name="item_id" value="<?php echo $menu['id']; ?>">
                                                         <input type="hidden" name="price" value="<?php echo $menu['price']; ?>">
+                                                        <div>
+
+                                                      
 
                                                         <?php if (in_array($menu['category'], ['Coffee', 'Non-Coffee'])): ?>
                                                             <div class="mb-3">
+                                                            
                                                                 <label for="size" class="form-label">Size</label>
                                                                 <select class="form-select" name="size" id="size<?php echo $menu['id']; ?>">
                                                                     <?php
@@ -265,8 +304,19 @@ $totalPages = ceil($totalItems / $itemsPerPage);
                                                                 id="quantity<?php echo $menu['id']; ?>" 
                                                                 name="quantity">
                                                         </div>
+                                                        
+                                                        </div>
 
-                                                        <button type="submit" name="add_to_cart" class="add-index w-100 mt-5 p-3 text-light border-0">Add to Cart</button>
+                                                        <div class="d-flex justify-content-between">
+    <div class="cancel-div container-fluid">
+        <button type="button" class="add-index w-100 mt-5 p-3    " style="border: #E48700 1px solid; background-color: white; color: #FF902A;" data-bs-dismiss="modal">Cancel</button>
+    </div>
+    <div class="order-div container-fluid">
+        <button type="submit" name="add_to_cart" class="add-index w-100 mt-5 p-3 text-light border-0">Add order</button>
+    </div>
+</div>
+
+                                                        
                                                     </form>
                                                 </div>
                                             </div>
@@ -361,7 +411,12 @@ $totalPages = ceil($totalItems / $itemsPerPage);
         </div>
     </footer>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+
+    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.7/dist/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/5.3.3/js/bootstrap.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             // Check if the user is logged in before showing the add to cart modal

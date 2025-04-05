@@ -1,18 +1,8 @@
-<!DOCTYPE html> 
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Menu</title>
-    <link href="https://stackpath.bootstrapcdn.com/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="style.css">
-    <link href="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-bs4.min.css" rel="stylesheet">
-</head>
-<body>
+
 <?php
 
 ob_start(); // Start output buffering
-include "banner.php";
+include "./../views/banner.php";
 include "./../../connection/connection.php";
 
 
@@ -127,8 +117,62 @@ $sql = "SELECT * FROM menu1" . ($selectedCategory ? " WHERE category = '$selecte
 $result = $conn->query($sql);
 
 ob_end_flush();
-
+ 
 ?>
+
+<!DOCTYPE html> 
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Menu</title>
+   
+    <link rel="stylesheet" href="style.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
+
+    <style>
+        .add-index {
+            background-color: #FF902A;
+            border-radius: 7rem;
+        }
+        .banner-img, .sched-banner-img {
+            width: 100%;
+            height: auto;
+        }
+        .special-offers-container {
+            background-color: #ffcea4;
+            padding: 30px;
+            border-radius: 30px;
+        }
+        .virtual-tour {
+            position: relative;
+            height: 70vh;
+            overflow: hidden;
+        }
+        .slide img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .sched-reservation {
+            position: relative;
+            margin-bottom: 1280px;
+        }
+        .calendar iframe {
+            width: 100%;
+            height: 80%;
+            border: none;
+        }
+        /* Hide the modal backdrop */
+        .modal-backdrop {
+            display: none !important;
+        }
+    </style>
+   
+</head>
+<body>
 
 <div class="container-fluid mb-5">
      <div class="row mt-5 align-items-center">
@@ -136,7 +180,7 @@ ob_end_flush();
             <p class="account-text">Our <span class="management-underline">Menu</span></p>
         </div>
         <div class="col-12 col-md-4 d-flex justify-content-center">
-            <div class="input-group">
+            <div class="input-group mb-3">
                 <input type="text" id="search" class="form-control search-box" placeholder="Search item..." aria-label="Search item">
             </div>
         </div>
@@ -179,10 +223,20 @@ ob_end_flush();
             <div class="modal-body">
             <form method="post" action="<?php echo $_SERVER['REQUEST_URI']; ?>" class="h-100">
                 <div class="row">
-                    <div class="col-md-6">
-                        <img src="<?php echo $item['image']; ?>" class="img-fluid" alt="<?php echo $item['name']; ?>">
-                        <p><?php echo $item['description']; ?></p>
-                    </div>
+
+
+                <div class="col-md-6 mb-4">
+    <div style="height: 200px; overflow: hidden;" class="mb-3">
+        <img src="<?php echo $item['image']; ?>" 
+             class="img-fluid h-100 w-100 object-fit-cover" 
+             alt="<?php echo $item['name']; ?>">
+    </div>
+    <p class="text-muted mb-0" style="..."><?php echo $item['description']; ?></p>
+</div>
+
+                    
+
+                    
                     <div class="col-md-6">
                     
                         

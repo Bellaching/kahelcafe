@@ -12,7 +12,7 @@ if (!isset($_SESSION['cart']) && isset($_SESSION['user_id'])) {
     if (!$stmt) {
         die("Prepare failed: " . $conn->error); // Debugging error
     }
-
+ 
     $stmt->bind_param("i", $clientId);
     $stmt->execute();
     $result = $stmt->get_result();

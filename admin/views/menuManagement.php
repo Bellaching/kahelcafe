@@ -1,67 +1,141 @@
 <?php 
-
 ob_start(); 
-
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
 include "./../../admin/views/banner.php";
 include "./../../connection/connection.php";
-$itemsPerPage = 6; // Change this to the number of items you want per page
+
+$itemsPerPage = 6;
 $current_page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
 $offset = ($current_page - 1) * $itemsPerPage;
 $selectedCategory = isset($_GET['category']) ? $conn->real_escape_string($_GET['category']) : '';
 
+// Initialize error array
+$errors = [
+    'menuImage' => '',
+    'menuName' => '',
+    'menuDescription' => '',
+    'menuCategory' => '',
+    'menuSize' => '',
+    'menuTemperature' => '',
+    'menuQuantity' => '',
+    'menuPrice' => '',
+    'productStatus' => '',
+    'general' => [],
+    // Edit form errors
+    'editMenuImage' => '',
+    'editMenuName' => '',
+    'editMenuDescription' => '',
+    'editMenuCategory' => '',
+    'editMenuSize' => '',
+    'editMenuTemperature' => '',
+    'editMenuQuantity' => '',
+    'editMenuPrice' => '',
+    'editProductStatus' => ''
+];
+
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['addMenuItem'])) {
     // Initialize variables
     $menuImage = '';
-    $menuName = $conn->real_escape_string($_POST['menuName']);
-    $menuDescription = $conn->real_escape_string($_POST['menuDescription']);
-    $menuCategory = $conn->real_escape_string($_POST['menuCategory']);
-    $menuSize = isset($_POST['menuSize']) ? implode(',', $_POST['menuSize']) : '';
-    $menuTemperature = isset($_POST['menuTemperature']) ? implode(',', $_POST['menuTemperature']) : '';
-    $menuQuantity = intval($_POST['menuQuantity']);
-    $menuPrice = floatval($_POST['menuPrice']);
-    $productStatus = $conn->real_escape_string($_POST['productStatus']);
+    $menuName = isset($_POST['menuName']) ? $conn->real_escape_string($_POST['menuName']) : '';
+    $menuDescription = isset($_POST['menuDescription']) ? $conn->real_escape_string($_POST['menuDescription']) : '';
+    $menuCategory = isset($_POST['menuCategory']) ? $conn->real_escape_string($_POST['menuCategory']) : '';
+    $menuSize = isset($_POST['menuSize']) ? $_POST['menuSize'] : [];
+    $menuTemperature = isset($_POST['menuTemperature']) ? $_POST['menuTemperature'] : [];
+    $menuQuantity = isset($_POST['menuQuantity']) ? intval($_POST['menuQuantity']) : 0;
+    $menuPrice = isset($_POST['menuPrice']) ? floatval($_POST['menuPrice']) : 0;
+    $productStatus = isset($_POST['productStatus']) ? $conn->real_escape_string($_POST['productStatus']) : '';
+
+    // Validation
+    if (empty($menuName)) {
+        $errors['menuName'] = "Menu name is required.";
+    }
+    if (empty($menuDescription)) {
+        $errors['menuDescription'] = "Description is required.";
+    }
+    if (empty($menuCategory)) {
+        $errors['menuCategory'] = "Category is required.";
+    }
+    
+    // Validate size and temperature based on category
+    if ($menuCategory === 'Coffee' || $menuCategory === 'Non-Coffee' || $menuCategory === 'Signature Frappe') {
+        if (empty($menuSize)) {
+            $errors['menuSize'] = "Please select at least one size.";
+        }
+        if (empty($menuTemperature)) {
+            $errors['menuTemperature'] = "Please select at least one temperature.";
+        }
+    }
+    
+    if ($menuQuantity <= 0) {
+        $errors['menuQuantity'] = "Quantity must be greater than 0.";
+    }
+    if ($menuPrice <= 0) {
+        $errors['menuPrice'] = "Price must be greater than 0.";
+    }
+    if (empty($productStatus)) {
+        $errors['productStatus'] = "Product status is required.";
+    }
 
     // Handle image upload
     if (isset($_FILES['menuImage']) && $_FILES['menuImage']['error'] == 0) {
         $target_dir = "././../../uploads/";
         $image_file = $target_dir . basename($_FILES["menuImage"]["name"]);
+        
+        // Check if file is an image
+        $check = getimagesize($_FILES["menuImage"]["tmp_name"]);
+        if($check === false) {
+            $errors['menuImage'] = "File is not an image.";
+        }
+        
+        // Check file size (5MB max)
+        if ($_FILES["menuImage"]["size"] > 5000000) {
+            $errors['menuImage'] = "Image is too large. Maximum size is 5MB.";
+        }
+        
+        if(empty($errors['menuImage'])) {
+            if (!move_uploaded_file($_FILES["menuImage"]["tmp_name"], $image_file)) {
+                $errors['menuImage'] = "Error uploading image.";
+            } else {
+                $menuImage = $image_file;
+            }
+        }
+    } else {
+        $errors['menuImage'] = "Image is required.";
+    }
 
-        // Ensure the target directory exists and has correct permissions
-        if (move_uploaded_file($_FILES["menuImage"]["tmp_name"], $image_file)) {
-            $menuImage = $image_file;
+    // If no errors, proceed with database insertion
+    if (empty(array_filter($errors))) {
+        $sizeStr = !empty($menuSize) ? implode(',', $menuSize) : '';
+        $tempStr = !empty($menuTemperature) ? implode(',', $menuTemperature) : '';
+        
+        $sql = "INSERT INTO menu1 (image, name, description, category, size, temperature, quantity, price, status)
+                VALUES ('$menuImage', '$menuName', '$menuDescription', '$menuCategory', '$sizeStr', '$tempStr', $menuQuantity, $menuPrice, '$productStatus')";
+
+        if ($conn->query($sql)) {
+            header("Location: menuManagement.php");
+            exit();
         } else {
-            echo "<p class='alert alert-danger'>Error: Failed to upload image.</p>";
-            exit;
+            $errors['general'][] = "Database error: " . $conn->error;
         }
     }
-
-    // Prepare SQL statement to insert data into the menu1 table
-    $sql = "INSERT INTO menu1 (image, name, description, category, size, temperature, quantity, price, status)
-            VALUES ('$menuImage', '$menuName', '$menuDescription', '$menuCategory', '$menuSize', '$menuTemperature', '$menuQuantity', '$menuPrice', '$productStatus')";
-
-    // Execute query
-    if ($conn->query($sql) === TRUE) {
-        header("Location: menuManagement.php"); // Redirect after success
-        exit();
-    } else {
-        // Show detailed error message if insertion fails
-        echo "<p class='alert alert-danger'>Error: " . $sql . "<br>" . $conn->error . "</p>";
-    }
 }
+
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['deleteMenuItem'])) {
-    $menuId = intval($_POST['menuId']);
-    $sql = "DELETE FROM menu1 WHERE id = $menuId";
-    if ($conn->query($sql) === TRUE) {
-        header("Location: " . $_SERVER['PHP_SELF']);
-        exit();
+    $menuId = isset($_POST['menuId']) ? intval($_POST['menuId']) : 0;
+    if ($menuId > 0) {
+        $sql = "DELETE FROM menu1 WHERE id = $menuId";
+        if ($conn->query($sql)) {
+            header("Location: " . $_SERVER['PHP_SELF']);
+            exit();
+        } else {
+            $errors['general'][] = "Error deleting item: " . $conn->error;
+        }
     } else {
-        $errorMessages[] = "Error deleting item: " . $conn->error;
+        $errors['general'][] = "Invalid menu item ID.";
     }
 }
-
 
 if (isset($_GET['id'])) {
     $menuId = intval($_GET['id']);
@@ -70,9 +144,7 @@ if (isset($_GET['id'])) {
     
     if ($result->num_rows > 0) {
         $row = $result->fetch_assoc();
-        // Clear any previous output
         ob_clean();
-        // Set JSON header
         header('Content-Type: application/json');
         echo json_encode([
             'id' => $row['id'],
@@ -87,62 +159,120 @@ if (isset($_GET['id'])) {
             'image' => $row['image']
         ]);
     } else {
-        // Clear any previous output
         ob_clean();
-        // Set JSON header
         header('Content-Type: application/json');
         echo json_encode([]);
     }
-    exit(); // Stop further execution
+    exit();
 }
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['editMenuItem'])) {
-    $menuId = intval($_POST['editMenuId']);
-    $menuName = $conn->real_escape_string($_POST['editMenuName']);
-    $menuDescription = $conn->real_escape_string($_POST['editMenuDescription']);
-    $menuCategory = $conn->real_escape_string($_POST['editMenuCategory']);
-    $menuSize = isset($_POST['editMenuSize']) ? implode(',', $_POST['editMenuSize']) : '';
-    $menuTemperature = isset($_POST['editMenuTemperature']) ? implode(',', $_POST['editMenuTemperature']) : '';
-    $menuQuantity = intval($_POST['editMenuQuantity']);
-    $menuPrice = floatval($_POST['editMenuPrice']);
-    $productStatus = $conn->real_escape_string($_POST['editProductStatus']);
+    $menuId = isset($_POST['editMenuId']) ? intval($_POST['editMenuId']) : 0;
+    $menuName = isset($_POST['editMenuName']) ? $conn->real_escape_string($_POST['editMenuName']) : '';
+    $menuDescription = isset($_POST['editMenuDescription']) ? $conn->real_escape_string($_POST['editMenuDescription']) : '';
+    $menuCategory = isset($_POST['editMenuCategory']) ? $conn->real_escape_string($_POST['editMenuCategory']) : '';
+    $menuSize = isset($_POST['editMenuSize']) ? $_POST['editMenuSize'] : [];
+    $menuTemperature = isset($_POST['editMenuTemperature']) ? $_POST['editMenuTemperature'] : [];
+    $menuQuantity = isset($_POST['editMenuQuantity']) ? intval($_POST['editMenuQuantity']) : 0;
+    $menuPrice = isset($_POST['editMenuPrice']) ? floatval($_POST['editMenuPrice']) : 0;
+    $productStatus = isset($_POST['editProductStatus']) ? $conn->real_escape_string($_POST['editProductStatus']) : '';
 
-    // Handle image upload
+    // Validation
+    if (empty($menuName)) {
+        $errors['editMenuName'] = "Menu name is required.";
+    }
+    if (empty($menuDescription)) {
+        $errors['editMenuDescription'] = "Description is required.";
+    }
+    if (empty($menuCategory)) {
+        $errors['editMenuCategory'] = "Category is required.";
+    }
+    
+    // Validate size and temperature based on category
+    if ($menuCategory === 'Coffee' || $menuCategory === 'Non-Coffee' || $menuCategory === 'Signature Frappe') {
+        if (empty($menuSize)) {
+            $errors['editMenuSize'] = "Please select at least one size.";
+        }
+        if (empty($menuTemperature)) {
+            $errors['editMenuTemperature'] = "Please select at least one temperature.";
+        }
+    }
+    
+    if ($menuQuantity <= 0) {
+        $errors['editMenuQuantity'] = "Quantity must be greater than 0.";
+    }
+    if ($menuPrice <= 0) {
+        $errors['editMenuPrice'] = "Price must be greater than 0.";
+    }
+    if (empty($productStatus)) {
+        $errors['editProductStatus'] = "Product status is required.";
+    }
+
+    // Handle image upload if a new image was provided
     $menuImage = '';
     if (isset($_FILES['editMenuImage']) && $_FILES['editMenuImage']['error'] == 0) {
         $target_dir = "././../../uploads/";
         $image_file = $target_dir . basename($_FILES["editMenuImage"]["name"]);
-        if (move_uploaded_file($_FILES["editMenuImage"]["tmp_name"], $image_file)) {
-            $menuImage = $image_file;
+        
+        $check = getimagesize($_FILES["editMenuImage"]["tmp_name"]);
+        if($check === false) {
+            $errors['editMenuImage'] = "File is not an image.";
+        }
+        
+        if ($_FILES["editMenuImage"]["size"] > 5000000) {
+            $errors['editMenuImage'] = "Image is too large. Maximum size is 5MB.";
+        }
+        
+        if(empty($errors['editMenuImage'])) {
+            if (!move_uploaded_file($_FILES["editMenuImage"]["tmp_name"], $image_file)) {
+                $errors['editMenuImage'] = "Error uploading image.";
+            } else {
+                $menuImage = $image_file;
+            }
         }
     }
 
-    // Prepare SQL statement
-    $sql = "UPDATE menu1 SET 
-            name = '$menuName', 
-            description = '$menuDescription', 
-            category = '$menuCategory', 
-            size = '$menuSize', 
-            temperature = '$menuTemperature', 
-            quantity = $menuQuantity, 
-            price = $menuPrice, 
-            status = '$productStatus'";
+    // Check if we have any edit-specific errors
+    $editErrors = array_filter([
+        $errors['editMenuName'],
+        $errors['editMenuDescription'],
+        $errors['editMenuCategory'],
+        $errors['editMenuSize'],
+        $errors['editMenuTemperature'],
+        $errors['editMenuQuantity'],
+        $errors['editMenuPrice'],
+        $errors['editProductStatus'],
+        $errors['editMenuImage']
+    ]);
 
-    if (!empty($menuImage)) {
-        $sql .= ", image = '$menuImage'";
-    }
+    if (empty($editErrors)) {
+        $sizeStr = !empty($menuSize) ? implode(',', $menuSize) : '';
+        $tempStr = !empty($menuTemperature) ? implode(',', $menuTemperature) : '';
+        
+        $sql = "UPDATE menu1 SET 
+                name = '$menuName', 
+                description = '$menuDescription', 
+                category = '$menuCategory', 
+                size = '$sizeStr', 
+                temperature = '$tempStr', 
+                quantity = $menuQuantity, 
+                price = $menuPrice, 
+                status = '$productStatus'";
 
-    $sql .= " WHERE id = $menuId";
+        if (!empty($menuImage)) {
+            $sql .= ", image = '$menuImage'";
+        }
 
-    // Execute the query
-    if ($conn->query($sql) === TRUE) {
-        header("Location: " . $_SERVER['PHP_SELF']);
-        exit();
-    } else {
-        echo "<p class='alert alert-danger'>Error updating item: " . $conn->error . "</p>";
+        $sql .= " WHERE id = $menuId";
+
+        if ($conn->query($sql)) {
+            header("Location: " . $_SERVER['PHP_SELF']);
+            exit();
+        } else {
+            $errors['general'][] = "Error updating item: " . $conn->error;
+        }
     }
 }
-
 
 $totalItemsResult = $conn->query("SELECT COUNT(*) as count FROM menu1" . ($selectedCategory ? " WHERE category = '$selectedCategory'" : ""));
 $totalItems = $totalItemsResult->fetch_assoc()['count'];
@@ -160,13 +290,82 @@ ob_end_flush();
     <link rel="stylesheet" href="menu.css">
     <link href="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-bs4.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
+    <style>
+        .add-index {
+            background-color: #FF902A;
+            border-radius: 7rem;
+        }
+        .banner-img, .sched-banner-img {
+            width: 100%;
+            height: auto;
+        }
+        .special-offers-container {
+            background-color: #ffcea4;
+            padding: 30px;
+            border-radius: 30px;
+        }
+        .virtual-tour {
+            position: relative;
+            height: 70vh;
+            overflow: hidden;
+        }
+        .slide img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .sched-reservation {
+            position: relative;
+            margin-bottom: 1280px;
+        }
+        .calendar iframe {
+            width: 100%;
+            height: 80%;
+            border: none;
+        }
+        .modal-backdrop {
+            display: none !important;
+        }
+        .error-message {
+            color: #dc3545;
+            font-size: 0.875rem;
+            margin-top: 0.25rem;
+        }
+        .is-invalid {
+            border-color: #dc3545 !important;
+        }
+        .general-errors {
+            color: #dc3545;
+            margin-bottom: 1rem;
+            padding: 0.75rem 1.25rem;
+            border: 1px solid #f5c6cb;
+            border-radius: 0.25rem;
+            background-color: #f8d7da;
+        }
+        .checkbox-error {
+            color: #dc3545;
+            font-size: 0.875rem;
+            margin-top: 0.25rem;
+            display: block;
+        }
+    </style>
 </head>
 <body>
 
+<!-- General Error Display -->
+<?php if (!empty($errors['general'])): ?>
+    <div class="container mt-3 general-errors">
+        <ul class="mb-0">
+            <?php foreach ($errors['general'] as $error): ?>
+                <li><?php echo htmlspecialchars($error); ?></li>
+            <?php endforeach; ?>
+        </ul>
+    </div>
+<?php endif; ?>
+
 <div class="container-fluid mb-5">
-    <div class="row mt-5 justify-content-center text-center text-md-start align-items-center">
-        <div class="col-12 col-md-8">
+    <div class="row mt-5 align-items-center">
+        <div class="col-12 col-md-8 text-center text-md-start ms-md-5">
             <p class="account-text">
                 Our <span class="management-underline">Menu</span>
             </p>
@@ -188,16 +387,11 @@ ob_end_flush();
     </div>
 </div>
 
-
-
-
-    <?php include "filter.php";?>
+<?php include "filter.php";?>
             </div>
         </div>
         <div class="container">
     <div class="row g-0" id="menu-card-container">
-
-
         <?php
 function renderMenuItems($result) {
     $output = '';
@@ -242,10 +436,9 @@ function renderMenuItems($result) {
         ?>
     </div>
 </div>
-<!-- Add this hidden input if it doesn't exist -->
+
 <input type="hidden" id="deleteMenuId" name="deleteMenuId">
 
-<!-- Ensure the modal exists -->
 <div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -278,81 +471,107 @@ function renderMenuItems($result) {
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label for="editMenuImage" class="form-label">Upload Image</label>
-                                <input type="file" class="form-control" id="editMenuImage" name="editMenuImage" accept="image/*">
+                                <input type="file" class="form-control <?php echo !empty($errors['editMenuImage']) ? 'is-invalid' : '' ?>" id="editMenuImage" name="editMenuImage" accept="image/*">
+                                <?php if (!empty($errors['editMenuImage'])): ?>
+                                    <div class="error-message"><?php echo htmlspecialchars($errors['editMenuImage']); ?></div>
+                                <?php endif; ?>
                                 <small class="text-muted">Leave blank to keep the current image.</small>
                             </div>
                             <div class="mb-3">
                                 <label for="editMenuDescription" class="form-label">Description</label>
-                                <textarea class="form-control" id="editMenuDescription" name="editMenuDescription" rows="4" required></textarea>
+                                <textarea class="form-control <?php echo !empty($errors['editMenuDescription']) ? 'is-invalid' : '' ?>" id="editMenuDescription" name="editMenuDescription" rows="4"><?php echo isset($_POST['editMenuDescription']) ? htmlspecialchars($_POST['editMenuDescription']) : '' ?></textarea>
+                                <?php if (!empty($errors['editMenuDescription'])): ?>
+                                    <div class="error-message"><?php echo htmlspecialchars($errors['editMenuDescription']); ?></div>
+                                <?php endif; ?>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label for="editMenuName" class="form-label">Menu Name</label>
-                                <input type="text" class="form-control" id="editMenuName" name="editMenuName" required>
+                                <input type="text" class="form-control <?php echo !empty($errors['editMenuName']) ? 'is-invalid' : '' ?>" id="editMenuName" name="editMenuName" value="<?php echo isset($_POST['editMenuName']) ? htmlspecialchars($_POST['editMenuName']) : '' ?>">
+                                <?php if (!empty($errors['editMenuName'])): ?>
+                                    <div class="error-message"><?php echo htmlspecialchars($errors['editMenuName']); ?></div>
+                                <?php endif; ?>
                             </div>
                             <div class="mb-3">
                                 <label for="editMenuCategory" class="form-label">Category</label>
-                                <select class="form-select" id="editMenuCategory" name="editMenuCategory" required>
-                                    <option value="Coffee">Coffee</option>
-                                    <option value="Non-Coffee">Non-Coffee</option>
-                                    <option value="Signature Frappe">Signature Frappe</option>
-                                    <option value="Starters">Starters</option>
-                                    <option value="Pasta">Pasta</option>
-                                    <option value="Sandwich">Sandwich</option>
-                                    <option value="Rice Meal">Rice Meal</option>
-                                    <option value="All Day Breakfast">All Day Breakfast</option>
+                                <select class="form-select <?php echo !empty($errors['editMenuCategory']) ? 'is-invalid' : '' ?>" id="editMenuCategory" name="editMenuCategory">
+                                    <option value="Coffee" <?php echo (isset($_POST['editMenuCategory']) && $_POST['editMenuCategory'] == 'Coffee') ? 'selected' : '' ?>>Coffee</option>
+                                    <option value="Non-Coffee" <?php echo (isset($_POST['editMenuCategory']) && $_POST['editMenuCategory'] == 'Non-Coffee') ? 'selected' : '' ?>>Non-Coffee</option>
+                                    <option value="Signature Frappe" <?php echo (isset($_POST['editMenuCategory']) && $_POST['editMenuCategory'] == 'Signature Frappe') ? 'selected' : '' ?>>Signature Frappe</option>
+                                    <option value="Starters" <?php echo (isset($_POST['editMenuCategory']) && $_POST['editMenuCategory'] == 'Starters') ? 'selected' : '' ?>>Starters</option>
+                                    <option value="Pasta" <?php echo (isset($_POST['editMenuCategory']) && $_POST['editMenuCategory'] == 'Pasta') ? 'selected' : '' ?>>Pasta</option>
+                                    <option value="Sandwich" <?php echo (isset($_POST['editMenuCategory']) && $_POST['editMenuCategory'] == 'Sandwich') ? 'selected' : '' ?>>Sandwich</option>
+                                    <option value="Rice Meal" <?php echo (isset($_POST['editMenuCategory']) && $_POST['editMenuCategory'] == 'Rice Meal') ? 'selected' : '' ?>>Rice Meal</option>
+                                    <option value="All Day Breakfast" <?php echo (isset($_POST['editMenuCategory']) && $_POST['editMenuCategory'] == 'All Day Breakfast') ? 'selected' : '' ?>>All Day Breakfast</option>
                                 </select>
+                                <?php if (!empty($errors['editMenuCategory'])): ?>
+                                    <div class="error-message"><?php echo htmlspecialchars($errors['editMenuCategory']); ?></div>
+                                <?php endif; ?>
                             </div>
                             <div class="mb-3 container-fluid" id="editMenuSizeContainer">
                                 <label for="editMenuSize" class="form-label">Size</label>
                                 <div class="container-fluid">
-                                    <input type="checkbox" name="editMenuSize[]" value="Small" id="editSizeSmall">
+                                    <input type="checkbox" name="editMenuSize[]" value="Small" id="editSizeSmall" <?php echo (isset($_POST['editMenuSize']) && in_array('Small', $_POST['editMenuSize']) ? 'checked' : '' )?>>
                                     <label for="editSizeSmall" class="me-3">Small</label>
-                                    <input type="checkbox" name="editMenuSize[]" value="Medium" id="editSizeMedium">
+                                    <input type="checkbox" name="editMenuSize[]" value="Medium" id="editSizeMedium" <?php echo (isset($_POST['editMenuSize']) && in_array('Medium', $_POST['editMenuSize']) ? 'checked' : '') ?>>
                                     <label for="editSizeMedium" class="me-3">Medium</label>
-                                    <input type="checkbox" name="editMenuSize[]" value="Large" id="editSizeLarge">
+                                    <input type="checkbox" name="editMenuSize[]" value="Large" id="editSizeLarge" <?php echo (isset($_POST['editMenuSize']) && in_array('Large', $_POST['editMenuSize']) ? 'checked' : '') ?>>
                                     <label for="editSizeLarge">Large</label>
                                 </div>
+                                <?php if (!empty($errors['editMenuSize'])): ?>
+                                    <div class="checkbox-error"><?php echo htmlspecialchars($errors['editMenuSize']); ?></div>
+                                <?php endif; ?>
                             </div>
                             <div class="mb-3 container-fluid" id="editMenuTemperatureContainer">
                                 <label for="editMenuTemperature" class="form-label">Temperature</label>
                                 <div class="container-fluid">
-                                    <input type="checkbox" name="editMenuTemperature[]" value="Hot" id="editTemperatureHot">
+                                    <input type="checkbox" name="editMenuTemperature[]" value="Hot" id="editTemperatureHot" <?php echo (isset($_POST['editMenuTemperature']) && in_array('Hot', $_POST['editMenuTemperature']) ? 'checked' : '') ?>>
                                     <label for="editTemperatureHot" class="me-3">Hot</label>
-                                    <input type="checkbox" name="editMenuTemperature[]" value="Warm" id="editTemperatureWarm">
+                                    <input type="checkbox" name="editMenuTemperature[]" value="Warm" id="editTemperatureWarm" <?php echo (isset($_POST['editMenuTemperature']) && in_array('Warm', $_POST['editMenuTemperature']) ? 'checked' : '' )?>>
                                     <label for="editTemperatureWarm" class="me-3">Warm</label>
-                                    <input type="checkbox" name="editMenuTemperature[]" value="Cold" id="editTemperatureCold">
+                                    <input type="checkbox" name="editMenuTemperature[]" value="Cold" id="editTemperatureCold" <?php echo (isset($_POST['editMenuTemperature']) && in_array('Cold', $_POST['editMenuTemperature']) ? 'checked' : '' )?>>
                                     <label for="editTemperatureCold">Cold</label>
                                 </div>
+                                <?php if (!empty($errors['editMenuTemperature'])): ?>
+                                    <div class="checkbox-error"><?php echo htmlspecialchars($errors['editMenuTemperature']); ?></div>
+                                <?php endif; ?>
                             </div>
                             <div class="mb-3">
                                 <label for="editMenuQuantity" class="form-label">Quantity</label>
                                 <div class="d-flex align-items-center">
-                                    <div class="me-2" id="editQuantityValue">1</div>
-                                    <input type="range" class="form-range" id="editMenuQuantity" name="editMenuQuantity" min="1" max="100" value="1" required>
+                                    <div class="me-2" id="editQuantityValue"><?php echo isset($_POST['editMenuQuantity']) ? htmlspecialchars($_POST['editMenuQuantity']) : '1' ?></div>
+                                    <input type="range" class="form-range <?php echo !empty($errors['editMenuQuantity']) ? 'is-invalid' : '' ?>" id="editMenuQuantity" name="editMenuQuantity" min="1" max="100" value="<?php echo isset($_POST['editMenuQuantity']) ? htmlspecialchars($_POST['editMenuQuantity']) : '1' ?>">
                                 </div>
+                                <?php if (!empty($errors['editMenuQuantity'])): ?>
+                                    <div class="error-message"><?php echo htmlspecialchars($errors['editMenuQuantity']); ?></div>
+                                <?php endif; ?>
                             </div>
                             <div class="mb-3">
                                 <label for="editMenuPrice" class="form-label">Price</label>
                                 <div class="d-flex align-items-center">
-                                    <div class="me-2" id="editPriceValue">0.00</div>
-                                    <input type="range" class="form-range" id="editMenuPrice" name="editMenuPrice" min="0" max="1000" value="0" step="0.01" required>
+                                    <div class="me-2" id="editPriceValue"><?php echo isset($_POST['editMenuPrice']) ? number_format($_POST['editMenuPrice'], 2) : '0.00' ?></div>
+                                    <input type="range" class="form-range <?php echo !empty($errors['editMenuPrice']) ? 'is-invalid' : '' ?>" id="editMenuPrice" name="editMenuPrice" min="0" max="1000" value="<?php echo isset($_POST['editMenuPrice']) ? htmlspecialchars($_POST['editMenuPrice']) : '0' ?>" step="0.01">
                                 </div>
+                                <?php if (!empty($errors['editMenuPrice'])): ?>
+                                    <div class="error-message"><?php echo htmlspecialchars($errors['editMenuPrice']); ?></div>
+                                <?php endif; ?>
                             </div>
                             <div class="mb-3">
                                 <label for="editProductStatus" class="form-label">Status</label>
-                                <select class="form-select" id="editProductStatus" name="editProductStatus" required>
-                                    <option value="Available">Available</option>
-                                    <option value="Unavailable">Unavailable</option>
+                                <select class="form-select <?php echo !empty($errors['editProductStatus']) ? 'is-invalid' : '' ?>" id="editProductStatus" name="editProductStatus">
+                                    <option value="Available" <?php echo (isset($_POST['editProductStatus']) && $_POST['editProductStatus'] == 'Available') ? 'selected' : '' ?>>Available</option>
+                                    <option value="Unavailable" <?php echo (isset($_POST['editProductStatus']) && $_POST['editProductStatus'] == 'Unavailable') ? 'selected' : '' ?>>Unavailable</option>
                                 </select>
+                                <?php if (!empty($errors['editProductStatus'])): ?>
+                                    <div class="error-message"><?php echo htmlspecialchars($errors['editProductStatus']); ?></div>
+                                <?php endif; ?>
                             </div>
                         </div>
                     </div>
                     <input type="hidden" id="editMenuId" name="editMenuId">
                 </form>
             </div>
-            <!-- Buttons at the bottom -->
             <div class="row m-2 mb-3">
                 <div class="col-6">
                     <button type="button" class="container-fluid close-add" data-bs-dismiss="modal" aria-label="Close">Close</button>
@@ -365,6 +584,7 @@ function renderMenuItems($result) {
     </div>
 </div>
 
+<!-- Add Menu Modal -->
 <div class="modal fade" id="addMenuModal" tabindex="-1" aria-labelledby="addMenuModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -378,129 +598,156 @@ function renderMenuItems($result) {
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label for="menuImage" class="form-label">Upload Image</label>
-                                <input type="file" class="form-control" id="menuImage" name="menuImage" accept="image/*" required>
+                                <input type="file" class="form-control <?php echo !empty($errors['menuImage']) ? 'is-invalid' : '' ?>" id="menuImage" name="menuImage" accept="image/*">
+                                <?php if (!empty($errors['menuImage'])): ?>
+                                    <div class="error-message"><?php echo htmlspecialchars($errors['menuImage']); ?></div>
+                                <?php endif; ?>
                             </div>
                             <div class="mb-3">
                                 <label for="menuDescription" class="form-label">Description</label>
-                                <textarea class="form-control" id="menuDescription" name="menuDescription" rows="4" required></textarea>
+                                <textarea class="form-control <?php echo !empty($errors['menuDescription']) ? 'is-invalid' : '' ?>" id="menuDescription" name="menuDescription" rows="4"><?php echo isset($_POST['menuDescription']) ? htmlspecialchars($_POST['menuDescription']) : '' ?></textarea>
+                                <?php if (!empty($errors['menuDescription'])): ?>
+                                    <div class="error-message"><?php echo htmlspecialchars($errors['menuDescription']); ?></div>
+                                <?php endif; ?>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label for="menuName" class="form-label">Menu Name</label>
-                                <input type="text" class="form-control" id="menuName" name="menuName" required>
+                                <input type="text" class="form-control <?php echo !empty($errors['menuName']) ? 'is-invalid' : '' ?>" id="menuName" name="menuName" value="<?php echo isset($_POST['menuName']) ? htmlspecialchars($_POST['menuName']) : '' ?>">
+                                <?php if (!empty($errors['menuName'])): ?>
+                                    <div class="error-message"><?php echo htmlspecialchars($errors['menuName']); ?></div>
+                                <?php endif; ?>
                             </div>
                             <div class="mb-3">
                                 <label for="menuCategory" class="form-label">Category</label>
-                                <select class="form-select" id="menuCategory" name="menuCategory" required><option value="Coffee">Coffee</option><option value="Non-Coffee">Non-Coffee</option><option value="Signature Frappe">Signature Frappe</option><option value="Starters">Starters</option><option value="Pasta">Pasta</option><option value="Sandwich">Sandwich</option><option value="Rice Meal">Rice Meal</option><option value="All Day Breakfast">All Day Breakfast</option>
+                                <select class="form-select <?php echo !empty($errors['menuCategory']) ? 'is-invalid' : '' ?>" id="menuCategory" name="menuCategory">
+                                    <option value="Coffee" <?php echo (isset($_POST['menuCategory']) && $_POST['menuCategory'] == 'Coffee') ? 'selected' : '' ?>>Coffee</option>
+                                    <option value="Non-Coffee" <?php echo (isset($_POST['menuCategory']) && $_POST['menuCategory'] == 'Non-Coffee') ? 'selected' : '' ?>>Non-Coffee</option>
+                                    <option value="Signature Frappe" <?php echo (isset($_POST['menuCategory']) && $_POST['menuCategory'] == 'Signature Frappe') ? 'selected' : '' ?>>Signature Frappe</option>
+                                    <option value="Starters" <?php echo (isset($_POST['menuCategory']) && $_POST['menuCategory'] == 'Starters') ? 'selected' : '' ?>>Starters</option>
+                                    <option value="Pasta" <?php echo (isset($_POST['menuCategory']) && $_POST['menuCategory'] == 'Pasta') ? 'selected' : '' ?>>Pasta</option>
+                                    <option value="Sandwich" <?php echo (isset($_POST['menuCategory']) && $_POST['menuCategory'] == 'Sandwich') ? 'selected' : '' ?>>Sandwich</option>
+                                    <option value="Rice Meal" <?php echo (isset($_POST['menuCategory']) && $_POST['menuCategory'] == 'Rice Meal') ? 'selected' : '' ?>>Rice Meal</option>
+                                    <option value="All Day Breakfast" <?php echo (isset($_POST['menuCategory']) && $_POST['menuCategory'] == 'All Day Breakfast') ? 'selected' : '' ?>>All Day Breakfast</option>
                                 </select>
+                                <?php if (!empty($errors['menuCategory'])): ?>
+                                    <div class="error-message"><?php echo htmlspecialchars($errors['menuCategory']); ?></div>
+                                <?php endif; ?>
                             </div>
                             <div class="mb-3 container-fluid" id="menuSizeContainer">
-    <label for="menuSize" class="form-label">Size</label>
-    <div class="container-fluid">
-        <input type="checkbox" name="menuSize[]" value="Small" id="sizeSmall">
-        <label for="sizeSmall" class="me-3">Small</label>
-        <input type="checkbox" name="menuSize[]" value="Medium" id="sizeMedium">
-        <label for="sizeMedium" class="me-3">Medium</label>
-        <input type="checkbox" name="menuSize[]" value="Large" id="sizeLarge">
-        <label for="sizeLarge">Large</label>
-    </div>
-</div>
-
-<div class="mb-3 container-fluid" id="menuTemperatureContainer">
-    <label for="menuTemperature" class="form-label">Temperature</label>
-    <div class="container-fluid">
-        <input type="checkbox" name="menuTemperature[]" value="Hot" id="temperatureHot">
-        <label for="temperatureHot" class="me-3">Hot</label>
-        <input type="checkbox" name="menuTemperature[]" value="Warm" id="temperatureWarm">
-        <label for="temperatureWarm" class="me-3">Warm</label>
-        <input type="checkbox" name="menuTemperature[]" value="Cold" id="temperatureCold">
-        <label for="temperatureCold">Cold</label>
-    </div>
-</div>
-
-
+                                <label for="menuSize" class="form-label">Size</label>
+                                <div class="container-fluid">
+                                    <input type="checkbox" name="menuSize[]" value="Small" id="sizeSmall" <?php echo (isset($_POST['menuSize']) && in_array('Small', $_POST['menuSize'])) ? 'checked' : '' ?>>
+                                    <label for="sizeSmall" class="me-3">Small</label>
+                                    <input type="checkbox" name="menuSize[]" value="Medium" id="sizeMedium" <?php echo (isset($_POST['menuSize']) && in_array('Medium', $_POST['menuSize'])) ? 'checked' : '' ?>>
+                                    <label for="sizeMedium" class="me-3">Medium</label>
+                                    <input type="checkbox" name="menuSize[]" value="Large" id="sizeLarge" <?php echo (isset($_POST['menuSize']) && in_array('Large', $_POST['menuSize'])) ? 'checked' : '' ?>>
+                                    <label for="sizeLarge">Large</label>
+                                </div>
+                                <?php if (!empty($errors['menuSize'])): ?>
+                                    <div class="checkbox-error"><?php echo htmlspecialchars($errors['menuSize']); ?></div>
+                                <?php endif; ?>
+                            </div>
+                            <div class="mb-3 container-fluid" id="menuTemperatureContainer">
+                                <label for="menuTemperature" class="form-label">Temperature</label>
+                                <div class="container-fluid">
+                                    <input type="checkbox" name="menuTemperature[]" value="Hot" id="temperatureHot" <?php echo (isset($_POST['menuTemperature']) && in_array('Hot', $_POST['menuTemperature'])) ? 'checked' : '' ?>>
+                                    <label for="temperatureHot" class="me-3">Hot</label>
+                                    <input type="checkbox" name="menuTemperature[]" value="Warm" id="temperatureWarm" <?php echo (isset($_POST['menuTemperature']) && in_array('Warm', $_POST['menuTemperature'])) ? 'checked' : '' ?>>
+                                    <label for="temperatureWarm" class="me-3">Warm</label>
+                                    <input type="checkbox" name="menuTemperature[]" value="Cold" id="temperatureCold" <?php echo (isset($_POST['menuTemperature']) && in_array('Cold', $_POST['menuTemperature'])) ? 'checked' : '' ?>>
+                                    <label for="temperatureCold">Cold</label>
+                                </div>
+                                <?php if (!empty($errors['menuTemperature'])): ?>
+                                    <div class="checkbox-error"><?php echo htmlspecialchars($errors['menuTemperature']); ?></div>
+                                <?php endif; ?>
+                            </div>
                             <div class="mb-3">
-    <label for="menuQuantity" class="form-label">Quantity</label>
-    <div class="d-flex align-items-center">
-        <div class="me-2" id="quantityValue">1</div>
-        <input type="range" class="form-range" id="menuQuantity" name="menuQuantity" min="1" max="100" value="1" required 
-               style="accent-color: #FF902B;">
-    </div>
-</div>
-<div class="mb-3">
-    <label for="menuPrice" class="form-label">Price</label>
-    <div class="d-flex align-items-center">
-        <div class="me-2" id="priceValue">0.00</div>
-        <input type="range" class="form-range" id="menuPrice" name="menuPrice" min="0" max="1000" value="0" step="0.01" required 
-               style="accent-color: #FF902B;">
-    </div>
-</div>
-<div class="mb-3">
-  
-  </div>            </div>        <div class="container">
-    <div class="row">
-        <div class="col-6">
-            <button type="button" class=" container-fluid close-add" data-bs-dismiss="modal" aria-label="Close">Close</button>
+                                <label for="menuQuantity" class="form-label">Quantity</label>
+                                <div class="d-flex align-items-center">
+                                    <div class="me-2" id="quantityValue"><?php echo isset($_POST['menuQuantity']) ? htmlspecialchars($_POST['menuQuantity']) : '1' ?></div>
+                                    <input type="range" class="form-range <?php echo !empty($errors['menuQuantity']) ? 'is-invalid' : '' ?>" id="menuQuantity" name="menuQuantity" min="1" max="100" value="<?php echo isset($_POST['menuQuantity']) ? htmlspecialchars($_POST['menuQuantity']) : '1' ?>">
+                                </div>
+                                <?php if (!empty($errors['menuQuantity'])): ?>
+                                    <div class="error-message"><?php echo htmlspecialchars($errors['menuQuantity']); ?></div>
+                                <?php endif; ?>
+                            </div>
+                            <div class="mb-3">
+                                <label for="menuPrice" class="form-label">Price</label>
+                                <div class="d-flex align-items-center">
+                                    <div class="me-2" id="priceValue"><?php echo isset($_POST['menuPrice']) ? number_format($_POST['menuPrice'], 2) : '0.00' ?></div>
+                                    <input type="range" class="form-range <?php echo !empty($errors['menuPrice']) ? 'is-invalid' : '' ?>" id="menuPrice" name="menuPrice" min="0" max="1000" value="<?php echo isset($_POST['menuPrice']) ? htmlspecialchars($_POST['menuPrice']) : '0' ?>" step="0.01">
+                                </div>
+                                <?php if (!empty($errors['menuPrice'])): ?>
+                                    <div class="error-message"><?php echo htmlspecialchars($errors['menuPrice']); ?></div>
+                                <?php endif; ?>
+                            </div>
+                            <div class="mb-3">
+                                <label for="productStatus" class="form-label">Status</label>
+                                <select class="form-select <?php echo !empty($errors['productStatus']) ? 'is-invalid' : '' ?>" id="productStatus" name="productStatus">
+                                    <option value="Available" <?php echo (isset($_POST['productStatus']) && $_POST['productStatus'] == 'Available') ? 'selected' : '' ?>>Available</option>
+                                    <option value="Unavailable" <?php echo (isset($_POST['productStatus']) && $_POST['productStatus'] == 'Unavailable') ? 'selected' : '' ?>>Unavailable</option>
+                                </select>
+                                <?php if (!empty($errors['productStatus'])): ?>
+                                    <div class="error-message"><?php echo htmlspecialchars($errors['productStatus']); ?></div>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="container">
+                        <div class="row">
+                            <div class="col-6">
+                                <button type="button" class="container-fluid close-add" data-bs-dismiss="modal" aria-label="Close">Close</button>
+                            </div>
+                            <div class="col-6">
+                                <button type="submit" name="addMenuItem" class="btn-add-item container-fluid text-light">Add Menu Item</button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
         </div>
-        <div class="col-6">
-            <button type="submit" name="addMenuItem" class=" btn-add-item container-fluid text-light">Add Menu Item</button>
-        </div>
     </div>
 </div>
-</div>
-</form>
-</div>
-</div>
-</div>
-</div>
-
-
 
 <div class="pagination-container d-flex justify-content-center my-4">
-    <nav>
-        <ul class="pagination">
+    <nav aria-label="Page navigation">
+        <ul class="pagination justify-content-center">
             <?php if ($current_page > 1): ?>
                 <li class="page-item">
-                    <a class="page-link" href="?page=<?= $current_page - 1 ?>&category=<?= $selectedCategory ?>" style="background-color: #FF902B; color: #FFFFFF;">Previous</a>
-                </li>
-            <?php else: ?>
-                <li class="page-item disabled">
-                    <span class="page-link" style="background-color: #FF902B; color: #FFFFFF;">Previous</span>
+                    <a class="page-link" href="?page=<?= $current_page - 1 ?><?= !empty($selectedCategory) ? '&category='.$selectedCategory : '' ?>" aria-label="Previous">
+                        <span aria-hidden="true">&laquo;</span>
+                    </a>
                 </li>
             <?php endif; ?>
-
+            
             <?php for ($i = 1; $i <= $totalPages; $i++): ?>
                 <li class="page-item <?= $i == $current_page ? 'active' : '' ?>">
-                    <a class="page-link" href="?page=<?= $i ?>&category=<?= $selectedCategory ?>" style="background-color: #FF902B; color: #FFFFFF;"><?= $i ?></a>
+                    <a class="page-link" href="?page=<?= $i ?><?= !empty($selectedCategory) ? '&category='.$selectedCategory : '' ?>"><?= $i ?></a>
                 </li>
             <?php endfor; ?>
-
+            
             <?php if ($current_page < $totalPages): ?>
                 <li class="page-item">
-                    <a class="page-link" href="?page=<?= $current_page + 1 ?>&category=<?= $selectedCategory ?>" style="background-color: #FF902B; color: #FFFFFF;">Next</a>
-                </li>
-            <?php else: ?>
-                <li class="page-item disabled">
-                    <span class="page-link" style="background-color: #FF902B; color: #FFFFFF;">Next</span>
+                    <a class="page-link" href="?page=<?= $current_page + 1 ?><?= !empty($selectedCategory) ? '&category='.$selectedCategory : '' ?>" aria-label="Next">
+                        <span aria-hidden="true">&raquo;</span>
+                    </a>
                 </li>
             <?php endif; ?>
         </ul>
     </nav>
 </div>
-<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
-<script src="https://stackpath.bootstrapcdn.com/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
+
 <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
 <script src="https://stackpath.bootstrapcdn.com/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/summernote/0.8.18/summernote.min.js"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function () {
-        // Get the category select element
         const categorySelect = document.getElementById('menuCategory');
         const sizeContainer = document.getElementById('menuSizeContainer');
         const temperatureContainer = document.getElementById('menuTemperatureContainer');
 
-        // Function to check the category and toggle the size and temperature fields
         function toggleFields() {
             const selectedCategory = categorySelect.value;
             if (selectedCategory !== 'Coffee' && selectedCategory !== 'Non-Coffee' && selectedCategory !== 'Signature Frappe')  {
@@ -512,92 +759,98 @@ function renderMenuItems($result) {
             }
         }
 
-        // Run the function on page load to check the initial state
+        // Run on page load to set initial state
         toggleFields();
-
-        // Add an event listener to run the function whenever the category changes
+        
+        // Add event listener for changes
         categorySelect.addEventListener('change', toggleFields);
     });
 
     function openEditModal(id) {
-    $.ajax({
-        url: 'menuManagement.php?id=' + id,
-        method: 'GET',
-        success: function(response) {
-            console.log(response); // Log the response to see what is being returned
-            try {
-                // No need to parse the response, it's already an object
-                const data = response;
+        $.ajax({
+            url: 'menuManagement.php?id=' + id,
+            method: 'GET',
+            success: function(response) {
+                try {
+                    const data = response;
 
-                // Populate the modal fields with the data
-                document.getElementById('editMenuName').value = data.name;
-                document.getElementById('editMenuDescription').value = data.description;
-                document.getElementById('editMenuCategory').value = data.category;
-                document.getElementById('editMenuQuantity').value = data.quantity;
-                document.getElementById('editQuantityValue').innerText = data.quantity;
-                document.getElementById('editMenuPrice').value = data.price;
-                document.getElementById('editPriceValue').innerText = parseFloat(data.price).toFixed(2);
-                document.getElementById('editProductStatus').value = data.status;
-                document.getElementById('editMenuId').value = data.id;
+                    // Populate form fields
+                    document.getElementById('editMenuName').value = data.name;
+                    document.getElementById('editMenuDescription').value = data.description;
+                    document.getElementById('editMenuCategory').value = data.category;
+                    document.getElementById('editMenuQuantity').value = data.quantity;
+                    document.getElementById('editQuantityValue').innerText = data.quantity;
+                    document.getElementById('editMenuPrice').value = data.price;
+                    document.getElementById('editPriceValue').innerText = parseFloat(data.price).toFixed(2);
+                    document.getElementById('editProductStatus').value = data.status;
+                    document.getElementById('editMenuId').value = data.id;
 
-                // Handle checkboxes for size
-                const sizeCheckboxes = document.querySelectorAll('input[name="editMenuSize[]"]');
-                sizeCheckboxes.forEach(checkbox => {
-                    checkbox.checked = data.size.includes(checkbox.value);
-                });
+                    // Handle checkboxes for size
+                    const sizeCheckboxes = document.querySelectorAll('input[name="editMenuSize[]"]');
+                    if (data.size) {
+                        const sizes = data.size.split(',');
+                        sizeCheckboxes.forEach(checkbox => {
+                            checkbox.checked = sizes.includes(checkbox.value);
+                        });
+                    }
 
-                 // Show or hide size and temperature containers based on the category
-                 const selectedCategory = data.category;
-                const editSizeContainer = document.getElementById('editMenuSizeContainer');
-                const editTemperatureContainer = document.getElementById('editMenuTemperatureContainer');
+                    // Handle checkboxes for temperature
+                    const temperatureCheckboxes = document.querySelectorAll('input[name="editMenuTemperature[]"]');
+                    if (data.temperature) {
+                        const temps = data.temperature.split(',');
+                        temperatureCheckboxes.forEach(checkbox => {
+                            checkbox.checked = temps.includes(checkbox.value);
+                        });
+                    }
 
-                if (selectedCategory === 'Signature Frappe' || selectedCategory === 'Non-Coffee' || selectedCategory === 'Coffee') {
-                    editSizeContainer.style.display = 'block';
-                    editTemperatureContainer.style.display = 'block';
-                } else {
-                    editSizeContainer.style.display = 'none';
-                    editTemperatureContainer.style.display = 'none';
+                    // Show or hide size and temperature containers based on category
+                    const selectedCategory = data.category;
+                    const editSizeContainer = document.getElementById('editMenuSizeContainer');
+                    const editTemperatureContainer = document.getElementById('editMenuTemperatureContainer');
+
+                    if (selectedCategory === 'Signature Frappe' || selectedCategory === 'Non-Coffee' || selectedCategory === 'Coffee') {
+                        editSizeContainer.style.display = 'block';
+                        editTemperatureContainer.style.display = 'block';
+                    } else {
+                        editSizeContainer.style.display = 'none';
+                        editTemperatureContainer.style.display = 'none';
+                    }
+
+                    // Show the modal
+                    var editModal = new bootstrap.Modal(document.getElementById('editMenuModal'));
+                    editModal.show();
+                } catch (error) {
+                    console.error('Error processing response:', error);
+                    alert('Error fetching item details. Please try again.');
                 }
-
-                // Handle checkboxes for temperature
-                const temperatureCheckboxes = document.querySelectorAll('input[name="editMenuTemperature[]"]');
-                temperatureCheckboxes.forEach(checkbox => {
-                    checkbox.checked = data.temperature.includes(checkbox.value);
-                });
-
-                // Show the modal
-                var editModal = new bootstrap.Modal(document.getElementById('editMenuModal'));
-                editModal.show();
-            } catch (error) {
-                console.error('Error processing response:', error);
-                console.log('Server response:', response);
-                alert('Error fetching item details. Please check the console for more information.');
+            },
+            error: function(xhr, status, error) {
+                console.error('AJAX error:', error);
+                alert('Error fetching item details: ' + error);
             }
-        },
-        error: function(xhr, status, error) {
-            console.error('AJAX error:', error);
-            alert('Error fetching item details: ' + error);
-        }
-    });
-}
-function saveEdit() {
-    const formData = new FormData(document.getElementById('editMenuForm'));
-    formData.append('editMenuItem', true);
+        });
+    }
 
-    $.ajax({
-        url: '',
-        method: 'POST',
-        data: formData,
-        processData: false,
-        contentType: false,
-        success: function(response) {
-            window.location.reload();
-        },
-        error: function(xhr, status, error) {
-            alert('Error updating item: ' + error);
-        }
-    });
-}
+
+
+    function saveEdit() {
+        const formData = new FormData(document.getElementById('editMenuForm'));
+        formData.append('editMenuItem', true);
+
+        $.ajax({
+            url: '',
+            method: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            success: function(response) {
+                window.location.reload();
+            },
+            error: function(xhr, status, error) {
+                alert('Error updating item: ' + error);
+            }
+        });
+    }
 </script>
 
 <script>
@@ -609,81 +862,90 @@ function saveEdit() {
             });
         });
     });
-    let menuIdToDelete;
-
+    
     function confirmDelete(menuId) {
-    const deleteMenuIdElement = document.getElementById("deleteMenuId");
-    if (deleteMenuIdElement) {
-        deleteMenuIdElement.value = menuId;
-    } else {
-        console.error("Element with ID 'deleteMenuId' not found.");
-    }
-    var deleteModal = new bootstrap.Modal(document.getElementById("deleteModal"));
-    deleteModal.show();
-}
-
-function deleteMenuItem() {
-    const menuId = document.getElementById("deleteMenuId").value;
-    $.ajax({
-        url: '', // This should be the same page
-        method: 'POST',
-        data: { 
-            deleteMenuItem: true,
-            menuId: menuId 
-        },
-        success: function(response) {
-            window.location.reload();
-        },
-        error: function(xhr, status, error) {
-            alert('Error deleting item: ' + error);
+        const deleteMenuIdElement = document.getElementById("deleteMenuId");
+        if (deleteMenuIdElement) {
+            deleteMenuIdElement.value = menuId;
+        } else {
+            console.error("Element with ID 'deleteMenuId' not found.");
         }
-    });
-} 
+        var deleteModal = new bootstrap.Modal(document.getElementById("deleteModal"));
+        deleteModal.show();
+    }
 
-function filterByCategory() {var selectedCategory = document.getElementById('categoryFilter').value;window.location.href = '?category=' + selectedCategory}
+    function deleteMenuItem() {
+        const menuId = document.getElementById("deleteMenuId").value;
+        $.ajax({
+            url: '',
+            method: 'POST',
+            data: { 
+                deleteMenuItem: true,
+                menuId: menuId 
+            },
+            success: function(response) {
+                window.location.reload();
+            },
+            error: function(xhr, status, error) {
+                alert('Error deleting item: ' + error);
+            }
+        });
+    } 
+
+    function filterByCategory() {
+        var selectedCategory = document.getElementById('categoryFilter').value;
+        window.location.href = '?category=' + selectedCategory;
+    }
 </script>
 <script>
-const quantitySlider = document.getElementById('menuQuantity');
-const quantityValue = document.getElementById('quantityValue');
-quantitySlider.oninput = function() {quantityValue.innerText = this.value;};
+    // Quantity and price slider value display
+    const quantitySlider = document.getElementById('menuQuantity');
+    const quantityValue = document.getElementById('quantityValue');
+    if (quantitySlider && quantityValue) {
+        quantitySlider.oninput = function() {
+            quantityValue.innerText = this.value;
+        };
+    }
 
-const priceSlider = document.getElementById('menuPrice');
-const priceValue = document.getElementById('priceValue');
-priceSlider.oninput = function() {priceValue.innerText = parseFloat(this.value).toFixed(2);};
+    const priceSlider = document.getElementById('menuPrice');
+    const priceValue = document.getElementById('priceValue');
+    if (priceSlider && priceValue) {
+        priceSlider.oninput = function() {
+            priceValue.innerText = parseFloat(this.value).toFixed(2);
+        };
+    }
 
+    // Edit form sliders
+    const editQuantitySlider = document.getElementById('editMenuQuantity');
+    const editQuantityValue = document.getElementById('editQuantityValue');
+    if (editQuantitySlider && editQuantityValue) {
+        editQuantitySlider.oninput = function() {
+            editQuantityValue.innerText = this.value;
+        };
+    }
 
-
-// Quantity Slider for Edit Menu
-const editQuantitySlider = document.getElementById('editMenuQuantity');
-const editQuantityValue = document.getElementById('editQuantityValue');
-if (editQuantitySlider && editQuantityValue) {
-    editQuantitySlider.oninput = function() {
-        editQuantityValue.innerText = this.value;
-    };
-}
-
-// Price Slider for Edit Menu
-const editPriceSlider = document.getElementById('editMenuPrice');
-const editPriceValue = document.getElementById('editPriceValue');
-if (editPriceSlider && editPriceValue) {
-    editPriceSlider.oninput = function() {
-        editPriceValue.innerText = parseFloat(this.value).toFixed(2);
-    };
-}
+    const editPriceSlider = document.getElementById('editMenuPrice');
+    const editPriceValue = document.getElementById('editPriceValue');
+    if (editPriceSlider && editPriceValue) {
+        editPriceSlider.oninput = function() {
+            editPriceValue.innerText = parseFloat(this.value).toFixed(2);
+        };
+    }
 </script>
 <script>
-    // Add event listeners to the dropdown to toggle the filter icon button visibility
     document.addEventListener('DOMContentLoaded', function () {
         const filterDropdown = document.querySelector('.dropdown');
-        const filterIconButton = document.getElementById('filterIconButton'); // Add this ID to your filter icon button
+        const filterIconButton = document.getElementById('filterIconButton');
 
-        filterDropdown.addEventListener('show.bs.dropdown', function () {
-            filterIconButton.style.display = 'none';
-        });
+        if (filterDropdown && filterIconButton) {
+            filterDropdown.addEventListener('show.bs.dropdown', function () {
+                filterIconButton.style.display = 'none';
+            });
 
-        filterDropdown.addEventListener('hide.bs.dropdown', function () {
-            filterIconButton.style.display = 'block';
-        });
+            filterDropdown.addEventListener('hide.bs.dropdown', function () {
+                filterIconButton.style.display = 'block';
+            });
+        }
     });
 </script>
 </body>

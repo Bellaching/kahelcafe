@@ -215,12 +215,33 @@ include '../views/change_profile.php';
                         <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                             <?= htmlspecialchars($firstName); ?>
                         </a>
-                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
-                            <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#changeProfileModal"><i class="fa-regular fa-user me-2"></i>Change Profile</a></li>
-                            <li><a class="dropdown-item" href="order-track.php" data-bs-toggle="" data-bs-target="#"><i class="fa-regular fa-user me-2"></i>Track Order</a></li>
-                            <li><a class="dropdown-item" href="reservation_track.php" data-bs-toggle="" data-bs-target="#"><i class="fa-regular fa-user me-2"></i>Track Reservation</a></li>
-                            <li><a class="dropdown-item" href="history.php" data-bs-toggle="" data-bs-target="#"><i class="fa-regular fa-user me-2"></i>History</a></li>
-                            <li><a class="dropdown-item" href="?logout"><i class="fa-solid fa-power-off me-2"></i>Logout</a></li>
+                        <ul class="dropdown-menu dropdown-menu-end border-0" aria-labelledby="userDropdown">
+                        <li>
+                        <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#changeProfileModal">
+                            <i class="fa-regular fa-user me-2"></i>Change Profile
+                        </a>
+                        </li>
+                        <li>
+                        <a class="dropdown-item" href="order-track.php">
+                            <i class="fa-solid fa-truck-fast me-2"></i>Track Order
+                        </a>
+                        </li>
+                        <li>
+                        <a class="dropdown-item" href="reservation_track.php">
+                            <i class="fa-solid fa-calendar-check me-2"></i>Track Reservation
+                        </a>
+                        </li>
+                        <li>
+                        <a class="dropdown-item" href="history.php">
+                            <i class="fa-solid fa-clock-rotate-left me-2"></i>History
+                        </a>
+                        </li>
+                        <li>
+                        <a class="dropdown-item" href="?logout">
+                            <i class="fa-solid fa-power-off me-2"></i>Logout
+                        </a>
+                        </li>
+
                         </ul>
                     </li>
                 <?php else: ?>

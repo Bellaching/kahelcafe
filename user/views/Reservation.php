@@ -206,7 +206,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         font-size: 14px;
                         color: #666;
                     }
-                </style>
+                </style> 
             </head>
             <body>
                 <div class="success-modal">
@@ -268,7 +268,7 @@ font-weight: bold;
 
     </style>
 </head>
-<body class="bg-light">
+<body class=" border-0">
     <!-- Confirmation Modal -->
     <div class="modal fade" id="confirmationModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
@@ -288,8 +288,8 @@ font-weight: bold;
 
     <div class="container-fluid mt-3">
         <div class="row g-3">
-            <div class="col-lg-7">
-                <div class="card h-100">
+            <div class="col-lg-8">
+                <div class="card h-100 border-0">
                     <div class="card-body">
                         <h1 class="card-title text-center text-lg-start mb-4">Reservation</h1>
                         <div class="ratio ratio-16x9">
@@ -299,14 +299,14 @@ font-weight: bold;
                 </div>
             </div>
             
-            <div class="col-lg-5">
+            <div class="col-lg-4 border-0">
                 <div class="card h-100">
                     <div class="card-body">
                         <?php if (!empty($error_message)): ?>
                             <div class="alert alert-danger"><?php echo htmlspecialchars($error_message); ?></div>
                         <?php endif; ?>
 
-                        <div class="card ">
+                        <div class="card border-0 ">
                         <strong><h4 class="m-3 order-h4">Seat Reservation</h4></strong> 
         <div class="card-body">
         <div class="card-body">
@@ -403,7 +403,7 @@ font-weight: bold;
                                         <label for="user-note fw-bold" class="form-label"><strong>Notes</strong></label>
                                         <textarea name="note_area" maxlength="500" class="form-control" rows="3" placeholder="Additional notes..."></textarea>
                                     </div>
-                                    <button type="button" class="btn btn-primary w-100 py-2" id="confirm-order">Confirm Reservation</button>
+                                    <button type="button" class="btn proceedBtn text-light text-center container-fluid bold-1" style="background-color: #FF902A;" id="confirm-order">Confirm Reservation</button>
                                 </form>
                             </div>
                         </div>
@@ -413,7 +413,10 @@ font-weight: bold;
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.7/dist/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/5.3.3/js/bootstrap.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             // Initialize variables
