@@ -170,16 +170,26 @@ if ($order && $order['status'] === 'booked') {
 }
 
 // Fetch order items with the correct item_id from menu1 and only unrated items
-$query = "SELECT oi.*, m.id AS menu_item_id 
+$query = "SELECT oi.*, m.id AS menu_item_id, 
+          (SELECT AVG(rating) FROM order_items WHERE item_id = m.id AND is_rated = 1) AS average_rating
           FROM order_items oi 
           JOIN menu1 m ON oi.item_id = m.id 
           WHERE oi.order_id = ? AND oi.is_rated = 0";
 
 $stmt = $conn->prepare($query);
+if (!$stmt) {
+    die("Error preparing statement: " . $conn->error);
+}
 
 $stmt->bind_param("i", $order['order_id']);
-$stmt->execute();
+if (!$stmt->execute()) {
+    die("Error executing statement: " . $stmt->error);
+}
+
 $result = $stmt->get_result();
+if (!$result) {
+    die("Error getting result set: " . $stmt->error);
+}
 
 $orderItems = [];
 while ($row = $result->fetch_assoc()) {
@@ -201,39 +211,38 @@ if (isset($_GET['notification_id'])) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['item_id'], $_POST['rating'])) {
     $itemId = (int)$_POST['item_id'];
     $rating = (int)$_POST['rating'];
+    $orderId = $order['order_id'];
 
-    // Validate item ID
-    $checkItemQuery = "SELECT id FROM menu1 WHERE id = ?";
-    $stmt = $conn->prepare($checkItemQuery);
-    $stmt->bind_param("i", $itemId);
-    $stmt->execute();
-    $stmt->store_result();
-
-    if ($stmt->num_rows > 0) {
-        // Update rating in menu1 table and mark as rated in order_items table
-        $updateQuery = "UPDATE menu1 SET rating = ? WHERE id = ?";
-        $stmt = $conn->prepare($updateQuery);
-        $stmt->bind_param("ii", $rating, $itemId);
-
-        if ($stmt->execute()) {
-            // Mark the item as rated in the order_items table
-            $markRatedQuery = "UPDATE order_items SET is_rated = 1 WHERE item_id = ? AND order_id = ?";
-            $stmt = $conn->prepare($markRatedQuery);
-            $stmt->bind_param("ii", $itemId, $order['order_id']);
-            $stmt->execute();
-
-            echo "Rating updated successfully!";
-        } else {
-            echo "Error updating rating: " . $stmt->error;
-        }
-    } else {
-        echo "Invalid item ID.";
+    // First, update the order_items table to mark as rated and store the rating
+    $markRatedQuery = "UPDATE order_items SET is_rated = 1, rating = ? WHERE item_id = ? AND order_id = ?";
+    $stmt = $conn->prepare($markRatedQuery);
+    if (!$stmt) {
+        die("Error preparing statement: " . $conn->error);
     }
-
+    $stmt->bind_param("iii", $rating, $itemId, $orderId);
+    if (!$stmt->execute()) {
+        die("Error executing statement: " . $stmt->error);
+    }
     $stmt->close();
-    exit(); // Prevent further execution
-}
 
+    // Then update the menu1 table with the new average rating
+    $updateMenuQuery = "UPDATE menu1 SET rating = (
+        SELECT AVG(rating) FROM order_items 
+        WHERE item_id = ? AND is_rated = 1
+    ) WHERE id = ?";
+    $stmt = $conn->prepare($updateMenuQuery);
+    if (!$stmt) {
+        die("Error preparing statement: " . $conn->error);
+    }
+    $stmt->bind_param("ii", $itemId, $itemId);
+    if (!$stmt->execute()) {
+        die("Error executing statement: " . $stmt->error);
+    }
+    $stmt->close();
+
+    echo "Rating updated successfully!";
+    exit();
+}
 // Get note (if multiple items, get the first one)
 $note = $orderItems[0]['note'] ?? 'No notes available.';
 
@@ -398,6 +407,26 @@ $note = $orderItems[0]['note'] ?? 'No notes available.';
             transform: translate(-50%, -50%);
         }
 
+        /* Star Rating Styles */
+        .star-rating {
+            display: inline-block;
+            font-size: 24px;
+        }
+        
+        .star-rating i {
+            color: #ddd;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+        
+        .star-rating i.hover {
+            color: #FFD700;
+        }
+        
+        .star-rating i.active {
+            color: #FFD700;
+        }
+
     </style>
 </head>
 <body>
@@ -453,21 +482,22 @@ $note = $orderItems[0]['note'] ?? 'No notes available.';
                                 <td>₱<?php echo number_format($item['price'], 2); ?></td>
                                 <?php if ($order['status'] === 'rate us'): ?>
                                     <td>
-                                        <div class="star-rating" data-item-id="<?php echo isset($item['menu_item_id']) ? htmlspecialchars($item['menu_item_id']) : '0'; ?>">
-                                            <?php for ($i = 1; $i <= 5; $i++): ?>
-                                                <i class="fa-star fa <?php echo ($i <= (int)($item['rating'] ?? 0)) ? 'fa-solid' : 'fa-regular'; ?>" data-rate="<?php echo $i; ?>"></i>
-                                            <?php endfor; ?>
-                                        </div>
-                                    </td>
+    <div class="star-rating" data-item-id="<?php echo isset($item['menu_item_id']) ? htmlspecialchars($item['menu_item_id']) : '0'; ?>">
+        <?php for ($i = 1; $i <= 5; $i++): ?>
+            <i class="fa-star fa <?php echo ($i <= (int)($item['rating'] ?? 0)) ? 'fa-solid active' : 'fa-regular'; ?>" data-rate="<?php echo $i; ?>"></i>
+        <?php endfor; ?>
+        <div class="thank-you-message fs-5" style="display: none;">
+            Thank you for ordering!
+        </div>
+    </div>
+</td>
                                 <?php endif; ?>
                             </tr>
                         <?php endforeach; ?>
                     </tbody>
                 </table>
 
-                <div id="thankYouMessage" class="thank-you-message">
-                    Thank you for ordering!
-                </div>
+             
 
                 <?php if ($order['status'] === 'payment' || $order['status'] === 'booked'): ?>
                     <div class="order-sum container-fluid">
@@ -922,48 +952,78 @@ $note = $orderItems[0]['note'] ?? 'No notes available.';
                 ?>
             <?php endif; ?>
             
-            var totalItems = <?php echo count($orderItems); ?>;
-            var ratedItems = 0;
+          // Star Rating Hover Effect
+$('.star-rating i').on('mouseenter', function() {
+    const rate = $(this).data('rate');
+    const $stars = $(this).parent().find('i');
+    
+    $stars.removeClass('hover');
+    
+    $stars.each(function(index) {
+        if (index < rate) {
+            $(this).addClass('hover');
+        }
+    });
+});
 
-            $('.star-rating i').on('click', function () {
-                var rating = $(this).data('rate');
-                var itemId = $(this).closest('.star-rating').data('item-id');
-                var $itemRow = $(this).closest('tr'); // Get the table row of the rated item
+$('.star-rating').on('mouseleave', function() {
+    $(this).find('i').removeClass('hover');
+});
 
-                console.log("Item ID:", itemId, "Rating:", rating); // Debugging
+var totalItems = <?php echo count($orderItems); ?>;
+var ratedItems = 0;
 
-                $.ajax({
-                    type: 'POST',
-                    url: 'order-track.php',
-                    data: { item_id: itemId, rating: rating },
-                    success: function(response) {
-                        console.log("Server Response:", response); // Debugging
+$('.star-rating i').on('click', function () {
+    var rating = $(this).data('rate');
+    var itemId = $(this).closest('.star-rating').data('item-id');
+    var $ratingContainer = $(this).closest('.star-rating'); // Get the rating container
+    var $stars = $(this).parent().find('i');
 
-                        // Show the popup
-                        $('#ratingPopup').fadeIn();
+    console.log("Item ID:", itemId, "Rating:", rating); // Debugging
 
-                        // Hide the popup after 2 seconds
-                        setTimeout(function () {
-                            $('#ratingPopup').fadeOut();
+    // Update star display immediately
+    $stars.removeClass('fa-regular').addClass('fa-solid');
+    $stars.removeClass('active');
+    
+    $stars.each(function(index) {
+        if (index < rating) {
+            $(this).addClass('active');
+        }
+    });
 
-                            // Remove the rated item from the table
-                            $itemRow.fadeOut(500, function () {
-                                $(this).remove();
-                                ratedItems++;
+    $.ajax({
+        type: 'POST',
+        url: 'order-track.php',
+        data: { item_id: itemId, rating: rating },
+        success: function(response) {
+            console.log("Server Response:", response); // Debugging
 
-                                // Check if all items have been rated
-                                if (ratedItems >= totalItems) {
-                                    $('#orderTable').hide();
-                                    $('#thankYouMessage').fadeIn();
-                                }
-                            });
-                        }, 2000);
-                    },
-                    error: function() {
-                        alert('Error updating rating.');
-                    }
-                });
-            });
+            // Show the popup
+            $('#ratingPopup').fadeIn();
+
+            // Hide the popup after 2 seconds
+            setTimeout(function () {
+                $('#ratingPopup').fadeOut();
+
+                // Hide only the stars for this item
+                $ratingContainer.find('i').hide();
+                ratedItems++;
+
+                // Check if all items have been rated
+                if (ratedItems >= totalItems) {
+                    // Show thank you message in each rating container
+                    $('.thank-you-message').fadeIn();
+                    
+                    // Optional: You could also show a global thank you message
+                    // $('#globalThankYouMessage').fadeIn();
+                }
+            }, 2000);
+        },
+        error: function() {
+            alert('Error updating rating.');
+        }
+    });
+});
         });
     </script>
 </body>

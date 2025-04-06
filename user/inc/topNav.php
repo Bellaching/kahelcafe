@@ -165,6 +165,40 @@ include '../views/change_profile.php';
 .modal-body::-webkit-scrollbar-thumb:hover {
     background: #555; /* Color of the scrollbar on hover */
 }
+
+/* Center nav links in mobile view */
+@media (max-width: 991.98px) {
+    .navbar-collapse {
+        display: flex;
+        flex-direction: column;
+    }
+    
+    /* Center the main nav links */
+    .navbar-nav.main-links {
+        width: 100%;
+        justify-content: center;
+        flex-direction: row;
+        flex-wrap: wrap;
+        margin-bottom: 10px;
+    }
+    
+    /* Center the right-aligned icons */
+    .navbar-nav.right-icons {
+        width: 100%;
+        justify-content: center;
+        flex-direction: row;
+        gap: 15px;
+    }
+    
+    .nav-item {
+        margin: 0 5px;
+    }
+    
+    /* Center dropdown menu */
+    .dropdown-menu {
+        text-align: center;
+    }
+}
     </style>
     <title>Change Profile</title>
 </head>
@@ -179,7 +213,8 @@ include '../views/change_profile.php';
         </button>
         
         <div class="collapse navbar-collapse" id="navbarNav">
-            <ul class="navbar-nav ms-auto">
+            <!-- Main navigation links -->
+            <ul class="navbar-nav main-links mx-auto mb-2 mb-lg-0">
                 <li class="nav-item">
                     <a class="nav-link" href="./../../user/views/index.php">Home</a>
                 </li>
@@ -189,25 +224,29 @@ include '../views/change_profile.php';
                 <li class="nav-item">
                     <a class="nav-link" href="./../../user/views/order-now.php">Order-now</a>
                 </li>
-              <!-- Notification Icon -->
-<li class="nav-item position-relative">
-    <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#notificationModal">
-        <i class="fa-solid fa-bell"></i>
-        <?php if ($notificationCount > 0): ?>
-            <span class="notification-count"><?= $notificationCount; ?></span>
-        <?php endif; ?>
+            </ul>
+            
+            <!-- Right-aligned icons -->
+            <ul class="navbar-nav right-icons ms-auto">
+                <!-- Notification Icon -->
+                <li class="nav-item position-relative">
+                    <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#notificationModal">
+                        <i class="fa-solid fa-bell"></i>
+                        <?php if ($notificationCount > 0): ?>
+                            <span class="notification-count"><?= $notificationCount; ?></span>
+                        <?php endif; ?>
 
-        <audio id="notificationSound" src="./../../admin/user/notification-sound.mp3"></audio>
-    </a>
-</li>
+                        <audio id="notificationSound" src="./../../admin/user/notification-sound.mp3"></audio>
+                    </a>
+                </li>
 
                 <!-- Cart Icon -->
                 <li class="nav-item position-relative">
                     <a class="nav-link" href="./../../user/views/cart.php">
                         <i class="fa-solid fa-cart-shopping"></i>
                         <?php if ($cartCount > 0): ?>
-    <span class="cart-count"><?= $cartCount; ?></span>
-<?php endif; ?>
+                            <span class="cart-count"><?= $cartCount; ?></span>
+                        <?php endif; ?>
                     </a>
                 </li>
                 <?php if ($firstName): ?>
@@ -241,7 +280,6 @@ include '../views/change_profile.php';
                             <i class="fa-solid fa-power-off me-2"></i>Logout
                         </a>
                         </li>
-
                         </ul>
                     </li>
                 <?php else: ?>
@@ -270,8 +308,6 @@ include '../views/change_profile.php';
         </div>
     </div>
 </div>
-
-<!-- Notification Modal -->
 
 <!-- Notification Modal -->
 <div class="modal fade" id="notificationModal" tabindex="-1" aria-labelledby="notificationModalLabel" aria-hidden="true">
