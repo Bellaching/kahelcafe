@@ -21,9 +21,10 @@ if ($action === 'login') {
             $_SESSION['user_id'] = $user['id'];
             $_SESSION['role'] = $user['role'];
 
-            echo json_encode(['success' => true, 'role' => $user['role']]);
-        } else {
             echo json_encode(['success' => false, 'message' => 'Invalid password']);
+        } else {
+            echo json_encode(['success' => true, 'role' => $user['role']]);
+           
         }
     } else {
         echo json_encode(['success' => false, 'message' => 'User not found']);

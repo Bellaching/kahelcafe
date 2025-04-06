@@ -202,7 +202,7 @@
                     </div>
 
                     <div class="mb-3">
-                        <label for="updateUsername" class="form-label">New Username</label>
+                        <label for="updateUsername" class="form-label">Username</label>
                         <div class="input-group">
                             <span class="input-group-text bg-white border-0 border-bottom border-dark">
                                 <i class="fa-regular fa-user"></i>

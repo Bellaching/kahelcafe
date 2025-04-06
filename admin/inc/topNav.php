@@ -192,6 +192,12 @@ if (isset($user_id)) {
     $notification_count = $result->fetch_assoc()['count'];
     $stmt->close();
 }
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
+    include './../views/change_profile_processor.php';
+    exit(); // Stop further execution after processing
+}
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
