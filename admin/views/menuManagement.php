@@ -289,7 +289,7 @@ ob_end_flush();
     <title>Menu</title>
     <link rel="stylesheet" href="menu.css">
     <link href="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-bs4.min.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  
     <style>
         .add-index {
             background-color: #FF902A;

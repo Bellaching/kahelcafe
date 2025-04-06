@@ -9,8 +9,8 @@ include './../inc/topNav.php';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Orders</title>
-    <!-- Add necessary CSS for DataTable and Modal -->
-    <link href="https://cdn.datatables.net/1.13.1/css/jquery.dataTables.min.css" rel="stylesheet">
+  <!-- Add necessary CSS for DataTable and Modal -->
+  <link href="https://cdn.datatables.net/1.13.1/css/jquery.dataTables.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
 
     <!-- Bootstrap for Modal -->
@@ -35,7 +35,8 @@ include './../inc/topNav.php';
 
         .order-sum {
             display: flex;
-            flex-direction: column;
+            flex-direction: row;
+            flex-wrap: wrap;
         }
 
         .order-s {
@@ -62,6 +63,7 @@ include './../inc/topNav.php';
 
         .theadmodal {
             background-color: #FF902B;
+            color: white;
         }
 
         .account-text {
@@ -69,17 +71,26 @@ include './../inc/topNav.php';
             font-weight: bold;
         }
 
+        .management-underline {
+            text-decoration: underline;
+            text-decoration-color: #FF902B;
+        }
+
         @media (max-width: 768px) {
+            .account-text {
+                font-size: 1.5rem;
+            }
+            
+            .order-sum {
+                flex-direction: column;
+            }
+            
             .modal-dialog {
                 margin: 0.5rem;
             }
 
             .modal-content {
                 padding: 1rem;
-            }
-
-            .order-sum {
-                flex-direction: column;
             }
 
             .update-down {
@@ -110,7 +121,7 @@ include './../inc/topNav.php';
 <body>
 
 <div class="container-fluid mb-3">
-    <div class="row mt-5 ms-5">
+    <div class="row mt-5 ms-lg-5 ms-md-3 ms-sm-0">
         <div class="col-12 col-md-10 col-lg-8">
             <p class="account-text">
                 Order <span class="management-underline">Management</span>
@@ -120,23 +131,25 @@ include './../inc/topNav.php';
 </div>
 
 <div class="d-flex justify-content-center w-100">
-    <div class="container-fluid shadow p-3 mx-5 bg-body-tertiary rounded">
-        <table id="userTable" class="display">
-            <thead>
-                <tr>
-                    <th>Order ID</th>
-                    <th>Customer</th>
-                    <th>Order Date</th>
-                    <th>Amount</th>
-                    <th>Reservation Type</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                <!-- Table data will be filled dynamically -->
-            </tbody>
-        </table>
+    <div class="container-fluid shadow p-3 mx-lg-5 mx-md-3 mx-sm-1 bg-body-tertiary rounded">
+        <div class="table-responsive">
+            <table id="userTable" class="display w-100">
+                <thead>
+                    <tr>
+                        <th>Order ID</th>
+                        <th>Customer</th>
+                        <th>Order Date</th>
+                        <th>Amount</th>
+                        <th>Reservation Type</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Table data will be filled dynamically -->
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 
@@ -168,25 +181,27 @@ include './../inc/topNav.php';
             <div class="modal-body container-fluid">
                 <form id="updateStatusForm">
                     <div class="form-group">
-                        <table id="userTableUpdate" class="display container-fluid">
-                            <thead class="text-light px-3 theadmodal">
-                                <tr>
-                                    <th>Order Item</th>
-                                    <th>Price</th>
-                                    <th>Size</th>
-                                    <th>Temperature</th>
-                                    <th>Quantity</th>
-                                    <th>Receipt</th>
-                                </tr>
-                            </thead>
-                            <tbody></tbody>
-                        </table>
+                        <div class="table-responsive">
+                            <table id="userTableUpdate" class="display container-fluid">
+                                <thead class="text-light px-3 theadmodal">
+                                    <tr>
+                                        <th>Order Item</th>
+                                        <th>Price</th>
+                                        <th>Size</th>
+                                        <th>Temperature</th>
+                                        <th>Quantity</th>
+                                        <th>Receipt</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
                     </div>
 
                     <div class="form-group update-down d-flex flex-column">
                         <h5 class="order-s">Order Summary</h5>
-                        <div class="form-group order-sum d-flex flex-row">
-                            <div class="d-flex flex-column gap-3 m-3">
+                        <div class="form-group order-sum d-flex flex-row flex-wrap">
+                            <div class="d-flex flex-column gap-3 m-3 col-md-5">
                                 <div class="d-flex flex-row mb-3 align-items-baseline">
                                     <label class="l mr-5">Client Name</label>
                                     <p id="client_full_name_display" class="p mb-0 ml-auto text-right"></p>
@@ -213,7 +228,7 @@ include './../inc/topNav.php';
                                 </div>
                             </div>
 
-                            <div class="d-flex flex-column gap-3 m-3">
+                            <div class="d-flex flex-column gap-3 m-3 col-md-5">
                                 <div class="d-flex flex-row mb-3 align-items-baseline">
                                     <label class="l mr-5">Date</label>
                                     <p id="created_at" class="p mb-0 ml-auto text-right"></p>
@@ -221,7 +236,7 @@ include './../inc/topNav.php';
 
                                 <div class="d-flex flex-row mb-3 align-items-baseline">
                                     <label class="l mr-5">Time</label>
-                                    <p id="transaction_id" class="p mb-0 ml-auto text-right"></p>
+                                    <p id="transaction_time" class="p mb-0 ml-auto text-right"></p>
                                 </div>
 
                                 <div class="d-flex flex-row mb-3 align-items-baseline">
@@ -231,19 +246,19 @@ include './../inc/topNav.php';
 
                                 <div class="d-flex flex-row mb-3 align-items-baseline">
                                     <label class="l mr-5">Reservation fee</label>
-                                    <p id="party_size" class="p mb-0 ml-auto text-right"></p>
+                                    <p id="reservation_fee" class="p mb-0 ml-auto text-right"></p>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="form-group p-3 mb-5 mx-5">
+                        <div class="form-group p-3 mb-5 mx-lg-5 mx-md-3 mx-sm-1">
                             <label for="status" class="fw-bold">Order Status</label>
                             <select class="form-control container-fluid" id="status" name="status">
                                 <option value="for confirmation">For Confirmation</option>
-                                <option value="cancelled">Cancelled</option>
                                 <option value="payment">Payment</option>
                                 <option value="booked">Booked</option>
                                 <option value="rate us">Rate Us</option>
+                                <option value="cancelled">Cancel</option>
                             </select>
                         </div>
                     </div>
@@ -261,7 +276,7 @@ include './../inc/topNav.php';
 <!-- jQuery, DataTable, and Bootstrap JS -->
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.1/js/jquery.dataTables.min.js"></script>
-<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.bundle.min.js"></script>
+
 
 <!-- Custom JS -->
 <script src="./../js/index.js"></script>

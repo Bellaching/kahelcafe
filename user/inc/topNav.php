@@ -213,83 +213,67 @@ include '../views/change_profile.php';
         </button>
         
         <div class="collapse navbar-collapse" id="navbarNav">
-            <!-- Main navigation links -->
-            <ul class="navbar-nav main-links mx-auto mb-2 mb-lg-0">
-                <li class="nav-item">
-                    <a class="nav-link" href="./../../user/views/index.php">Home</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="./../../user/views/reservation.php">Reservation</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="./../../user/views/order-now.php">Order-now</a>
-                </li>
-            </ul>
-            
-            <!-- Right-aligned icons -->
-            <ul class="navbar-nav right-icons ms-auto">
-                <!-- Notification Icon -->
-                <li class="nav-item position-relative">
-                    <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#notificationModal">
-                        <i class="fa-solid fa-bell"></i>
-                        <?php if ($notificationCount > 0): ?>
-                            <span class="notification-count"><?= $notificationCount; ?></span>
-                        <?php endif; ?>
+    <div class="d-flex flex-column flex-lg-row justify-content-lg-end align-items-center w-100">
+        
+        <!-- Main navigation links -->
+        <ul class="navbar-nav main-links mb-2 mb-lg-0 me-lg-3 text-center text-lg-end">
+            <li class="nav-item">
+                <a class="nav-link" href="./../../user/views/index.php">Home</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="./../../user/views/reservation.php">Reservation</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="./../../user/views/order-now.php">Order-now</a>
+            </li>
+        </ul>
 
-                        <audio id="notificationSound" src="./../../admin/user/notification-sound.mp3"></audio>
-                    </a>
-                </li>
+        <!-- Right-aligned icons -->
+        <ul class="navbar-nav right-icons">
+            <!-- Notification Icon -->
+            <li class="nav-item position-relative">
+                <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#notificationModal">
+                    <i class="fa-solid fa-bell"></i>
+                    <?php if ($notificationCount > 0): ?>
+                        <span class="notification-count"><?= $notificationCount; ?></span>
+                    <?php endif; ?>
+                    <audio id="notificationSound" src="./../../admin/user/notification-sound.mp3"></audio>
+                </a>
+            </li>
 
-                <!-- Cart Icon -->
-                <li class="nav-item position-relative">
-                    <a class="nav-link" href="./../../user/views/cart.php">
-                        <i class="fa-solid fa-cart-shopping"></i>
-                        <?php if ($cartCount > 0): ?>
-                            <span class="cart-count"><?= $cartCount; ?></span>
-                        <?php endif; ?>
+            <!-- Cart Icon -->
+            <li class="nav-item position-relative">
+                <a class="nav-link" href="./../../user/views/cart.php">
+                    <i class="fa-solid fa-cart-shopping"></i>
+                    <?php if ($cartCount > 0): ?>
+                        <span class="cart-count"><?= $cartCount; ?></span>
+                    <?php endif; ?>
+                </a>
+            </li>
+
+            <!-- User Menu -->
+            <?php if ($firstName): ?>
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <?= htmlspecialchars($firstName); ?>
                     </a>
+                    <ul class="dropdown-menu dropdown-menu-end border-0" aria-labelledby="userDropdown">
+                        <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#changeProfileModal"><i class="fa-regular fa-user me-2"></i>Change Profile</a></li>
+                        <li><a class="dropdown-item" href="order-track.php"><i class="fa-solid fa-truck-fast me-2"></i>Track Order</a></li>
+                        <li><a class="dropdown-item" href="reservation_track.php"><i class="fa-solid fa-calendar-check me-2"></i>Track Reservation</a></li>
+                        <li><a class="dropdown-item" href="history.php"><i class="fa-solid fa-clock-rotate-left me-2"></i>History</a></li>
+                        <li><a class="dropdown-item" href="?logout"><i class="fa-solid fa-power-off me-2"></i>Logout</a></li>
+                    </ul>
                 </li>
-                <?php if ($firstName): ?>
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                            <?= htmlspecialchars($firstName); ?>
-                        </a>
-                        <ul class="dropdown-menu dropdown-menu-end border-0" aria-labelledby="userDropdown">
-                        <li>
-                        <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#changeProfileModal">
-                            <i class="fa-regular fa-user me-2"></i>Change Profile
-                        </a>
-                        </li>
-                        <li>
-                        <a class="dropdown-item" href="order-track.php">
-                            <i class="fa-solid fa-truck-fast me-2"></i>Track Order
-                        </a>
-                        </li>
-                        <li>
-                        <a class="dropdown-item" href="reservation_track.php">
-                            <i class="fa-solid fa-calendar-check me-2"></i>Track Reservation
-                        </a>
-                        </li>
-                        <li>
-                        <a class="dropdown-item" href="history.php">
-                            <i class="fa-solid fa-clock-rotate-left me-2"></i>History
-                        </a>
-                        </li>
-                        <li>
-                        <a class="dropdown-item" href="?logout">
-                            <i class="fa-solid fa-power-off me-2"></i>Logout
-                        </a>
-                        </li>
-                        </ul>
-                    </li>
-                <?php else: ?>
-                    <li class="nav-item">
-                        <a class="nav-link" href="login.php">Login</a>
-                    </li>
-                <?php endif; ?>
-            </ul>
-        </div>
+            <?php else: ?>
+                <li class="nav-item">
+                    <a class="nav-link" href="login.php">Login</a>
+                </li>
+            <?php endif; ?>
+        </ul>
     </div>
+</div>
+
 </nav>
 
 <!-- Modal for Changing Profile -->

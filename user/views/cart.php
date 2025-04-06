@@ -391,24 +391,30 @@ if (isset($_POST['checkout'])) {
     </div>
 </div>
 
-<div class="Available-Time">
-    <h4 class="cart-right-header1">Available Time</h4>
-    <p id="date-picker" class="form-control" style="display: none;"></p>
-    <div class="Available-Time-show" id="Available-Time-show">
+<div class="mb-4">
+    <h4 class="mb-3 order-h4">Available Time</h4>
+    <p id="date-picker" class="d-none"></p>
+    <div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-3 g-2" id="Available-Time-show">
         <?php foreach ($times as $i => $time): ?>
-            <button type="button" class="available-time-btn" id="time-btn-<?= $i ?>" 
-                   data-time-id="<?= $time['time_id'] ?>"
-                   data-time-value="<?= htmlspecialchars($time['time']) ?>"
-                   style="background-color: <?= 
-                       ($time['status'] ?? '') == 'your_reservation' ? '#9647FF' : 
-                       (($time['status'] ?? '') == 'booked' ? '#E60000' : '#07D090') ?>;"
-                   <?= ($time['disabled'] ?? false) ? 'disabled' : '' ?>>
-                <?= htmlspecialchars($time['time']) ?>
-            </button>
+            <div class="col">
+                <button type="button" class="available-time-btn w-100 btn btn-sm" 
+                    id="time-btn-<?= $i ?>" 
+                    data-time-id="<?= $time['time_id'] ?>"
+                    data-time-value="<?= htmlspecialchars($time['time']) ?>"
+                    style="background-color: <?= 
+                        ($time['status'] ?? '') == 'your_reservation' ? '#9647FF' : 
+                        (($time['status'] ?? '') == 'booked' ? '#E60000' : '#07D090') ?>;"
+                    <?= ($time['disabled'] ?? false) ? 'disabled' : '' ?>>
+                    <span class="text-truncate d-block text-light border-0"><?= htmlspecialchars($time['time']) ?></span>
+                </button>
+            </div>
         <?php endforeach; ?>
     </div>
-    <div id="time-error" style="display: none; color: red;">Please select a time slot</div>
+    <div id="time-error" class="text-danger mt-2 d-none">Please select a time slot</div>
 </div>
+
+
+                        
 
 <p class="card-text d-flex justify-content-between align-items-center flex-wrap">
     <label for="reservation-type" class="form-label mb-2 mb-md-0">

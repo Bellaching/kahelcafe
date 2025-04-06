@@ -262,11 +262,13 @@ $note = $orderItems[0]['note'] ?? 'No notes available.';
             justify-content: space-between;
             position: relative;
             margin-bottom: 50px;
+            flex-wrap: wrap;
         }
         .order-tracking .step {
             position: relative;
             text-align: center;
             width: 24%;
+            margin-bottom: 20px;
         }
         .order-tracking .step:before {
             content: '';
@@ -315,6 +317,7 @@ $note = $orderItems[0]['note'] ?? 'No notes available.';
         .custom-table {
             box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
             border-radius: 0.5rem;
+            overflow-x: auto;
         }
         h5 {
             color: #FF902B;
@@ -328,13 +331,28 @@ $note = $orderItems[0]['note'] ?? 'No notes available.';
 
         .down-con {
             display: flex;
-            flex-direction: row;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
         }
 
+        @media (min-width: 992px) {
+            .down-con {
+                flex-direction: row;
+                align-items: flex-start;
+            }
+        }
+
         .right {
             height: 100%;
+            margin-top: 20px;
+        }
+
+        @media (min-width: 992px) {
+            .right {
+                margin-top: 0;
+                margin-left: 20px;
+            }
         }
 
         .upl-p {
@@ -368,6 +386,8 @@ $note = $orderItems[0]['note'] ?? 'No notes available.';
             border-radius: 10px;
             box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
             z-index: 1000;
+            width: 90%;
+            max-width: 400px;
         }
 
         .popup-content {
@@ -427,11 +447,57 @@ $note = $orderItems[0]['note'] ?? 'No notes available.';
             color: #FFD700;
         }
 
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .order-tracking .step {
+                width: 100%;
+                margin-bottom: 30px;
+            }
+            
+            .order-tracking .step:before {
+                display: none;
+            }
+            
+            .order-tracking {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .table-responsive {
+                overflow-x: auto;
+            }
+            
+            .star-rating {
+                font-size: 18px;
+            }
+            
+            #payment-timer {
+                font-size: 1.5rem;
+            }
+        }
+
+        @media (max-width: 576px) {
+            .container {
+                padding-left: 15px;
+                padding-right: 15px;
+            }
+            
+            .down-con {
+                padding-left: 0;
+                padding-right: 0;
+            }
+            
+            .left, .right {
+                padding-left: 10px;
+                padding-right: 10px;
+            }
+        }
+
     </style>
 </head>
 <body>
-    <div class="container mt-5">
-        <h3>Order Tracking</h3>
+    <div class="container mt-3 mt-md-5">
+        <h3 class="text-center text-md-start">Order Tracking</h3>
 
         <!-- Order Tracking Steps -->
         <div class="order-tracking">
@@ -458,49 +524,49 @@ $note = $orderItems[0]['note'] ?? 'No notes available.';
         </div>
 
         <div class="down-con container-fluid">
-            <div class="left col-md-8 px-5 rounded">
-                <table class="table custom-table container-fluid" id="orderTable">
-                    <thead>
-                        <tr>
-                            <th>Order Item</th>
-                            <th>Size</th>
-                            <th>Temperature</th>
-                            <th>Quantity</th>
-                            <th>Price</th>
-                            <?php if ($order['status'] === 'rate us'): ?>
-                                <th>Rate Us</th>
-                            <?php endif; ?>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($orderItems as $item): ?>
+            <div class="left col-12 col-lg-8 px-3 px-md-5 rounded">
+                <div class="table-responsive">
+                    <table class="table custom-table" id="orderTable">
+                        <thead>
                             <tr>
-                                <td><?php echo htmlspecialchars($item['item_name']); ?></td>
-                                <td><?php echo htmlspecialchars($item['size']); ?></td>
-                                <td><?php echo htmlspecialchars($item['temperature']); ?></td>
-                                <td><?php echo htmlspecialchars($item['quantity']); ?></td>
-                                <td>₱<?php echo number_format($item['price'], 2); ?></td>
+                                <th>Order Item</th>
+                                <th>Size</th>
+                                <th>Temperature</th>
+                                <th>Quantity</th>
+                                <th>Price</th>
                                 <?php if ($order['status'] === 'rate us'): ?>
-                                    <td>
-    <div class="star-rating" data-item-id="<?php echo isset($item['menu_item_id']) ? htmlspecialchars($item['menu_item_id']) : '0'; ?>">
-        <?php for ($i = 1; $i <= 5; $i++): ?>
-            <i class="fa-star fa <?php echo ($i <= (int)($item['rating'] ?? 0)) ? 'fa-solid active' : 'fa-regular'; ?>" data-rate="<?php echo $i; ?>"></i>
-        <?php endfor; ?>
-        <div class="thank-you-message fs-5" style="display: none;">
-            Thank you for ordering!
-        </div>
-    </div>
-</td>
+                                    <th>Rate Us</th>
                                 <?php endif; ?>
                             </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
-
-             
+                        </thead>
+                        <tbody>
+                            <?php foreach ($orderItems as $item): ?>
+                                <tr>
+                                    <td><?php echo htmlspecialchars($item['item_name']); ?></td>
+                                    <td><?php echo htmlspecialchars($item['size']); ?></td>
+                                    <td><?php echo htmlspecialchars($item['temperature']); ?></td>
+                                    <td><?php echo htmlspecialchars($item['quantity']); ?></td>
+                                    <td>₱<?php echo number_format($item['price'], 2); ?></td>
+                                    <?php if ($order['status'] === 'rate us'): ?>
+                                        <td>
+                                            <div class="star-rating" data-item-id="<?php echo isset($item['menu_item_id']) ? htmlspecialchars($item['menu_item_id']) : '0'; ?>">
+                                                <?php for ($i = 1; $i <= 5; $i++): ?>
+                                                    <i class="fa-star fa <?php echo ($i <= (int)($item['rating'] ?? 0)) ? 'fa-solid active' : 'fa-regular'; ?>" data-rate="<?php echo $i; ?>"></i>
+                                                <?php endfor; ?>
+                                                <div class="thank-you-message fs-5" style="display: none;">
+                                                    Thank you for ordering!
+                                                </div>
+                                            </div>
+                                        </td>
+                                    <?php endif; ?>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
 
                 <?php if ($order['status'] === 'payment' || $order['status'] === 'booked'): ?>
-                    <div class="order-sum container-fluid">
+                    <div class="order-sum">
                         <h5 class="bold">Order Summary</h5>
                         <div class="row">
                             <div class="col-md-6">
@@ -560,7 +626,7 @@ $note = $orderItems[0]['note'] ?? 'No notes available.';
                     </div>
 
                 <?php elseif ($order['status'] === 'PAID' ): ?>
-                    <div class="order-sum container-fluid">
+                    <div class="order-sum">
                         <h5 class="bold">Order Summary</h5>
                         <div class="row">
                             <div class="col-md-6">
@@ -636,7 +702,7 @@ $note = $orderItems[0]['note'] ?? 'No notes available.';
                 <?php endif; ?>
             </div>
 
-            <div class="right col-md-4 px-5 border border-1 rounded">
+            <div class="right col-12 col-lg-4 px-3 px-md-5 border border-1 rounded">
                 <?php if ($order['status'] === 'payment'): ?>
                     <form method="POST" enctype="multipart/form-data" class="mt-3">
                         <input type="hidden" name="order_id" value="<?php echo htmlspecialchars($order['order_id']); ?>">
@@ -661,10 +727,10 @@ $note = $orderItems[0]['note'] ?? 'No notes available.';
                                 <li>3. Failure to do so will result in cancellation of order/reservation.</li>
                             </ul>
                         </div>
-                        <button type="submit" name="upload_receipt" class="btn rounded send text-light fw-bold container-fluid">Send Receipt</button>
+                        <button type="submit" name="upload_receipt" class="btn rounded send text-light fw-bold w-100">Send Receipt</button>
                         <form method="POST" class="mt-3">
                             <input type="hidden" name="order_id" value="<?php echo htmlspecialchars($order['order_id']); ?>">
-                            <button type="button" class="btn btn-danger rounded mt-3 container-fluid" data-bs-toggle="modal" data-bs-target="#cancelOrderModal">Cancel Order</button>
+                            <button type="button" class="btn btn-danger rounded mt-3 w-100" data-bs-toggle="modal" data-bs-target="#cancelOrderModal">Cancel Order</button>
                         </form>
                     </form>
 
@@ -692,8 +758,8 @@ $note = $orderItems[0]['note'] ?? 'No notes available.';
                     </div>
 
                 <?php elseif ($order['status'] === 'PAID'): ?>
-                    <div class="text-center p-4 rounded shadow container-fluid" style="background-color: #FF902B; color: white;">
-                    <div class="check-circle">
+                    <div class="text-center p-4 rounded shadow w-100" style="background-color: #FF902B; color: white;">
+                        <div class="check-circle">
                             <i class="fas fa-check"></i>
                         </div>
                         <h4 class="mb-2"><i class="bi bi-check-circle-fill"></i> Payment Successful!</h4>
@@ -706,22 +772,22 @@ $note = $orderItems[0]['note'] ?? 'No notes available.';
                         <input type="hidden" name="order_id" value="<?php echo htmlspecialchars($order['order_id']); ?>">
                         <div class="text-center mt-4">
                             <h5>Scan to View Order Details</h5>
-                            <img src="<?php echo $qrFile; ?>" alt="Order QR Code" class="img-fluid" />
+                            <img src="<?php echo $qrFile; ?>" alt="Order QR Code" class="img-fluid" style="max-width: 200px;" />
                             <br>
                         </div>
                     </form>
 
                     <div class="alert alert-info mt-2">
-                            <strong>Please show this QR code to the cashier.</strong>
-                        </div>
+                        <strong>Please show this QR code to the cashier.</strong>
+                    </div>
 
-                    <div class="qr container-fluid my-4 d-flex justify-content-center rounded-pill">
-                    <a href="<?php echo $qrFile; ?>" download="reservation_qr_<?php echo $reservation['id']; ?>.png" class="btn p-2 w-100 rounded-pill text-light" style="background-color: #FF902B;">
+                    <div class="qr my-4 d-flex justify-content-center rounded-pill">
+                        <a href="<?php echo $qrFile; ?>" download="reservation_qr_<?php echo $reservation['id']; ?>.png" class="btn p-2 w-100 rounded-pill text-light" style="background-color: #FF902B;">
                             Download QR Code
                         </a>
                     </div>
                 <?php elseif ($order['status'] === 'for confirmation'): ?>
-                    <div class="order-sums container-fluid">
+                    <div class="order-sums">
                         <h5 class="bold py-3">Order Summary</h5>
 
                         <div class="d-flex justify-content-between w-100">
@@ -762,10 +828,10 @@ $note = $orderItems[0]['note'] ?? 'No notes available.';
 
                     <form method="POST" class="mt-3">
                         <input type="hidden" name="order_id" value="<?php echo htmlspecialchars($order['order_id']); ?>">
-                        <button type="button" class="btn btn-danger container-fluid rounded-pill" data-bs-toggle="modal" data-bs-target="#cancelOrderModal">Cancel Order</button>
+                        <button type="button" class="btn btn-danger w-100 rounded-pill" data-bs-toggle="modal" data-bs-target="#cancelOrderModal">Cancel Order</button>
                     </form>
                 <?php elseif ($order['status'] === 'rate us'): ?>
-                    <div class="order-sums container-fluid">
+                    <div class="order-sums">
                         <h5 class="bold py-3">Order Summary</h5>
 
                         <div class="d-flex justify-content-between w-100">
@@ -809,7 +875,7 @@ $note = $orderItems[0]['note'] ?? 'No notes available.';
                     </div>
 
                     <div class="back">
-                        <button class="back-btn m-3 p-2 container-fluid rounded-pill text-light" onclick="window.location.href='../../user/views/index.php'">Back to home</button>
+                        <button class="back-btn m-3 p-2 w-100 rounded-pill text-light" onclick="window.location.href='../../user/views/index.php'">Back to home</button>
                     </div>
                 <?php endif; ?>
 
@@ -847,10 +913,9 @@ $note = $orderItems[0]['note'] ?? 'No notes available.';
 
     <!-- Bootstrap JavaScript -->
     <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.7/dist/umd/popper.min.js"></script>
-<script src="https://stackpath.bootstrapcdn.com/bootstrap/5.3.3/js/bootstrap.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.7/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/5.3.3/js/bootstrap.min.js"></script>
     <script>
         $(document).ready(function () {
             // Timer functionality for payment status
@@ -952,78 +1017,78 @@ $note = $orderItems[0]['note'] ?? 'No notes available.';
                 ?>
             <?php endif; ?>
             
-          // Star Rating Hover Effect
-$('.star-rating i').on('mouseenter', function() {
-    const rate = $(this).data('rate');
-    const $stars = $(this).parent().find('i');
-    
-    $stars.removeClass('hover');
-    
-    $stars.each(function(index) {
-        if (index < rate) {
-            $(this).addClass('hover');
-        }
-    });
-});
+            // Star Rating Hover Effect
+            $('.star-rating i').on('mouseenter', function() {
+                const rate = $(this).data('rate');
+                const $stars = $(this).parent().find('i');
+                
+                $stars.removeClass('hover');
+                
+                $stars.each(function(index) {
+                    if (index < rate) {
+                        $(this).addClass('hover');
+                    }
+                });
+            });
 
-$('.star-rating').on('mouseleave', function() {
-    $(this).find('i').removeClass('hover');
-});
+            $('.star-rating').on('mouseleave', function() {
+                $(this).find('i').removeClass('hover');
+            });
 
-var totalItems = <?php echo count($orderItems); ?>;
-var ratedItems = 0;
+            var totalItems = <?php echo count($orderItems); ?>;
+            var ratedItems = 0;
 
-$('.star-rating i').on('click', function () {
-    var rating = $(this).data('rate');
-    var itemId = $(this).closest('.star-rating').data('item-id');
-    var $ratingContainer = $(this).closest('.star-rating'); // Get the rating container
-    var $stars = $(this).parent().find('i');
+            $('.star-rating i').on('click', function () {
+                var rating = $(this).data('rate');
+                var itemId = $(this).closest('.star-rating').data('item-id');
+                var $ratingContainer = $(this).closest('.star-rating'); // Get the rating container
+                var $stars = $(this).parent().find('i');
 
-    console.log("Item ID:", itemId, "Rating:", rating); // Debugging
+                console.log("Item ID:", itemId, "Rating:", rating); // Debugging
 
-    // Update star display immediately
-    $stars.removeClass('fa-regular').addClass('fa-solid');
-    $stars.removeClass('active');
-    
-    $stars.each(function(index) {
-        if (index < rating) {
-            $(this).addClass('active');
-        }
-    });
+                // Update star display immediately
+                $stars.removeClass('fa-regular').addClass('fa-solid');
+                $stars.removeClass('active');
+                
+                $stars.each(function(index) {
+                    if (index < rating) {
+                        $(this).addClass('active');
+                    }
+                });
 
-    $.ajax({
-        type: 'POST',
-        url: 'order-track.php',
-        data: { item_id: itemId, rating: rating },
-        success: function(response) {
-            console.log("Server Response:", response); // Debugging
+                $.ajax({
+                    type: 'POST',
+                    url: 'order-track.php',
+                    data: { item_id: itemId, rating: rating },
+                    success: function(response) {
+                        console.log("Server Response:", response); // Debugging
 
-            // Show the popup
-            $('#ratingPopup').fadeIn();
+                        // Show the popup
+                        $('#ratingPopup').fadeIn();
 
-            // Hide the popup after 2 seconds
-            setTimeout(function () {
-                $('#ratingPopup').fadeOut();
+                        // Hide the popup after 2 seconds
+                        setTimeout(function () {
+                            $('#ratingPopup').fadeOut();
 
-                // Hide only the stars for this item
-                $ratingContainer.find('i').hide();
-                ratedItems++;
+                            // Hide only the stars for this item
+                            $ratingContainer.find('i').hide();
+                            ratedItems++;
 
-                // Check if all items have been rated
-                if (ratedItems >= totalItems) {
-                    // Show thank you message in each rating container
-                    $('.thank-you-message').fadeIn();
-                    
-                    // Optional: You could also show a global thank you message
-                    // $('#globalThankYouMessage').fadeIn();
-                }
-            }, 2000);
-        },
-        error: function() {
-            alert('Error updating rating.');
-        }
-    });
-});
+                            // Check if all items have been rated
+                            if (ratedItems >= totalItems) {
+                                // Show thank you message in each rating container
+                                $('.thank-you-message').fadeIn();
+                                
+                                // Optional: You could also show a global thank you message
+                                // $('#globalThankYouMessage').fadeIn();
+                            }
+                        }, 2000);
+                    },
+                    error: function() {
+                        alert('Error updating rating.');
+                    }
+                });
+            });
         });
     </script>
 </body>

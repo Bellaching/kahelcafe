@@ -33,7 +33,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['add_to_cart'])) {
     $size = isset($_POST['size']) ? $conn->real_escape_string($_POST['size']) : '';
     $temperature = isset($_POST['temperature']) ? $conn->real_escape_string($_POST['temperature']) : '';
     $price = isset($_POST['price']) ? $conn->real_escape_string($_POST['price']) : 0;
-
+ 
     // Fetch item from the database
     $sql = "SELECT * FROM menu1 WHERE id = $item_id";
     $result = $conn->query($sql);

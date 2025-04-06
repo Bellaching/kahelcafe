@@ -25,11 +25,14 @@ $(document).ready(function() {
                 data: 'res_status',
                 render: function(data) {
                     const statusMap = {
-                        "for confirmation": '<span style="color: #001BCC; background-color: #81CDFF; font-size: 0.7rem;" class="p-2 rounded-pill">For Confirmation</span>',
-                        "payment": '<span class="text-dark bg-warning p-2 rounded">Payment</span>',
-                        "paid": '<span style="color: #fff; background-color: #28a745; font-size: 0.7rem;" class="p-2 rounded-pill">Paid</span>',
+                      
+                        "for confirmation": '<span class="text-light bg-info p-2 rounded">For confirmation</span>',
+                        "payment": '<span class="text-light bg-warning p-2 rounded">Payment</span>',
+                       "paid": '<span class="text-light p-2 rounded" style="background: linear-gradient(135deg,rgb(255, 7, 222) 0%, #FF9800 100%);">Paid</span>',
+                      
+
                         "booked": '<span class="text-white bg-success p-2 rounded">Booked</span>',
-                        "rate us": '<span class="text-dark bg-secondary p-2 rounded">Rate Us</span>',
+                        "rate us": '<span class="text-light bg-secondary p-2 rounded">Complete</span>',
                         "cancel": '<span class="text-white bg-danger p-2 rounded">Cancelled</span>'
                     };
                     return statusMap[data] || data;
@@ -39,7 +42,7 @@ $(document).ready(function() {
                 data: null,
                 render: function(data, type, row) {
                     return `
-                        <button class="editBtn" data-id="${data.transaction_code || data.reservation_time_id}" 
+                        <button class="editBtn border-0" data-id="${data.transaction_code || data.reservation_time_id}" 
                                 data-res_status="${data.res_status}" 
                                 data-client-name="${data.clientFullName}"
                                 data-amount="${data.amount}"
@@ -47,8 +50,11 @@ $(document).ready(function() {
                                 data-created-at="${data.date_created}"
                                 data-reservation-date="${data.reservation_date || ''}"
                                 data-reservation-time="${data.reservation_time || ''}"
-                                data-reservation-fee="${data.amount}">
-                            <i class="fas fa-edit text-primary border-0"></i>
+                                data-reservation-fee="${data.amount}"
+                                data-receipt="${data.receipt || ''}"
+                                
+                                >
+                             <i class="fas fa-edit text-light bg-primary p-1 rounded "></i>
                         </button>
                         <button class="btn btn-danger btn-sm" onclick="deleteOrder('${data.transaction_code}')">
                             <i class="fa-solid fa-trash"></i>
@@ -80,7 +86,6 @@ $(document).ready(function() {
         refreshTable(); // Also refresh immediately when tab gains focus
     });
 
-    // Edit button click handler
     $('#userTable').on('click', '.editBtn', function() {
         const transactionCode = $(this).data('id');
         const res_status = $(this).data('res_status');
@@ -91,11 +96,12 @@ $(document).ready(function() {
         const reservationDate = $(this).data('reservation-date');
         const reservationTime = $(this).data('reservation-time');
         const reservationFee = $(this).data('reservation-fee');
-
+        const receipt = $(this).data('receipt'); // Get receipt filename
+    
         const subTotal = parseFloat(amount) - parseFloat(reservationFee || 0);
         const formattedCreatedAt = createdAt ? new Date(createdAt).toLocaleDateString() : '';
         const formattedReservationDate = reservationDate ? new Date(reservationDate).toLocaleDateString() : '';
-
+    
         $('#updateUserModal').modal('show');
         $('#transactionCode').val(transactionCode);
         $('#status').val(res_status);
@@ -108,6 +114,21 @@ $(document).ready(function() {
         $('#reservation_time_display').text(reservationTime);
         $('#sub_total_display').text('₱' + subTotal.toFixed(2));
         $('#reservation_fee_display').text('₱' + parseFloat(reservationFee || 0).toFixed(2));
+    
+        // Display receipt image if exists
+        const receiptDisplay = $('#receipt_display');
+        receiptDisplay.empty(); // Clear previous content
+        
+        if (receipt) {
+            const receiptPath = './../../uploads/' + receipt;
+            receiptDisplay.html(`
+                <a href="${receiptPath}" target="_blank">
+                    <img src="${receiptPath}" alt="Payment Receipt" style="max-width: 200px; max-height: 200px;">
+                </a>
+            `);
+        } else {
+            receiptDisplay.text('No receipt uploaded');
+        }
     });
 
     // Delete function

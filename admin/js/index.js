@@ -8,7 +8,9 @@ function initializeDataTable() {
         ajax: {
             url: './../user/index.php',
             type: 'POST',
-            data: { action: 'read' },
+            data: { action: 'read',
+                sort: 'desc' // Add sort parameter
+             },
             dataSrc: ''
         },
         columns: [
@@ -19,7 +21,7 @@ function initializeDataTable() {
                 render: function(data) {
                     const date = new Date(data);
                     return date.toLocaleDateString('en-US');
-                } 
+                }  
             },
             { data: 'total_price' },
             { data: 'reservation_type' },
@@ -27,7 +29,7 @@ function initializeDataTable() {
                 data: 'status',
                 render: function(data) {
                     const statusMap = {
-                        "for confirmation": '<span style="color: #001BCC; background-color: #81CDFF; font-size: 0.7rem;" class="p-2 rounded-pill">For Confirmation</span>',
+                       "for confirmation": '<span class="text-white bg-info p-2 rounded">For Confirmation</span>',
                         "cancelled": '<span class="text-white bg-danger p-2 rounded">Cancelled</span>',
                         "payment": '<span class="text-dark bg-warning p-2 rounded">payment</span>',
                         "PAID": '<span class="text-dark bg-warning p-2 rounded">Paid</span>',

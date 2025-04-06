@@ -725,8 +725,8 @@ $note = $reservation['note_area'] ?? 'No notes available.';
                         </div>
                    
                 <?php elseif ($reservation['res_status'] === 'paid'): ?>
-                    <div class="text-center p-4 rounded shadow container-fluid" style="background-color: #FF902B; color: white;">
-                    <div class="check-circle">
+                    <div class="text-center p-4 rounded shadow container-fluid mb-5" style="background-color: #FF902B; color: white;">
+                    <div class="check-circle ">
                             <i class="fas fa-check"></i>
                         </div>
                         <h4 class="mb-2"><i class="bi bi-check-circle-fill"></i> Payment Successful!</h4>

@@ -17,7 +17,8 @@ try {
                     r.date_created,
                     r.reservation_date,
                     r.amount,
-                    r.reservation_time
+                    r.reservation_time,
+                    r.receipt 
                   FROM reservation r
                   ORDER BY r.date_created DESC"; // Added ORDER BY to ensure latest first
         
