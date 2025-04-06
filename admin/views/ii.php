@@ -1,272 +1,429 @@
-
-
-<?php 
+<?php
 include './../../connection/connection.php';
-include './../inc/topNav.php';
+// Initialize all variables at the top
+$successMessage = '';
+$errorMessages = [];
+$username = '';
+$email = '';
+$profile_picture = null;
+$role = '';
+$newPassword = '';
+$confirmPassword = '';
+
+// Get current user data from database including profile picture
+$sql = "SELECT username, email, profile_picture, role FROM admin_list WHERE id = ?";
+$stmt = $conn->prepare($sql);
+$stmt->bind_param("i", $userId);
+$stmt->execute();
+$result = $stmt->get_result();
+if ($result->num_rows > 0) {
+    $userData = $result->fetch_assoc();
+    $username = $userData['username'];
+    $email = $userData['email'];
+    $profile_picture = $userData['profile_picture'];
+    $role = $userData['role'];
+}
+$stmt->close();
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Reset error messages for each request
+    $errorMessages = [];
+    
+    if (isset($_POST['action'])) {
+        switch ($_POST['action']) {
+            case 'updateProfile':
+                // Only validate when updating profile
+                $username = $_POST['username'];
+                $email = $_POST['email'];
+                $newPassword = $_POST['newPassword'] ?? '';
+                $confirmPassword = $_POST['confirmPassword'] ?? '';
+
+                // Validate username
+                if (empty($username)) {
+                    $errorMessages[] = "Username is required.";
+                }
+
+                // Validate passwords only if they're provided
+                if (!empty($newPassword)) {
+                    if (strlen($newPassword) < 8) {
+                        $errorMessages[] = "The new password must be at least 8 characters long.";
+                    } elseif ($newPassword !== $confirmPassword) {
+                        $errorMessages[] = "The passwords do not match.";
+                    }
+                }
+
+                if (empty($errorMessages)) {
+                    if (empty($newPassword)) {
+                        $sql = "UPDATE admin_list SET username = ?, email = ? WHERE id = ?";
+                        $stmt = $conn->prepare($sql);
+                        $stmt->bind_param("ssi", $username, $email, $userId);
+                    } else {
+                        $sql = "UPDATE admin_list SET username = ?, email = ?, password = ? WHERE id = ?";
+                        $stmt = $conn->prepare($sql);
+                        $hashedPassword = password_hash($newPassword, PASSWORD_DEFAULT);
+                        $stmt->bind_param("sssi", $username, $email, $hashedPassword, $userId);
+                    }
+                    
+                    if ($stmt->execute()) {
+                        $successMessage = "Profile updated successfully!";
+                    } else {
+                        $errorMessages[] = "Update failed: " . $stmt->error;
+                    }
+                    $stmt->close();
+                }
+                break;
+                
+            case 'uploadProfilePicture':
+                // Only validate file upload
+                if (isset($_FILES['profile_picture']) && $_FILES['profile_picture']['error'] === UPLOAD_ERR_OK) {
+                    $allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
+                    $fileType = $_FILES['profile_picture']['type'];
+                    
+                    if (in_array($fileType, $allowedTypes)) {
+                        $uploadDir = 'uploads/profile_pictures/';
+                        if (!is_dir($uploadDir)) {
+                            mkdir($uploadDir, 0755, true);
+                        }
+                        
+                        $fileName = uniqid('profile_') . '.' . pathinfo($_FILES['profile_picture']['name'], PATHINFO_EXTENSION);
+                        $uploadPath = $uploadDir . $fileName;
+                        
+                        if (move_uploaded_file($_FILES['profile_picture']['tmp_name'], $uploadPath)) {
+                            $sql = "UPDATE admin_list SET profile_picture = ? WHERE id = ?";
+                            $stmt = $conn->prepare($sql);
+                            $stmt->bind_param("si", $uploadPath, $userId);
+                            
+                            if ($stmt->execute()) {
+                                $profile_picture = $uploadPath;
+                                $successMessage = "Profile picture updated successfully!";
+                            } else {
+                                $errorMessages[] = "Failed to update profile picture in database.";
+                            }
+                            $stmt->close();
+                        } else {
+                            $errorMessages[] = "Failed to upload profile picture.";
+                        }
+                    } else {
+                        $errorMessages[] = "Invalid file type. Only JPG, PNG, and GIF are allowed.";
+                    }
+                } else {
+                    $errorMessages[] = "Please select a valid image file.";
+                }
+                break;
+                
+            case 'deleteProfilePicture':
+                if (!empty($profile_picture) && file_exists($profile_picture)) {
+                    unlink($profile_picture);
+                }
+                
+                $sql = "UPDATE admin_list SET profile_picture = NULL WHERE id = ?";
+                $stmt = $conn->prepare($sql);
+                $stmt->bind_param("i", $userId);
+                
+                if ($stmt->execute()) {
+                    $profile_picture = null;
+                    $successMessage = "Profile picture removed successfully!";
+                } else {
+                    $errorMessages[] = "Failed to remove profile picture from database.";
+                }
+                $stmt->close();
+                break;
+        }
+    }
+}
 ?>
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Orders</title>
-    <!-- Add necessary CSS for DataTable and Modal -->
-    <link href="https://cdn.datatables.net/1.13.1/css/jquery.dataTables.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+<style>
+body {
+    overflow-x: hidden;
+}
+.profile-picture-container {
+    position: relative;
+    width: 150px;
+    height: 150px;
+    margin: 0 auto 20px;
+    cursor: pointer;
+}
+.profile-picture {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid #FF902B;
+}
+.profile-picture-placeholder {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background-color: #f0f0f0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 3px solid #FF902B;
+    color: #777;
+    font-size: 50px;
+}
+.edit-profile-picture {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    background-color: #FF902B;
+    color: white;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 1; /* Changed from 0 to 1 to always show the button */
+    transition: opacity 0.3s;
+}
+/* Remove the hover effect since we always show the button now */
+/* .profile-picture-container:hover .edit-profile-picture {
+    opacity: 1;
+} */
+.modal-header {
+    background-color: #FF902B;
+    color: white;
+}
+.modal-content {
+    border-radius: 10px;
+}
+.alert {
+    margin-top: 10px;
+}
+.password-strength {
+    font-size: 14px;
+}
+.password-strength.weak {
+    color: red;
+}
+.password-strength.medium {
+    color: orange;
+}
+.password-strength.strong {
+    color: green;
+}
+.password-fields {
+    display: none;
+}
+@media (max-width: 576px) {
+    .profile-picture-container {
+        width: 120px;
+        height: 120px;
+    }
+    .edit-profile-picture {
+        width: 35px;
+        height: 35px;
+        opacity: 1; /* Ensure it's always visible on mobile */
+    }
+}
+</style>
 
-    <!-- Bootstrap for Modal -->
-    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
-
-    <style>
-        * {
-            padding: 0;
-            margin: 0;
-            box-sizing: border-box;
-        }
-
-        .modal-body {
-            display: flex; 
-            flex-direction: column;
-        }
-
-        .update-down {
-            display: flex;
-            flex-direction: column;
-        }
-
-        .order-sum {
-            display: flex;
-            flex-direction: column;
-        }
-
-        .order-s {
-            color: #FF902B;
-        }
-
-        .p1 {
-            color: #FF902B;
-        }
-
-        .p {
-            color: #616161;
-        }
-
-        .l {
-            color: #000000;
-        }
-
-        .upsta {
-            color: white;
-            background-color: #FF902B;
-            border: none;
-        }
-
-        .theadmodal {
-            background-color: #FF902B;
-        }
-
-        .account-text {
-            font-size: 2rem;
-            font-weight: bold;
-        }
-
-        @media (max-width: 768px) {
-            .modal-dialog {
-                margin: 0.5rem;
-            }
-
-            .modal-content {
-                padding: 1rem;
-            }
-
-            .order-sum {
-                flex-direction: column;
-            }
-
-            .update-down {
-                flex-direction: column;
-            }
-
-            .form-group {
-                margin-bottom: 1rem;
-            }
-
-            .modal-body {
-                padding: 1rem;
-            }
-
-            .modal-footer {
-                flex-direction: column;
-                align-items: center;
-            }
-
-            .modal-footer .btn {
-                width: 100%;
-                margin-bottom: 0.5rem;
-            }
-        }
-    </style>
-</head>
-
-<body>
-
-<div class="container-fluid mb-3">
-    <div class="row mt-5 ms-5">
-        <div class="col-12 col-md-10 col-lg-8">
-            <p class="account-text">
-                Order <span class="management-underline">Management</span>
-            </p>
-        </div>
-    </div>
-</div>
-
-<div class="d-flex justify-content-center w-100">
-    <div class="container-fluid shadow p-3 mx-5 bg-body-tertiary rounded">
-        <table id="userTable" class="display">
-            <thead>
-                <tr>
-                    <th>Order ID</th>
-                    <th>Customer</th>
-                    <th>Order Date</th>
-                    <th>Amount</th>
-                    <th>Reservation Type</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                <!-- Table data will be filled dynamically -->
-            </tbody>
-        </table>
-    </div>
-</div>
-
-<!-- Modal for Delete Confirmation -->
-<div class="modal fade" id="deleteUserModal" tabindex="-1" role="dialog" aria-labelledby="deleteUserModalLabel" aria-hidden="true">
-    <div class="modal-dialog" role="document">
+<!-- Profile Picture Modal -->
+<div class="modal fade" id="profilePictureModal" tabindex="-1" aria-labelledby="profilePictureModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="deleteUserModalLabel">Delete Confirmation</h5>
-                <button type="button" class="close" data-bs-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
+                <h5 class="modal-title" id="profilePictureModalLabel">Change Profile Picture</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                Are you sure you want to delete this order?
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" id="cancelDeleteBtn" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Delete</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Modal for Update User Status -->
-<div class="modal fade container-fluid" id="updateUserModal" tabindex="-1" role="dialog" aria-labelledby="updateUserModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg" role="document">
-        <div class="modal-content container-fluid">
-            <div class="modal-body container-fluid">
-                <form id="updateStatusForm">
-                    <div class="form-group">
-                        <table id="userTableUpdate" class="display container-fluid">
-                            <thead class="text-light px-3 theadmodal">
-                                <tr>
-                                    <th>Order Item</th>
-                                    <th>Price</th>
-                                    <th>Size</th>
-                                    <th>Temperature</th>
-                                    <th>Quantity</th>
-                                    <th>Receipt</th>
-                                </tr>
-                            </thead>
-                            <tbody></tbody>
-                        </table>
+                <?php if (!empty($errorMessages) && isset($_POST['action']) && $_POST['action'] === 'uploadProfilePicture'): ?>
+                    <div class="alert alert-danger" role="alert">
+                        <?php foreach ($errorMessages as $error): ?>
+                            <div><?= htmlspecialchars($error) ?></div>
+                        <?php endforeach; ?>
                     </div>
-
-                    <div class="form-group update-down d-flex flex-column">
-                        <h5 class="order-s">Order Summary</h5>
-                        <div class="form-group order-sum d-flex flex-row">
-                            <div class="d-flex flex-column gap-3 m-3">
-                                <div class="d-flex flex-row mb-3 align-items-baseline">
-                                    <label class="l mr-5">Client Name</label>
-                                    <p id="client_full_name_display" class="p mb-0 ml-auto text-right"></p>
-                                </div>
-
-                                <div class="d-flex flex-row mb-3 align-items-baseline">
-                                    <label class="l mr-5">Transaction no.</label>
-                                    <p id="transaction_id" class="p mb-0 ml-auto text-right"></p>
-                                </div>
-
-                                <div class="d-flex flex-row mb-3 align-items-baseline">
-                                    <label class="l mr-5">Reservation Type</label>
-                                    <p id="reservation_type" class="p mb-0 ml-auto text-right"></p>
-                                </div>
-
-                                <div class="d-flex flex-row mb-3 align-items-baseline">
-                                    <label class="l mr-5">Party Size</label>
-                                    <p id="party_size" class="p mb-0 ml-auto text-right"></p>
-                                </div>
-
-                                <div class="d-flex flex-row mb-1 align-items-baseline mt-2">
-                                    <label class="l mr-5 fs-5 bold">Total Price</label>
-                                    <p id="total_price1" class="p1 mb-0 ml-auto bold text-right">P</p>
-                                </div>
+                <?php endif; ?>
+                
+                <form method="POST" enctype="multipart/form-data" id="profilePictureForm">
+                    <input type="hidden" name="action" value="uploadProfilePicture">
+                    <div class="mb-3 text-center">
+                        <?php if (!empty($profile_picture)): ?>
+                            <img src="<?= htmlspecialchars($profile_picture) ?>" alt="Current Profile Picture" class="profile-picture mb-3" style="width: 200px; height: 200px;">
+                        <?php else: ?>
+                            <div class="profile-picture-placeholder mb-3 mx-auto" style="width: 200px; height: 200px;">
+                                <i class="fas fa-user"></i>
                             </div>
-
-                            <div class="d-flex flex-column gap-3 m-3">
-                                <div class="d-flex flex-row mb-3 align-items-baseline">
-                                    <label class="l mr-5">Date</label>
-                                    <p id="created_at" class="p mb-0 ml-auto text-right"></p>
-                                </div>
-
-                                <div class="d-flex flex-row mb-3 align-items-baseline">
-                                    <label class="l mr-5">Time</label>
-                                    <p id="transaction_id" class="p mb-0 ml-auto text-right"></p>
-                                </div>
-
-                                <div class="d-flex flex-row mb-3 align-items-baseline">
-                                    <label class="l mr-5">Sub total</label>
-                                    <p id="total_price" class="p mb-0 ml-auto bold text-right">P</p>
-                                </div>
-
-                                <div class="d-flex flex-row mb-3 align-items-baseline">
-                                    <label class="l mr-5">Reservation fee</label>
-                                    <p id="party_size" class="p mb-0 ml-auto text-right"></p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="form-group p-3 mb-5 mx-5">
-                            <label for="status" class="fw-bold">Order Status</label>
-                            <select class="form-control container-fluid" id="status" name="status">
-                                <option value="for confirmation">For Confirmation</option>
-                                <option value="cancelled">Cancelled</option>
-                                <option value="payment">Payment</option>
-                                <option value="booked">Booked</option>
-                                <option value="rate us">Rate Us</option>
-                            </select>
-                        </div>
+                        <?php endif; ?>
+                        
+                        <input type="file" class="form-control" name="profile_picture" id="profile_picture" accept="image/jpeg,image/png,image/gif">
+                        <small class="text-muted">Max size: 2MB. Formats: JPG, PNG, GIF</small>
                     </div>
-
-                    <input type="hidden" id="orderId" name="id">
+                    
+                    <div class="d-flex justify-content-between">
+                        <?php if (!empty($profile_picture)): ?>
+                            <button type="submit" name="action" value="deleteProfilePicture" class="btn btn-danger rounded-pill">
+                                <i class="fas fa-trash-alt"></i> Delete Picture
+                            </button>
+                        <?php endif; ?>
+                        
+                        <button type="submit" class="btn text-white rounded-pill ms-auto" style="background-color: #FF902B;">
+                            <i class="fas fa-save"></i> Save Changes
+                        </button>
+                    </div>
                 </form>
             </div>
-            <div class="mx-auto m-5">
-                <button type="button" class="upsta btn btn-primary rounded-pill px-5 container-fluid" id="saveStatusBtn">Update Status</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal for changing profile -->
+<div class="modal fade" id="changeProfileModal" tabindex="-1" aria-labelledby="changeProfileModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="changeProfileModalLabel">Change Profile</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <?php if ($successMessage && (!isset($_POST['action']) || $_POST['action'] !== 'uploadProfilePicture')): ?>
+                    <div class="alert alert-success" role="alert" id="successMessage">
+                        <?= htmlspecialchars($successMessage); ?>
+                    </div>
+                <?php endif; ?>
+
+                <?php if (!empty($errorMessages) && isset($_POST['action']) && $_POST['action'] === 'updateProfile'): ?>
+                    <div class="alert alert-danger" role="alert">
+                        <?php foreach ($errorMessages as $error): ?>
+                            <div><?= htmlspecialchars($error); ?></div>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endif; ?>
+
+                <form method="POST" id="profileForm">
+                    <input type="hidden" name="action" value="updateProfile">
+                    
+                    <div class="text-center mb-4">
+                        <div class="profile-picture-container" data-bs-toggle="modal" data-bs-target="#profilePictureModal">
+                            <?php if (!empty($profile_picture)): ?>
+                                <img src="<?= htmlspecialchars($profile_picture) ?>" alt="Profile Picture" class="profile-picture">
+                            <?php else: ?>
+                                <div class="profile-picture-placeholder">
+                                    <i class="fas fa-user"></i>
+                                </div>
+                            <?php endif; ?>
+                            <div class="edit-profile-picture">
+                                <i class="fas fa-pencil-alt"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="username" class="form-label">Username</label>
+                        <input type="text" class="form-control" name="username" id="username" value="<?= htmlspecialchars($username); ?>" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Email</label>
+                        <input type="email" class="form-control" name="email" id="email" value="<?= htmlspecialchars($email); ?>" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Role</label>
+                        <input type="text" class="form-control" value="<?= htmlspecialchars($role); ?>" readonly>
+                    </div>
+
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="showPasswordCheckbox">
+                        <label class="form-check-label" for="showPasswordCheckbox">Change Password</label>
+                    </div>
+
+                    <div class="password-fields">
+                        <div class="mb-3">
+                            <label for="newPassword" class="form-label">New Password</label>
+                            <input type="password" class="form-control" name="newPassword" id="newPassword">
+                            <div id="password-strength" class="password-strength"></div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="confirmPassword" class="form-label">Confirm Password</label>
+                            <input type="password" class="form-control" name="confirmPassword" id="confirmPassword">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <button type="submit" class="btn w-100 text-white rounded-pill" style="background-color: #FF902B;">Update Profile</button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
 </div>
 
-<!-- jQuery, DataTable, and Bootstrap JS -->
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.1/js/jquery.dataTables.min.js"></script>
-<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.bundle.min.js"></script>
+<script>
+    // Automatically hide the success message after 5 seconds
+    setTimeout(function() {
+        var successMessage = document.getElementById('successMessage');
+        if (successMessage) {
+            successMessage.style.display = 'none';
+        }
+    }, 5000);
 
-<!-- Custom JS -->
-<script src="./../js/index.js"></script>
+    // Show the modal only if a success message is set
+    <?php if ($successMessage): ?>
+        const modalElement = document.getElementById('changeProfileModal');
+        const modal = new bootstrap.Modal(modalElement);
+        modal.show();
+    <?php endif; ?>
 
-</body>
-</html>
+    // Toggle visibility of password fields based on checkbox
+    document.getElementById('showPasswordCheckbox').addEventListener('change', function () {
+        const passwordFields = document.querySelector('.password-fields');
+        if (this.checked) {
+            passwordFields.style.display = 'block';
+        } else {
+            passwordFields.style.display = 'none';
+            document.getElementById('newPassword').value = '';
+            document.getElementById('confirmPassword').value = '';
+            document.getElementById('password-strength').textContent = '';
+        }
+    });
+
+    // Password strength detection
+    document.getElementById('newPassword').addEventListener('input', function () {
+        const password = this.value;
+        const strengthElement = document.getElementById('password-strength');
+        let strength = '';
+        
+        if (password.length === 0) {
+            strengthElement.textContent = '';
+            return;
+        }
+        
+        if (password.length < 8) {
+            strength = 'Weak';
+            strengthElement.className = 'password-strength weak';
+        } else if (/[A-Za-z]/.test(password) && /\d/.test(password)) {
+            strength = 'Medium';
+            strengthElement.className = 'password-strength medium';
+        } else {
+            strength = 'Strong';
+            strengthElement.className = 'password-strength strong';
+        }
+        strengthElement.textContent = `Strength: ${strength}`;
+    });
+    
+    // Preview profile picture before upload
+    document.getElementById('profile_picture').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const preview = document.querySelector('#profilePictureModal .profile-picture');
+                if (preview) {
+                    preview.src = event.target.result;
+                } else {
+                    const placeholder = document.querySelector('#profilePictureModal .profile-picture-placeholder');
+                    if (placeholder) {
+                        placeholder.innerHTML = `<img src="${event.target.result}" alt="Preview" class="profile-picture" style="width: 100%; height: 100%;">`;
+                    }
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+</script>
+
+<!-- Include Bootstrap JS and Font Awesome -->
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">

@@ -274,7 +274,7 @@ include '../views/change_profile.php';
     </div>
 </div>
 
-</nav>
+</nav> 
 
 <!-- Modal for Changing Profile -->
 <div class="modal fade" id="changeProfileModal" tabindex="-1" aria-labelledby="changeProfileModalLabel" aria-hidden="true">
