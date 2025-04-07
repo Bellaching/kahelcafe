@@ -155,7 +155,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['upload_receipt'])) {
 
 // QR Code Generation (UPDATED CODE)
 if ($order && $order['status'] === 'booked') {
-    $qrData = "Order ID: {$order['order_id']}\nName: {$order['client_full_name']}\nTotal: ₱" . number_format($order['total_price'], 2);
+    $qrData = "Order ID: {$order['order_id']}\n"
+        . "Transaction ID: {$order['transaction_id']}\n"
+        . "Name: {$order['client_full_name']}\n"
+        . "Reservation Type: {$order['reservation_type']}\n"
+        . "Reservation Date: {$order['reservation_date']}\n"
+        . "Reservation Time: {$order['reservation_time']}\n"
+        . "Party Size: {$order['party_size']}\n"
+        . "Reservation Fee: ₱" . number_format($order['reservation_fee'], 2) . "\n"
+        . "Total: ₱" . number_format($order['total_price'], 2) . "\n"
+        . "Created At: {$order['created_at']}";
+
 
     $qrCode = Builder::create()
         ->writer(new PngWriter())

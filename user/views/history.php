@@ -121,7 +121,7 @@ $offset = ($currentPage - 1) * $recordsPerPage;
         .badge-paid { background-color: #28a745; }
         .badge-booked { background-color: #6610f2; }
         .badge-rateus { background-color: #fd7e14; }
-        .badge-cancel { background-color: #dc3545; }
+        .badge-cancelled { background-color: #dc3545; }
         .records-per-page {
             width: 80px;
             display: inline-block;

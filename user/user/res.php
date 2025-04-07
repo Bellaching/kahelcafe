@@ -3,49 +3,60 @@ include '../../connection/connection.php';
 
 header('Content-Type: application/json');
 
-$date = isset($_GET['date']) ? $_GET['date'] : date('Y-m-d');  // Default to today's date if no date is provided
+$date = isset($_GET['date']) ? $_GET['date'] : date('Y-m-d');
 
-// Initialize arrays to store the reservation status for each time slot
-$times = [];
-$status_reservations = [];
+// Initialize response array
+$response = [
+    'times' => [],
+    'status_reservations' => []
+];
 
-// Fetch available times from res_time table
-$query = "SELECT * FROM res_time";
-$result = mysqli_query($conn, $query);
+// Fetch all available times
+$time_query = "SELECT * FROM res_time";
+$time_result = mysqli_query($conn, $time_query);
 
-if ($result) {
-    while ($row = mysqli_fetch_assoc($result)) {
-        $time_id = $row['id'];
-        $time = $row['time'];
+if ($time_result) {
+    while ($time = mysqli_fetch_assoc($time_result)) {
+        $time_id = $time['id'];
+        $time_value = $time['time'];
         
-        // Check if a reservation exists for this time slot on the selected date
-        $status_query = "SELECT client_id, res_status FROM reservation WHERE reservation_time_id = '$time_id' AND reservation_date = '$date'";
-        $status_result = mysqli_query($conn, $status_query);
+        // Check reservation table
+        $res_query = "SELECT client_id, res_status FROM reservation 
+                     WHERE reservation_time_id = '$time_id' AND reservation_date = '$date' 
+                     AND (res_status = 'pending' OR res_status = 'confirmed') LIMIT 1";
+        $res_result = mysqli_query($conn, $res_query);
         
-        if (mysqli_num_rows($status_result) > 0) {
-            // Reservation exists; get the client_id and status
-            $reservation = mysqli_fetch_assoc($status_result);
-            $client_id = $reservation['client_id'];
-            $status = ($reservation['res_status'] === 'pending' || $reservation['res_status'] === 'confirmed') ? 'booked' : 'available';
-        } else {
-            // No reservation exists
-            $client_id = null;
-            $status = 'available';
+        // Check order table
+        $order_query = "SELECT user_id, status FROM `orders` 
+                       WHERE reservation_time_id = '$time_id' AND reservation_date = '$date'
+                       AND (status = 'pending' OR status = 'confirmed') LIMIT 1";
+        $order_result = mysqli_query($conn, $order_query);
+        
+        $status = 'available';
+        $client_id = null;
+        
+        // Priority to reservation table
+        if (mysqli_num_rows($res_result) > 0) {
+            $res = mysqli_fetch_assoc($res_result);
+            $status = 'booked';
+            $client_id = $res['client_id'];
+        } 
+        // Then check order table
+        elseif (mysqli_num_rows($order_result) > 0) {
+            $order = mysqli_fetch_assoc($order_result);
+            $status = 'booked';
+            $client_id = $order['user_id'];
         }
         
-        $times[] = $time;
-        $status_reservations[] = [
+        $response['times'][] = $time_value;
+        $response['status_reservations'][] = [
             'time_id' => $time_id,
-            'time' => $time,
+            'time' => $time_value,
             'status' => $status,
             'client_id' => $client_id
         ];
     }
 }
 
-// Return JSON response
-echo json_encode([
-    'times' => $times,
-    'status_reservations' => $status_reservations
-]);
+echo json_encode($response);
 ?>

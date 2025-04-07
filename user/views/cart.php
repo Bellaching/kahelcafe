@@ -30,7 +30,7 @@ if (!isset($_SESSION['cart']) && isset($_SESSION['user_id'])) {
         ];
     }
     $stmt->close();
-}
+} 
 
 // Retrieve client details
 $clientFullName = 'Unknown';
@@ -401,10 +401,7 @@ if (isset($_POST['checkout'])) {
                     id="time-btn-<?= $i ?>" 
                     data-time-id="<?= $time['time_id'] ?>"
                     data-time-value="<?= htmlspecialchars($time['time']) ?>"
-                    style="background-color: <?= 
-                        ($time['status'] ?? '') == 'your_reservation' ? '#9647FF' : 
-                        (($time['status'] ?? '') == 'booked' ? '#E60000' : '#07D090') ?>;"
-                    <?= ($time['disabled'] ?? false) ? 'disabled' : '' ?>>
+                    style="background-color: #07D090;">
                     <span class="text-truncate d-block text-light border-0"><?= htmlspecialchars($time['time']) ?></span>
                 </button>
             </div>
@@ -691,6 +688,53 @@ $(document).ready(function() {
             }
         });
     });
+    function fetchReservationStatus(date) {
+    if (!date) return;
+    
+    fetch(`../user/res.php?date=${date}`)
+        .then(response => {
+            if (!response.ok) throw new Error('Network response was not ok');
+            return response.json();
+        })
+        .then(data => {
+            const buttons = document.querySelectorAll('.available-time-btn');
+            
+            if (data.status_reservations && data.status_reservations.length === buttons.length) {
+                data.status_reservations.forEach((res_status, index) => {
+                    let color = '#07D090'; // Available
+                    let isDisabled = false;
+                    
+                    if (res_status.client_id == <?php echo json_encode($user_id); ?>) {
+                        color = '#9647FF'; // Your reservation
+                        isDisabled = true;
+                    } else if (res_status.status === 'booked') {  // Changed from res_status.res_status to res_status.status
+                        color = '#E60000'; // Booked
+                        isDisabled = true;
+                    }
+                    
+                    buttons[index].style.backgroundColor = color;
+                    buttons[index].disabled = isDisabled;
+                    
+                    // Update the data attributes if needed
+                    buttons[index].dataset.timeId = res_status.time_id;
+                    buttons[index].dataset.timeValue = res_status.time;
+                });
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching reservation status:', error);
+        });
+}
+
+// Make sure to call this when date changes
+document.getElementById('date-picker').addEventListener('change', function() {
+    fetchReservationStatus(this.value);
+});
+
+// Call it initially if you have a default date
+fetchReservationStatus(document.getElementById('date-picker').value);
+
+
 });
 </script>
 
