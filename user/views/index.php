@@ -180,7 +180,7 @@ $sql = "SELECT * FROM menu1 $whereClause ORDER BY name ASC LIMIT $offset, $items
         <!-- Include your banner.php here -->
     </header>
 
-    <div class="sched-banner position-relative mb-5 mt-5" style="background-image: url('./../asset/img/sched-reservation/sched-banner.png'); background-size: cover; background-position: center; min-height: 600px;">
+    <div class="sched-banner position-relative mb-5 " style="background-image: url('./../asset/img/sched-reservation/sched-banner.png'); background-size: cover; background-position: center; min-height: 600px;">
     <div class="text-container" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; color: orange;">
         <div style="font-size: 8rem; font-weight: bold; font-family: 'Arial Black', sans-serif;">Kahel</div>
         <div style="font-size: 3rem; font-weight: bold; font-family: 'Arial Black', sans-serif; position: absolute; bottom: 20px; right: 20px; transform: translateY(40px);">cafe</div>
@@ -419,7 +419,7 @@ $sql = "SELECT * FROM menu1 $whereClause ORDER BY name ASC LIMIT $offset, $items
                         <button class="btn btn-primary mb-3 mb-md-0 me-md-2" style="background-color: #E48700; border: none;" onclick="window.location.href='reservation.php';">
                             Reserve now
                         </button>
-                        <button class="btn btn-secondary mb-3 mb-md-0" style="background-color: #ffff; color: #E48700; border: none;" onclick="window.location.href='index.php';">
+                        <button class="btn btn-secondary mb-3 mb-md-0" style="background-color: #ffff; color: #E48700; border: none;" onclick="window.location.href='order-now.php';">
                             Order now
                         </button>
                     </div>
@@ -431,9 +431,8 @@ $sql = "SELECT * FROM menu1 $whereClause ORDER BY name ASC LIMIT $offset, $items
     <footer class="bg-dark text-white text-center py-3">
         <p>Follow us on social media</p>
         <div class="socmed">
-            <a href="#" class="text-white mx-2"><i class="fab fa-facebook-f"></i></a>
-            <a href="#" class="text-white mx-2"><i class="fab fa-twitter"></i></a>
-            <a href="#" class="text-white mx-2"><i class="fab fa-instagram"></i></a>
+            <a href="https://www.facebook.com/profile.php?id=100089147125186" class="text-white mx-2"><i class="fab fa-facebook-f"></i></a>
+          
         </div>
     </footer>
 

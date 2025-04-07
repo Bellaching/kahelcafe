@@ -847,7 +847,7 @@ $note = $orderItems[0]['note'] ?? 'No notes available.';
                         </div>
                     </form>
 
-                    <div class="alert alert-info mt-2">
+                    <div class="alert alert-info mt-2 ">
                         <strong>Please show this QR code to the cashier.</strong>
                     </div>
 
@@ -858,7 +858,7 @@ $note = $orderItems[0]['note'] ?? 'No notes available.';
 
                     </div>
                 <?php elseif ($order['status'] === 'for confirmation'): ?>
-                    <div class="order-sums">
+                    <div class="order-sums mb-5">
                         <h5 class="bold py-3">Order Summary</h5>
 
                         <div class="d-flex justify-content-between w-100">

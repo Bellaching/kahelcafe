@@ -446,12 +446,12 @@ if (isset($_POST['checkout'])) {
  
 <div class="d-flex justify-content-between">
     <strong>Date:</strong>
-    <span id="date-result" class="result-sum date-result">Not selected</span>
+    <span id="date-result" class="result-sum date-result text-danger fw-bold">Not selected</span>
 </div>
 
 <div class="d-flex justify-content-between">
     <strong>Time:</strong>
-    <span class="result-sum time-result" id="time-result">Not selected</span>
+    <span class="result-sum time-result text-danger fw-bold" id="time-result">Not selected</span>
 </div>
 
 <input type="hidden" name="reservation_time_id" id="reservation_time_id">
