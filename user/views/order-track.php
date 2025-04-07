@@ -543,7 +543,7 @@ $note = $orderItems[0]['note'] ?? 'No notes available.';
     </style>
 </head>
 <body>
-    <div class="container mt-3 mt-md-5">
+    <div class=" container mt-3 mt-md-5 ">
 
     <div class="sched-banner position-relative mb-5 mt-5" style="background-image: url('./../asset/img/sched-reservation/sched-banner.png'); background-size: cover; background-position: center; min-height: 600px;">
     <div class="container position-absolute bottom-0 start-0 p-3 d-flex align-items-center">
@@ -989,6 +989,22 @@ $note = $orderItems[0]['note'] ?? 'No notes available.';
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/5.3.3/js/bootstrap.min.js"></script>
 
     <script>
+
+function reloadBodyContent() {
+    $.ajax({
+        url: window.location.href,  // Fetch the same page to get updated body content
+        success: function(response) {
+            // Replace the entire body content with the updated response
+            $('body').html($(response).find('body').html());
+        }
+    });
+}
+
+// Reload the body every 3 seconds (3000 milliseconds)
+setInterval(reloadBodyContent, 3000);
+
+
+
   setTimeout(function() {
     const alert = document.getElementById('successAlert');
     if (alert) {
