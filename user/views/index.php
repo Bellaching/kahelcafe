@@ -2,10 +2,9 @@
 // Start output buffering
 ob_start();
 
-
-
+include './../inc/topNav.php';
 include './../../connection/connection.php';
-include "./../views/banner.php";
+
 
 $query = "SELECT * FROM menu1 ORDER BY date_created DESC LIMIT 3";  
 $result = mysqli_query($conn, $query);
@@ -180,6 +179,14 @@ $sql = "SELECT * FROM menu1 $whereClause ORDER BY name ASC LIMIT $offset, $items
     <header>
         <!-- Include your banner.php here -->
     </header>
+
+    <div class="sched-banner position-relative mb-5 mt-5" style="background-image: url('./../asset/img/sched-reservation/sched-banner.png'); background-size: cover; background-position: center; min-height: 600px;">
+    <div class="text-container" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; color: orange;">
+        <div style="font-size: 8rem; font-weight: bold; font-family: 'Arial Black', sans-serif;">Kahel</div>
+        <div style="font-size: 3rem; font-weight: bold; font-family: 'Arial Black', sans-serif; position: absolute; bottom: 20px; right: 20px; transform: translateY(40px);">cafe</div>
+    </div>
+</div>
+
     <div class="container my-5">
         <h2 class="fw-bold mb-6" style="text-align: left; margin-bottom: 3rem;">
             Try our new <span style="position: relative; color: #E48700;">
@@ -228,7 +235,7 @@ $sql = "SELECT * FROM menu1 $whereClause ORDER BY name ASC LIMIT $offset, $items
             <button class="btn mt-auto rounded-pill add-to-cart-btn" 
                     style="background-color: #E48700; color: white;" 
                     data-bs-toggle="modal" 
-                    data-bs-target="#itemModal<?php echo $menu['id']; ?>">
+                    data-bs-target="<?php echo isset($_SESSION['user_id']) ? '#itemModal' . $menu['id'] : '#loginRequiredModal'; ?>">
                 <i class="fas fa-shopping-cart me-2"></i> Add to Cart
             </button>
         </div>
@@ -364,12 +371,13 @@ $sql = "SELECT * FROM menu1 $whereClause ORDER BY name ASC LIMIT $offset, $items
       <!-- Virtual Tour and Other Sections -->
       <div class="container text-center my-4">
       <?php 
+   
         include "./../views/virt.php";
       ?>
     </div>
 
     <!-- Virtual Tour and Other Sections -->
-    <div class="container text-center my-4">
+    <div class="container text-center my-4 mt-4 mb-4">
         <h2>How to order and reserve</h2>
         <div class="row justify-content-center">
             <div class="col-md-2">
@@ -429,25 +437,12 @@ $sql = "SELECT * FROM menu1 $whereClause ORDER BY name ASC LIMIT $offset, $items
         </div>
     </footer>
 
-
-
     <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.7/dist/umd/popper.min.js"></script>
 <script src="https://stackpath.bootstrapcdn.com/bootstrap/5.3.3/js/bootstrap.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Check if the user is logged in before showing the add to cart modal
-            document.querySelectorAll('.add-to-cart-btn').forEach(button => {
-                button.addEventListener('click', function(e) {
-                    const userVerified = <?php echo $userVerified; ?>;
-                    if (!userVerified) {
-                        e.preventDefault();
-                        $('#loginRequiredModal').modal('show');
-                    }
-                });
-            });
-
             // Update quantity label when slider changes
             document.querySelectorAll('.form-range').forEach(range => {
                 range.addEventListener('input', (e) => {

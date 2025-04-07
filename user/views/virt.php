@@ -125,4 +125,4 @@ $result = $conn->query("SELECT * FROM virt");
 </body>
 </html>
 
-<?php $conn->close(); ?>
+

@@ -272,7 +272,14 @@ if ($reservation['res_status'] === 'cancel'): ?>
 
 // 7. Generate QR Code for booked reservations
 if ($reservationId && $reservation['res_status'] === 'booked' || $reservationId && $reservation['res_status'] === 'rate us') {
-    $qrData = "Reservation ID: {$reservationId}\nName: {$reservation['clientFullName']}\nTime: {$reservationTimeValue}\nTotal: ₱" . number_format($reservation['amount'], 2);
+    $qrData = "Reservation ID: {$reservationId}\n"
+    . "Name: {$reservation['clientFullName']}\n"
+    . "Date: {$reservation['reservation_date']}\n"
+    . "Time: {$reservation['reservation_time']}\n"
+    . "Party Size: {$reservation['party_size']}\n"
+    . "Note: {$reservation['note_area']}\n"
+    . "Total: ₱" . number_format($reservation['amount'], 2);
+
 
     $qrCode = Builder::create()
         ->writer(new PngWriter())

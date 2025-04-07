@@ -13,9 +13,11 @@ include './../inc/topNav.php';
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
     <!-- jQuery first, then Popper.js, then Bootstrap JS -->
-<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/js/bootstrap.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/js/bootstrap.min.js"></script>
+    <!-- Add the instascan library for QR scanning -->
+    <script src="https://rawgit.com/schmich/instascan-builds/master/instascan.min.js"></script>
 
 <style>
     /* Custom tooltip for truncated text */
@@ -50,10 +52,47 @@ include './../inc/topNav.php';
         .deleteBtn {
             color: #A30D11;
         }
+
+    /* Pull to refresh styles */
+    .refresh-indicator {
+        position: fixed;
+        top: -50px;
+        left: 0;
+        right: 0;
+        height: 50px;
+        background-color: #FF902B;
+        color: white;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        transition: transform 0.3s ease;
+        z-index: 999;
+    }
+    
+    .refresh-icon {
+        font-size: 20px;
+        margin-right: 10px;
+        transition: transform 0.3s ease;
+    }
+    
+    .refreshing .refresh-icon {
+        animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
 </style>
 </head>
 
 <body style="padding: 0; margin: 0; box-sizing: border-box;">
+
+<!-- Pull to refresh indicator -->
+<div class="refresh-indicator" id="refreshIndicator">
+    <i class="fas fa-sync-alt refresh-icon"></i>
+    <span>Release to refresh</span>
+</div>
 
 <!-- Update notification -->
 <div class="position-fixed" style="bottom: 20px; right: 20px; background-color: #4CAF50; color: white; padding: 15px; border-radius: 5px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); z-index: 1000; display: none;" id="updateNotification">
@@ -66,6 +105,47 @@ include './../inc/topNav.php';
             <p class="h2 font-weight-bold">
                 Order <span style="text-decoration: underline; text-decoration-color: #FF902B; text-underline-offset: 8px;">Management</span>
             </p>
+        </div>
+        <div class="col-12 col-md-2 col-lg-4 text-right">
+            <button class="btn btn-primary" data-toggle="modal" data-target="#qrScannerModal">
+                <i class="fas fa-qrcode"></i> Scan QR Code
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- QR Scanner Modal -->
+<div class="modal fade" id="qrScannerModal" tabindex="-1" role="dialog" aria-labelledby="qrScannerModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header" style="background-color: #FF902B; color: white;">
+                <h5 class="modal-title" id="qrScannerModalLabel">QR Code Scanner</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close" onclick="stopScanner()">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-12">
+                        <div id="scanner-container" style="width: 100%; height: 400px; border: 2px dashed #ccc; display: flex; justify-content: center; align-items: center;">
+                            <video id="preview" style="width: 100%; height: 100%; object-fit: cover;"></video>
+                            <p id="scanner-placeholder" class="text-muted">Camera is loading...</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-md-12">
+                        <div class="form-group">
+                            <label for="scanned-result">Scanned Result:</label>
+                            <input type="text" class="form-control" id="scanned-result" readonly>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal" onclick="stopScanner()">Close</button>
+                <button type="button" class="btn btn-primary" id="use-scanned-data">Use This Code</button>
+            </div>
         </div>
     </div>
 </div>
@@ -242,7 +322,38 @@ include './../inc/topNav.php';
 <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/js/all.min.js"></script>
 
 <script>
+// QR Scanner variables
+let scanner = null;
+
+// Pull to refresh variables
+let startY, currentY;
+let isRefreshing = false;
+const refreshIndicator = document.getElementById('refreshIndicator');
+const refreshThreshold = 100; // How far to pull down to trigger refresh
+
 $(document).ready(function() {
+    // Initialize QR scanner when modal is shown
+    $('#qrScannerModal').on('shown.bs.modal', function() {
+        initializeScanner();
+    });
+    
+    // Stop scanner when modal is hidden
+    $('#qrScannerModal').on('hidden.bs.modal', function() {
+        stopScanner();
+    });
+    
+    // Use scanned data button handler
+    $('#use-scanned-data').click(function() {
+        const scannedData = $('#scanned-result').val();
+        if (scannedData) {
+            // Here you can implement what to do with the scanned data
+            alert('Scanned data: ' + scannedData);
+            $('#qrScannerModal').modal('hide');
+        } else {
+            alert('No QR code scanned yet!');
+        }
+    });
+
     // Variable to track the last update timestamp
     let lastUpdateTimestamp = null;
     let isFirstLoad = true;
@@ -332,6 +443,129 @@ $(document).ready(function() {
         });
     }
 });
+
+// Pull to refresh functionality
+document.addEventListener('touchstart', function(e) {
+    if (window.scrollY === 0 && !isRefreshing) {
+        startY = e.touches[0].clientY;
+    }
+}, { passive: true });
+
+document.addEventListener('touchmove', function(e) {
+    if (!startY) return;
+    
+    currentY = e.touches[0].clientY;
+    const distance = currentY - startY;
+    
+    if (distance > 0 && window.scrollY === 0 && !isRefreshing) {
+        e.preventDefault();
+        const pullDistance = Math.min(distance, refreshThreshold * 2);
+        refreshIndicator.style.transform = `translateY(${pullDistance}px)`;
+        
+        if (pullDistance >= refreshThreshold) {
+            refreshIndicator.querySelector('span').textContent = 'Release to refresh';
+        } else {
+            refreshIndicator.querySelector('span').textContent = 'Pull to refresh';
+        }
+    }
+}, { passive: false });
+
+document.addEventListener('touchend', function(e) {
+    if (!startY) return;
+    
+    const distance = currentY - startY;
+    if (distance >= refreshThreshold && window.scrollY === 0 && !isRefreshing) {
+        startRefresh();
+    } else {
+        resetRefresh();
+    }
+    
+    startY = null;
+    currentY = null;
+});
+
+function startRefresh() {
+    isRefreshing = true;
+    refreshIndicator.classList.add('refreshing');
+    refreshIndicator.querySelector('span').textContent = 'Refreshing...';
+    refreshIndicator.style.transform = 'translateY(50px)';
+    
+    // Reload the table data
+    if (typeof table !== 'undefined') {
+        table.ajax.reload(function() {
+            setTimeout(function() {
+                completeRefresh();
+            }, 1000);
+        });
+    } else {
+        setTimeout(function() {
+            completeRefresh();
+        }, 1000);
+    }
+}
+
+function completeRefresh() {
+    isRefreshing = false;
+    refreshIndicator.classList.remove('refreshing');
+    setTimeout(function() {
+        refreshIndicator.style.transform = 'translateY(-50px)';
+    }, 500);
+}
+
+function resetRefresh() {
+    if (!isRefreshing) {
+        refreshIndicator.style.transform = 'translateY(-50px)';
+    }
+}
+
+// QR Scanner functions
+function initializeScanner() {
+    let scannerElement = document.getElementById('preview');
+    scanner = new Instascan.Scanner({ video: scannerElement });
+    
+    scanner.addListener('scan', function(content) {
+        console.log('QR Code scanned:', content);
+        $('#scanned-result').val(content);
+    });
+    
+    Instascan.Camera.getCameras().then(function(cameras) {
+        if (cameras.length > 0) {
+            // Use the back camera by default
+            let selectedCamera = cameras[0];
+            if (cameras.length > 1) {
+                // If multiple cameras, prefer the rear-facing one
+                for (let i = 0; i < cameras.length; i++) {
+                    if (cameras[i].name.toLowerCase().includes('back')) {
+                        selectedCamera = cameras[i];
+                        break;
+                    }
+                }
+            }
+            
+            scanner.start(selectedCamera).then(function() {
+                $('#scanner-placeholder').hide();
+            }).catch(function(e) {
+                console.error('Error starting scanner:', e);
+                $('#scanner-placeholder').text('Error starting camera: ' + e.message).show();
+            });
+        } else {
+            $('#scanner-placeholder').text('No cameras found').show();
+            console.error('No cameras found.');
+        }
+    }).catch(function(e) {
+        console.error('Camera error:', e);
+        $('#scanner-placeholder').text('Camera error: ' + e.message).show();
+    });
+}
+
+function stopScanner() {
+    if (scanner) {
+        scanner.stop();
+        scanner = null;
+    }
+    $('#scanner-placeholder').text('Camera is loading...').show();
+    $('#scanned-result').val('');
+}
 
 let table;
 

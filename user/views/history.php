@@ -1,11 +1,45 @@
 <?php
+
 include './../inc/topNav.php';
 include './../../connection/connection.php';
 
-// Determine which tab is active
+$clientId = $_SESSION['user_id'] ?? 0;
+
+
+$stmt = $conn->prepare("SELECT firstname, lastname, email, profile_picture FROM client WHERE id = ?");
+$stmt->bind_param("i", $clientId);
+$stmt->execute();
+$result = $stmt->get_result();
+$client = $result->fetch_assoc();
+
+
+if (!$client) {
+    $client = [
+        'firstname' => 'Guest',
+        'lastname' => 'User',
+        'email' => 'no-email@example.com',
+        'profile_picture' => ''
+    ];
+}
+
+
+$clientFullName = htmlspecialchars($client['firstname'] . ' ' . $client['lastname']);
+$email = htmlspecialchars($client['email']);
+$clientProfilePicture = htmlspecialchars($client['profile_picture']);
+
+
+$profileImagePath = '';
+if (!empty($clientProfilePicture)) {
+ 
+    $potentialPath = './../../uploads/' . $clientProfilePicture;
+    if (file_exists($potentialPath)) {
+        $profileImagePath = $potentialPath;
+    }
+}
+
 $activeTab = isset($_GET['tab']) ? $_GET['tab'] : 'orders';
 
-// Pagination settings
+// Pagination 
 $recordsPerPage = isset($_GET['records']) ? (int)$_GET['records'] : 10;
 $currentPage = isset($_GET['page']) ? (int)$_GET['page'] : 1;
 $offset = ($currentPage - 1) * $recordsPerPage;
@@ -20,6 +54,15 @@ $offset = ($currentPage - 1) * $recordsPerPage;
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
+
+.profile-container img {
+    border: 4px solid white; /* Optional: Add a border around the profile picture */
+}
+
+.client-info h5, .client-info p {
+    margin: 0;
+}
+
         .history-header {
             margin-top: 30px;
             margin-bottom: 20px;
@@ -94,6 +137,28 @@ $offset = ($currentPage - 1) * $recordsPerPage;
 </head>
 <body>
     <div class="container">
+
+    <div class="sched-banner position-relative mb-5 mt-5" style="background-image: url('./../asset/img/sched-reservation/sched-banner.png'); background-size: cover; background-position: center; min-height: 600px;">
+    <div class="container position-absolute bottom-0 start-0 p-3 d-flex align-items-center">
+        <div class="profile-container d-flex align-items-center">
+            <!-- Profile Picture with fallback -->
+            <?php if (!empty($profileImagePath)): ?>
+                <img src="<?php echo $profileImagePath; ?>" alt="<?php echo $clientFullName; ?>" class="rounded-circle border border-3 border-white" style="width: 130px; height: 120px; object-fit: cover;">
+            <?php else: ?>
+                <div class="rounded-circle border border-3 border-white d-flex align-items-center justify-content-center bg-secondary" style="width: 130px; height: 120px;">
+                    <i class="fas fa-user fa-3x text-white"></i>
+                </div>
+            <?php endif; ?>
+        </div>
+        <div class="client-info ms-3 text-white">
+            <!-- Client Full Name -->
+            <h5 class="mb-1"><?php echo $clientFullName; ?></h5>
+            <!-- Client Email -->
+            <p class="mb-0"><?php echo $email; ?></p>
+        </div>
+    </div>
+</div>
+
         <div class="history-header">
             <h2>Order History</h2>
             <div class="underline"></div>

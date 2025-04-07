@@ -17,8 +17,9 @@ if ($tableCheck->num_rows == 0) {
 
 $clientFullName = "";
 $user_id = $_SESSION['user_id'] ?? 0;
+$isLoggedIn = isset($_SESSION['user_id']);
 
-if ($user_id) {
+if ($isLoggedIn) {
     $clientQuery = $conn->prepare("SELECT CONCAT(firstname, ' ', lastname) AS full_name FROM client WHERE id = ?");
     $clientQuery->bind_param("i", $user_id);
     $clientQuery->execute();
@@ -72,6 +73,13 @@ $selectedDate = $_POST['reservation_date'] ?? '';
 $times = getAvailableTimes($conn, $user_id, $selectedDate);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Double check user is logged in
+    if (!$isLoggedIn) {
+        ob_end_clean();
+        echo json_encode(['status' => 'error', 'message' => 'You must be logged in to make a reservation']);
+        exit();
+    }
+
     $client_id = (int)$_POST['client_id'];
     $party_size = (int)$_POST['party_size'];
     $reservation_date = $conn->real_escape_string($_POST['reservation_date']);
@@ -83,6 +91,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         if (empty($client_id) || empty($reservation_date) || empty($reservation_time_id)) {
             throw new Exception("Missing required fields");
+        }
+
+        // Verify the client_id matches the logged in user
+        if ($client_id !== $user_id) {
+            throw new Exception("Invalid user credentials");
         }
 
         // Get time slot details
@@ -101,8 +114,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $conn->begin_transaction();
 
         try {
-                                // To this:
-                $stmt = $conn->prepare("
+            $stmt = $conn->prepare("
                 INSERT INTO reservation (
                     transaction_code,
                     client_id,
@@ -116,24 +128,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     res_status,
                     date_created
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'for confirmation', NOW())
-                ");
-                if (!$stmt) {
-                // Handle prepare error
+            ");
+            if (!$stmt) {
                 die("Prepare failed: " . $conn->error);
-                }
+            }
 
-                $stmt->bind_param(
-                    "sissssisi",
-                    $transaction_code,
-                    $client_id,
-                    $clientFullName,
-                    $reservation_date,
-                    $reservation_time_id,
-                    $time_slot,  // Use the variable that contains the time value
-                    $party_size,
-                    $note,
-                    $amount
-                );
+            $stmt->bind_param(
+                "sissssisi",
+                $transaction_code,
+                $client_id,
+                $clientFullName,
+                $reservation_date,
+                $reservation_time_id,
+                $time_slot,
+                $party_size,
+                $note,
+                $amount
+            );
 
             if (!$stmt->execute()) {
                 throw new Exception("Reservation failed: " . $stmt->error);
@@ -141,7 +152,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
             $new_reservation_id = $conn->insert_id;
             
-            // 2. Insert into reservation_time table
+            // Insert into reservation_time table
             $timeStmt = $conn->prepare("
                 INSERT INTO resservation_time (
                     id,
@@ -165,75 +176,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
             ob_end_clean();
             
-            echo '<!DOCTYPE html>
-            <html lang="en">
-            <head>
-                <meta charset="UTF-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <title>Reservation Confirmation</title>
-                <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-                <style>
-                    .success-modal {
-                        position: fixed;
-                        top: 0;
-                        left: 0;
-                        width: 100%;
-                        height: 100%;
-                        background-color: rgba(0,0,0,0.5);
-                        display: flex;
-                        justify-content: center;
-                        align-items: center;
-                        z-index: 1050;
-                    }
-                    .success-modal-content {
-                        background: white;
-                        padding: 30px;
-                        border-radius: 10px;
-                        text-align: center;
-                        max-width: 500px;
-                        width: 90%;
-                    }
-                    .success-icon {
-                        font-size: 60px;
-                        color: #4CAF50;
-                        margin-bottom: 20px;
-                    }
-                    .success-message {
-                        font-size: 18px;
-                        margin-bottom: 20px;
-                    }
-                    .redirect-message {
-                        font-size: 14px;
-                        color: #666;
-                    }
-                </style> 
-            </head>
-            <body>
-                <div class="success-modal">
-                    <div class="success-modal-content">
-                        <div class="success-icon">✓</div>
-                        <h3>Reservation Confirmed!</h3>
-                        <p class="success-message">Your reservation has been successfully created.</p>
-                        <p class="redirect-message">You will be redirected to your reservation details in <span id="countdown">3</span> seconds...</p>
-                    </div>
-                </div>
-                
-                <script>
-                    let seconds = 3;
-                    const countdownElement = document.getElementById("countdown");
-                    const countdown = setInterval(() => {
-                        seconds--;
-                        countdownElement.textContent = seconds;
-                        if (seconds <= 0) {
-                            clearInterval(countdown);
-                            window.location.href = "reservation_track.php?reservation_id='.$new_reservation_id.'";
-                        }
-                    }, 1000);
-                </script>
-            </body>
-            </html>';
-            $stmt->close();
-            $timeStmt->close();
+            echo json_encode([
+                'status' => 'success',
+                'reservation_id' => $new_reservation_id,
+                'message' => 'Reservation successfully created'
+            ]);
             exit();
         } catch (Exception $e) {
             $conn->rollback();
@@ -243,7 +190,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } catch (Exception $e) {
         error_log("RESERVATION ERROR: " . $e->getMessage());
         ob_end_clean();
-        echo "<div class='alert alert-danger'>Error: " . htmlspecialchars($e->getMessage()) . "</div>";
+        echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+        exit();
     }
 }
 
@@ -261,14 +209,32 @@ ob_end_flush();
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
 
     <style>
-        .order-h4{
-color: #FF902A;
-font-weight: bold;
-}
-
+        .order-h4 {
+            color: #FF902A;
+            font-weight: bold;
+        }
     </style>
 </head>
-<body class=" border-0">
+<body class="border-0">
+    <!-- Login Required Modal -->
+    <div class="modal fade" id="loginRequiredModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-body text-center">
+                    <div class="confirmation-icon fs-1 text-warning mb-3">
+                        <i class="fas fa-exclamation-circle"></i>
+                    </div>
+                    <h4>Login Required</h4>
+                    <p>You need to log in first to make a reservation.</p>
+                    <div class="d-flex justify-content-center gap-3 mt-3">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <a href="login.php" class="btn btn-primary">Go to Login</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Confirmation Modal -->
     <div class="modal fade" id="confirmationModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
@@ -281,6 +247,20 @@ font-weight: bold;
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                         <button type="button" class="btn btn-primary" id="confirmReservation">Yes, Confirm</button>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Success Modal -->
+    <div class="modal fade" id="successModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-body text-center">
+                    <div class="success-icon fs-1 text-success mb-3">✓</div>
+                    <h4>Reservation Confirmed!</h4>
+                    <p class="success-message">Your reservation has been successfully created.</p>
+                    <p class="redirect-message">You will be redirected to your reservation details in <span id="countdown">3</span> seconds...</p>
                 </div>
             </div>
         </div>
@@ -306,35 +286,34 @@ font-weight: bold;
                             <div class="alert alert-danger"><?php echo htmlspecialchars($error_message); ?></div>
                         <?php endif; ?>
 
-                        <div class="card border-0 ">
-                        <strong><h4 class="m-3 order-h4">Seat Reservation</h4></strong> 
-        <div class="card-body">
-        <div class="card-body">
-          <div class="row">
-            <div class="col-md-6 mb-3">
-              <div class="p-1 text-white text-center" style="background-color: #17A1FA; border-radius: 5px;">
-                No Slots
-              </div>
-            </div>
-            <div class="col-md-6 mb-3">
-              <div class="p-1 text-white text-center" style="background-color: #07D090; border-radius: 5px;">
-                Available
-              </div>
-            </div>
-            <div class="col-md-6 mb-3">
-              <div class="p-1 text-white text-center" style="background-color: #E60000; border-radius: 5px;">
-                Fully Booked
-              </div>
-            </div>
-            <div class="col-md-6 mb-3">
-              <div class="p-1 text-white text-center" style="background-color: #9647FF; border-radius: 5px;">
-                Your Reservation
-              </div>
-            </div>
-          </div>
-        </div>
+                        <div class="card border-0">
+                            <strong><h4 class="m-3 order-h4">Seat Reservation</h4></strong> 
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <div class="p-1 text-white text-center" style="background-color: #17A1FA; border-radius: 5px;">
+                                            No Slots
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <div class="p-1 text-white text-center" style="background-color: #07D090; border-radius: 5px;">
+                                            Available
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <div class="p-1 text-white text-center" style="background-color: #E60000; border-radius: 5px;">
+                                            Fully Booked
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <div class="p-1 text-white text-center" style="background-color: #9647FF; border-radius: 5px;">
+                                            Your Reservation
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
 
-     
                         <div class="mb-4">
                             <h4 class="mb-3 order-h4">Available Time</h4>
                             <p id="date-picker" class="d-none"></p>
@@ -355,29 +334,28 @@ font-weight: bold;
                         </div>
             
                         <div class="mb-4 d-flex align-items-center justify-content-between">
-    <label class="form-label mb-0">Party Size</label>
-    <div class="input-group" style="max-width: 150px;">
-        <button class="btn btn-outline-secondary" type="button" id="button-minus">-</button>
-        <input type="number" class="form-control text-center" value="1" id="number-input" min="1" max="20">
-        <button class="btn btn-outline-secondary" type="button" id="button-plus">+</button>
-    </div>
-</div>
-
+                            <label class="form-label mb-0">Party Size</label>
+                            <div class="input-group" style="max-width: 150px;">
+                                <button class="btn btn-outline-secondary" type="button" id="button-minus">-</button>
+                                <input type="number" class="form-control text-center" value="1" id="number-input" min="1" max="20">
+                                <button class="btn btn-outline-secondary" type="button" id="button-plus">+</button>
+                            </div>
+                        </div>
 
                         <div class="card border-0">
                             <div class="card-body">
-                                <h4 class=" mb-3 order-h4">Reservation Summary</h4>
+                                <h4 class="mb-3 order-h4">Reservation Summary</h4>
                                 <form action="" method="POST" id="reservation-form">
                                     <input type="hidden" name="client_id" value="<?php echo htmlspecialchars($user_id); ?>">
 
                                     <div class="d-flex justify-content-between mb-2">
                                         <span class="fw-bold">Name</span>
-                                        <span class=" name-result"><?php echo htmlspecialchars($clientFullName) ?></span>
+                                        <span class="name-result"><?php echo htmlspecialchars($clientFullName) ?></span>
                                     </div>
 
                                     <div class="d-flex justify-content-between mb-2">
                                         <span class="fw-bold">Party Size</span>
-                                        <span class=" party-size-result">1</span>
+                                        <span class="party-size-result">1</span>
                                         <input type="hidden" name="party_size" id="party_size_input" value="1">
                                     </div>
 
@@ -400,7 +378,7 @@ font-weight: bold;
                                     </div>
 
                                     <div class="mb-3">
-                                        <label for="user-note fw-bold" class="form-label"><strong>Notes</strong></label>
+                                        <label for="user-note" class="form-label"><strong>Notes</strong></label>
                                         <textarea name="note_area" maxlength="500" class="form-control" rows="3" placeholder="Additional notes..."></textarea>
                                     </div>
                                     <button type="button" class="btn proceedBtn text-light text-center container-fluid bold-1" style="background-color: #FF902A;" id="confirm-order">Confirm Reservation</button>
@@ -414,14 +392,19 @@ font-weight: bold;
     </div>
 
     <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.7/dist/umd/popper.min.js"></script>
-<script src="https://stackpath.bootstrapcdn.com/bootstrap/5.3.3/js/bootstrap.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.7/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/5.3.3/js/bootstrap.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             // Initialize variables
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('date-picker').value = today;
+            
+            // Modal instances
+            const loginRequiredModal = new bootstrap.Modal(document.getElementById('loginRequiredModal'));
+            const confirmationModal = new bootstrap.Modal(document.getElementById('confirmationModal'));
+            const successModal = new bootstrap.Modal(document.getElementById('successModal'));
             
             // Form elements
             const reservationForm = document.getElementById("reservation-form");
@@ -434,15 +417,14 @@ font-weight: bold;
             const reservationTimeInput = document.getElementById("reservation_time_input");
             const timeError = document.getElementById("time-error");
             const confirmOrderBtn = document.getElementById("confirm-order");
-            const confirmationModal = new bootstrap.Modal(document.getElementById('confirmationModal'));
             
             // Set initial values
             numberInput.value = 1;
             partySizeResult.textContent = numberInput.value;
             partySizeInput.value = numberInput.value;
             
-            // Fetch initial reservation status
-            fetchReservationStatus(today);
+            // Check if user is logged in
+            const isLoggedIn = <?php echo $isLoggedIn ? 'true' : 'false'; ?>;
             
             // Party size controls
             document.getElementById("button-plus").addEventListener("click", function() {
@@ -491,8 +473,6 @@ font-weight: bold;
                     timeResult.textContent = timeValue;
                     reservationTimeInput.value = timeId;
                     timeError.classList.add('d-none');
-                    
-                    console.log("Selected Time ID:", timeId, "Value:", timeValue);
                 });
             });
             
@@ -538,15 +518,52 @@ font-weight: bold;
                 }
                 
                 if (isValid) {
-                    // Show confirmation modal
-                    confirmationModal.show();
+                    if (!isLoggedIn) {
+                        // Show login required modal
+                        loginRequiredModal.show();
+                    } else {
+                        // Show confirmation modal
+                        confirmationModal.show();
+                    }
                 }
             });
             
             // Confirm reservation button in modal
             document.getElementById('confirmReservation').addEventListener('click', function() {
                 confirmationModal.hide();
-                reservationForm.submit();
+                
+                // Submit form via AJAX
+                const formData = new FormData(reservationForm);
+                
+                fetch('', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        // Show success modal
+                        successModal.show();
+                        
+                        // Start countdown
+                        let seconds = 3;
+                        const countdownElement = document.getElementById("countdown");
+                        const countdown = setInterval(() => {
+                            seconds--;
+                            countdownElement.textContent = seconds;
+                            if (seconds <= 0) {
+                                clearInterval(countdown);
+                                window.location.href = "reservation_track.php?reservation_id=" + data.reservation_id;
+                            }
+                        }, 1000);
+                    } else {
+                        alert('Error: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('An error occurred while processing your reservation.');
+                });
             });
             
             // Fetch reservation status for a date

@@ -1,5 +1,5 @@
 <?php
-include './../inc/topNav.php'; 
+
 include './../../connection/connection.php';
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
@@ -34,7 +34,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
 // Fetch images from the database
 $result = $conn->query("SELECT * FROM banners");
-
 ?>
 
 <!DOCTYPE html>
@@ -45,29 +44,25 @@ $result = $conn->query("SELECT * FROM banners");
     <title>Carousel with Summernote</title>
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-bs4.min.css" rel="stylesheet">
-   
-
-<style>
-    /* Your custom CSS */
-    #carouselExampleIndicators {
-        width: 90%;
-        height: 300px;
-        margin: 20px auto;
-        border: 2px solid #ccc;
-        border-radius: 10px;
-        overflow: hidden;
-    }
-    #carouselExampleIndicators .carousel-item {
-        width: 100%;
-        height: 100%;
-    }
-    #carouselExampleIndicators .carousel-item img {
-        width: 100%;
-        height: 100%;
-        object-fit: fill !important;
-    }
-</style>
-
+    <style>
+        #carouselExampleIndicators {
+            width: 90%;
+            height: 300px;
+            margin: 20px auto;
+            border: 2px solid #ccc;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        #carouselExampleIndicators .carousel-item {
+            width: 100%;
+            height: 100%;
+        }
+        #carouselExampleIndicators .carousel-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: fill !important;
+        }
+    </style>
 </head>
 <body>
 
@@ -91,11 +86,19 @@ $result = $conn->query("SELECT * FROM banners");
         </a>
     </div>
 
-    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <!-- Scripts -->
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+
+    <!-- Popper.js -->
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
+
+    <!-- Bootstrap JavaScript -->
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+    <!-- Summernote JavaScript -->
     <script src="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote.min.js"></script>
- 
+
 </body>
 </html>
 

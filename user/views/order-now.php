@@ -2,9 +2,10 @@
 <?php
 
 ob_start(); // Start output buffering
-include "./../views/banner.php";
-include "./../../connection/connection.php";
 
+include "./../../connection/connection.php";
+include './../inc/topNav.php';
+include "./../views/banner.php";
 
 
 $itemsPerPage = 6; 
