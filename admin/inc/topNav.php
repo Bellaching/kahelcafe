@@ -798,21 +798,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) ){
                     </div>
 
                     <div class="mb-3 form-check">
-                        <input type="checkbox" class="form-check-input" id="showPasswordCheckbox">
-                        <label class="form-check-label" for="showPasswordCheckbox">Change Password</label>
-                    </div>
+    <input type="checkbox" class="form-check-input" id="changePasswordCheckbox">
+    <label class="form-check-label" for="changePasswordCheckbox">Change Password</label>
+</div>
 
-                    <div class="password-fields">
-                        <div class="mb-3">
-                            <label for="newPassword" class="form-label">New Password</label>
-                            <input type="password" class="form-control" name="newPassword" id="newPassword">
-                            <div id="password-strength" class="password-strength"></div>
-                        </div>
-                        <div class="mb-3">
-                            <label for="confirmPassword" class="form-label">Confirm Password</label>
-                            <input type="password" class="form-control" name="confirmPassword" id="confirmPassword">
-                        </div>
-                    </div>
+<div class="password-fields" id="passwordFields">
+    <div class="mb-3">
+        <label for="newPassword" class="form-label">New Password</label>
+        <input type="password" class="form-control" name="newPassword" id="newPassword">
+        <div id="password-strength" class="password-strength"></div>
+    </div>
+    <div class="mb-3">
+        <label for="confirmPassword" class="form-label">Confirm Password</label>
+        <input type="password" class="form-control" name="confirmPassword" id="confirmPassword">
+    </div>
+</div>
 
                     <div class="mb-3">
                         <button type="submit" class="btn w-100 text-white rounded-pill" style="background-color: #FF902B;">Update Profile</button>
@@ -889,6 +889,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) ){
 <audio id="notificationSound" src="./../user/notification-sound.mp3" preload="auto"></audio>
 
 <script>
+
+/ Toggle password fields visibility
+$(document).on('change', '#changePasswordCheckbox', function() {
+    if (this.checked) {
+        $('#passwordFields').show();
+    } else {
+        $('#passwordFields').hide();
+        $('#newPassword').val('');
+        $('#confirmPassword').val('');
+        $('#password-strength').text('');
+    }
+});
+
+// Password strength detection
+$(document).on('input', '#newPassword', function() {
+    const password = $(this).val();
+    const strengthElement = $('#password-strength');
+    
+    if (password.length === 0) {
+        strengthElement.text('');
+        return;
+    }
+    
+    if (password.length < 8) {
+        strengthElement.text('Strength: Weak').removeClass().addClass('password-strength weak');
+    } else if (/[A-Za-z]/.test(password) && /\d/.test(password)) {
+        strengthElement.text('Strength: Medium').removeClass().addClass('password-strength medium');
+    } else {
+        strengthElement.text('Strength: Strong').removeClass().addClass('password-strength strong');
+    }
+});
 
   // Add this to your $(document).ready() function
   $('#profileForm').on('submit', function(e) {

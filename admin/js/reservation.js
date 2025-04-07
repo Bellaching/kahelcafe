@@ -28,7 +28,8 @@ $(document).ready(function() {
                       
                         "for confirmation": '<span class="text-light bg-info p-2 rounded">For confirmation</span>',
                         "payment": '<span class="text-light bg-warning p-2 rounded">Payment</span>',
-                       "paid": '<span class="text-light p-2 rounded" style="background: linear-gradient(135deg,rgb(255, 7, 222) 0%, #FF9800 100%);">Paid</span>',
+                      "paid": '<span class="text-light p-2 rounded" style="background-color: #28a745;">Paid</span>',
+
                       
 
                         "booked": '<span class="text-white bg-success p-2 rounded">Booked</span>',
@@ -42,7 +43,8 @@ $(document).ready(function() {
                 data: null,
                 render: function(data, type, row) {
                     return `
-                        <button class="editBtn border-0" data-id="${data.transaction_code || data.reservation_time_id}" 
+                          <button class="editBtn"
+                        data-id="${data.transaction_code || data.reservation_time_id}" 
                                 data-res_status="${data.res_status}" 
                                 data-client-name="${data.clientFullName}"
                                 data-amount="${data.amount}"
@@ -54,10 +56,11 @@ $(document).ready(function() {
                                 data-receipt="${data.receipt || ''}"
                                 
                                 >
-                             <i class="fas fa-edit text-light bg-primary p-1 rounded "></i>
+                             <i class="fa-regular fa-pen-to-square"></i>
                         </button>
-                        <button class="btn btn-danger btn-sm" onclick="deleteOrder('${data.transaction_code}')">
-                            <i class="fa-solid fa-trash"></i>
+                        <button class=" deleteBtn" style="padding: 5px 10px;" 
+                        onclick="deleteOrder('${data.transaction_code}')">
+                              <i class="fa-solid fa-trash"></i>
                         </button>
                     `;
                 }

@@ -130,7 +130,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['upload_receipt'])) {
                 $stmt->close();
 
                 // Update the order status to "paid"
-                $updateStatusQuery = "UPDATE Orders SET status = 'PAID' WHERE order_id = ?";
+                $updateStatusQuery = "UPDATE Orders SET status = 'Paid' WHERE order_id = ?";
                 $stmt = $conn->prepare($updateStatusQuery);
 
                 if (!$stmt) {
@@ -625,7 +625,7 @@ $note = $orderItems[0]['note'] ?? 'No notes available.';
                         </div>
                     </div>
 
-                <?php elseif ($order['status'] === 'PAID' ): ?>
+                <?php elseif ($order['status'] === 'Paid' ): ?>
                     <div class="order-sum">
                         <h5 class="bold">Order Summary</h5>
                         <div class="row">
@@ -757,7 +757,7 @@ $note = $orderItems[0]['note'] ?? 'No notes available.';
                         </div>
                     </div>
 
-                <?php elseif ($order['status'] === 'PAID'): ?>
+                <?php elseif ($order['status'] === 'Paid'): ?>
                     <div class="text-center p-4 rounded shadow w-100" style="background-color: #FF902B; color: white;">
                         <div class="check-circle">
                             <i class="fas fa-check"></i>
@@ -866,7 +866,7 @@ $note = $orderItems[0]['note'] ?? 'No notes available.';
                         </div>
                         <div class="d-flex justify-content-between w-100">
                             <p><strong>Reservation Fee:</strong></p>
-                            <p><?php echo htmlspecialchars($order['client_full_name']); ?></p>
+                            <p><?php echo htmlspecialchars($order['reservation_fee']); ?></p>
                         </div>
                         <div class="d-flex justify-content-between w-100">
                             <p><strong>Total Price:</strong></p>
@@ -937,7 +937,7 @@ $note = $orderItems[0]['note'] ?? 'No notes available.';
                     const minutes = Math.floor(timeLeft / 60);
                     const seconds = timeLeft % 60;
                     timerElement.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-                    
+                     
                     if (timeLeft <= 0) {
                         clearInterval(timerInterval);
                         timerElement.textContent = "00:00";

@@ -105,6 +105,19 @@ include './../inc/topNav.php';
         .info-label {
             min-width: 150px;
         }
+
+        .editBtn,
+        .deleteBtn {
+            background: none;
+            border: none;
+        }
+
+        .editBtn {
+            color: #624DE3;
+        }
+        .deleteBtn {
+            color: #A30D11;
+        }
     </style>
 </head>
 
@@ -161,83 +174,91 @@ include './../inc/topNav.php';
         </div>
     </div>
 
-    <!-- Modal for Update User Status -->
-    <div class="modal fade" id="updateUserModal" tabindex="-1" role="dialog" aria-labelledby="updateUserModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
-            <div class="modal-content">
-                <div class="modal-body">
-                    <form id="updateStatusForm">
-                        <div class="update-down">
-                            <h5 class="order-s mb-4">Order Summary</h5>
-                            <div class="order-sum row">
-                                <div class="col-md-6 mb-3 mb-md-0">
-                                    <div class="d-flex flex-row mb-3 align-items-baseline">
-                                        <label class="l info-label">Client Name</label>
-                                        <p id="client_full_name_display" class="p mb-0 ms-2 text-break"></p>
-                                    </div>
+  <!-- Modal for Update User Status -->
+<div class="modal fade" id="updateUserModal" tabindex="-1" role="dialog" aria-labelledby="updateUserModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+        <div class="modal-content">
+            
+            <!-- HEADER WITH CLOSE BUTTON -->
+            <div style="background-color: #FF902B; padding: 15px; display: flex; justify-content: space-between; align-items: center;">
+                <h5 class="mb-0 text-white">Order Summary</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
 
-                                    <div class="d-flex flex-row mb-3 align-items-baseline">
-                                        <label class="l info-label">Transaction no.</label>
-                                        <p id="transaction_code_display" class="p mb-0 ms-2 text-break"></p>
-                                    </div>
+            <div class="modal-body">
+                <form id="updateStatusForm">
+                    <div class="update-down">
 
-                                    <div class="d-flex flex-row mb-3 align-items-baseline">
-                                        <label class="l info-label">Party Size</label>
-                                        <p id="party_size_display" class="p mb-0 ms-2 text-break"></p>
-                                    </div>
-
-                                    <div class="d-flex flex-row mb-1 align-items-baseline mt-2">
-                                        <label class="l info-label fw-bold">Total Price</label>
-                                        <p id="total_price_display" class="p1 mb-0 ms-2 fw-bold text-break"></p>
-                                    </div>
+                        <div class="order-sum row">
+                            <div class="col-md-6 mb-3 mb-md-0">
+                                <div class="d-flex flex-row mb-3 align-items-baseline">
+                                    <label class="l info-label">Client Name</label>
+                                    <p id="client_full_name_display" class="p mb-0 ms-2 text-break"></p>
                                 </div>
 
-                                <div class="col-md-6">
-                                    <div class="d-flex flex-row mb-3 align-items-baseline">
-                                        <label class="l info-label">Reservation Date</label>
-                                        <p id="reservation_date_display" class="p mb-0 ms-2 text-break"></p>
-                                    </div>
+                                <div class="d-flex flex-row mb-3 align-items-baseline">
+                                    <label class="l info-label">Transaction no.</label>
+                                    <p id="transaction_code_display" class="p mb-0 ms-2 text-break"></p>
+                                </div>
 
-                                    <div class="d-flex flex-row mb-3 align-items-baseline">
-                                        <label class="l info-label">Time</label>
-                                        <p id="reservation_time_display" class="p mb-0 ms-2 text-break"></p>
-                                    </div>
+                                <div class="d-flex flex-row mb-3 align-items-baseline">
+                                    <label class="l info-label">Party Size</label>
+                                    <p id="party_size_display" class="p mb-0 ms-2 text-break"></p>
+                                </div>
 
-                                    <div class="d-flex flex-row mb-3 align-items-baseline">
-                                        <label class="l info-label">Reservation fee</label>
-                                        <p id="reservation_fee_display" class="p mb-0 ms-2 text-break"></p>
-                                    </div>
-
-                                    <div class="d-flex flex-row mb-3 align-items-baseline">
-                                        <label class="l info-label">Payment Receipt</label>
-                                        <div id="receipt_display" class="ms-2">
-                                            <!-- Receipt will be displayed here -->
-                                        </div>
-                                    </div>
+                                <div class="d-flex flex-row mb-1 align-items-baseline mt-2">
+                                    <label class="l info-label fw-bold">Total Price</label>
+                                    <p id="total_price_display" class="p1 mb-0 ms-2 fw-bold text-break"></p>
                                 </div>
                             </div>
 
-                            <div class="form-group mt-4">
-                                <label for="status" class="fw-bold">Order Status</label>
-                                <select class="form-control" id="status" name="status">
-                                    <option value="for confirmation">For Confirmation</option>
-                                    <option value="payment">Payment</option>
-                                    <option value="booked">Booked</option>
-                                    <option value="rate us">Complete</option>
-                                    <option value="cancel">Cancelled</option>
-                                </select>
+                            <div class="col-md-6">
+                                <div class="d-flex flex-row mb-3 align-items-baseline">
+                                    <label class="l info-label">Reservation Date</label>
+                                    <p id="reservation_date_display" class="p mb-0 ms-2 text-break"></p>
+                                </div>
+
+                                <div class="d-flex flex-row mb-3 align-items-baseline">
+                                    <label class="l info-label">Time</label>
+                                    <p id="reservation_time_display" class="p mb-0 ms-2 text-break"></p>
+                                </div>
+
+                                <div class="d-flex flex-row mb-3 align-items-baseline">
+                                    <label class="l info-label">Reservation fee</label>
+                                    <p id="reservation_fee_display" class="p mb-0 ms-2 text-break"></p>
+                                </div>
+
+                                <div class="d-flex flex-row mb-3 align-items-baseline">
+                                    <label class="l info-label">Payment Receipt</label>
+                                    <div id="receipt_display" class="ms-2">
+                                        <!-- Receipt will be displayed here -->
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
-                        <input type="hidden" id="transactionCode" name="transactionCode">
-                    </form>
-                </div>
-                <div class="modal-footer justify-content-center">
-                    <button type="button" class="upsta btn btn-primary rounded-pill px-5" id="saveStatusBtn">Update Status</button>
-                </div>
+                        <div class="form-group mt-4">
+                            <label for="status" class="fw-bold">Order Status</label>
+                            <select class="form-control" id="status" name="status">
+                                <option value="for confirmation">For Confirmation</option>
+                                <option value="payment">Payment</option>
+                                <option value="booked">Booked</option>
+                                <option value="rate us">Complete</option>
+                                <option value="cancel">Cancelled</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <input type="hidden" id="transactionCode" name="transactionCode">
+                </form>
+            </div>
+            <div class="modal-footer justify-content-center">
+                <button type="button" class="upsta btn btn-primary rounded-pill px-5" id="saveStatusBtn">Update Status</button>
             </div>
         </div>
     </div>
+</div>
+
 
     <!-- jQuery, DataTable, and Bootstrap JS -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
