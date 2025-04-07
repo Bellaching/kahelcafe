@@ -93,7 +93,10 @@ include './../inc/topNav.php';
             </table>
         </div>
     </div>
-</div><!-- Modal for Update Status -->
+</div>
+
+
+<!-- Modal for Update Status -->
 <!-- Modal for Update Status -->
 <div class="modal fade" id="updateUserModal" tabindex="-1" role="dialog" aria-labelledby="updateUserModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-xl" role="document">
@@ -199,6 +202,7 @@ include './../inc/topNav.php';
                                             <option value="cancelled">Cancelled</option>
                                         </select>
                                     </div>
+                                    
                                 </div>
                             </div>
                         </div>
@@ -415,6 +419,21 @@ function initializeDataTable() {
     });
     return table;
 }
+
+function reloadTable() {
+    // You can reload or refresh the content of the table here
+    // For example, we can trigger a DataTable reload if you're using DataTables
+    if ($.fn.DataTable.isDataTable('#ordersTable')) {
+        $('#ordersTable').DataTable().ajax.reload();
+    } else {
+        // If you're not using DataTables, you can reload the page or do other things
+        location.reload();  // This will reload the entire page
+    }
+}
+
+// Reload every 3 seconds
+setInterval(reloadTable, 3000);
+
 
 function setupEventHandlers(table) {
     // Edit button handler - now loads order items and receipt

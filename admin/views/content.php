@@ -1,69 +1,62 @@
 <?php
-include "./../../admin/views/virt.php";
-?>
 
+include './../inc/topNav.php'; 
+
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Virtual Tour Images</title>
+  <title>Virtual Tour Upload</title>
   <style>
     body {
-      font-family: 'Segoe UI', sans-serif;
-      background-color: #f0f4f8;
       margin: 0;
-      padding: 20px;
+      padding: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #f0f2f5;
     }
 
-    .container {
-      max-width: 800px;
-      margin: 0 auto;
-      background: #ffffff;
-      padding: 30px;
-      border-radius: 12px;
-      box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+    .wrapper {
+      max-width: 900px;
+      margin: 50px auto;
+      padding: 40px;
+      background-color: #ffffff;
+      border-radius: 15px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
     }
 
-    .header {
+    .title {
       font-size: 28px;
       font-weight: bold;
-      color: #333;
-      margin-bottom: 15px;
+      color: #2c3e50;
+      margin-bottom: 10px;
     }
 
-    .subtext {
+    .description {
       font-size: 16px;
-      color: #666;
-      margin-bottom: 25px;
+      color: #7f8c8d;
+      margin-bottom: 30px;
     }
 
-    .upload-section {
-      border: 2px dashed #9ca3af;
-      padding: 40px;
-      text-align: center;
-      border-radius: 10px;
-      background-color: #f9fafb;
-    }
-
-    .upload-section:hover {
-      background-color: #eef2f7;
-    }
-
-    .upload-section input[type="file"] {
-      margin-top: 20px;
+    .divider {
+      height: 2px;
+      background-color: #ecf0f1;
+      margin: 20px 0;
+      border-radius: 2px;
     }
   </style>
 </head>
 <body>
 
-  <div class="container">
-    <div class="header">Virtual Tour Image Upload</div>
-    <div class="subtext">Hi Admin! You can upload images here to showcase in the virtual tour section of your website.</div>
-
-    <div class="upload-section">
-      <p>Drag and drop your images here<br>or</p>
-      <input type="file" name="virtualTourImages[]" multiple>
+  <div class="wrapper">
+    <div class="title">Upload Virtual Tour Images</div>
+    <div class="description">
+      Hello Admin! Please upload the images you want to display in the virtual tour section. Make sure they are high-quality and relevant to the tour.
     </div>
+
+    <div class="divider"></div>
+
+    <?php include "./../../admin/views/virt.php"; ?>
   </div>
 
 </body>

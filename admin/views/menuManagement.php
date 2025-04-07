@@ -574,7 +574,7 @@ function renderMenuItems($result) {
             </div>
             <div class="row m-2 mb-3">
                 <div class="col-6">
-                    <button type="button" class="container-fluid close-add" data-bs-dismiss="modal" aria-label="Close">Close</button>
+                    <button type="button" class="container-fluid close-add" data-dismiss="modal" aria-label="Close">Close</button>
                 </div>
                 <div class="col-6">
                     <button type="button" class="btn-add-item container-fluid text-light" onclick="saveEdit()">Save Changes</button>
@@ -740,7 +740,7 @@ function renderMenuItems($result) {
 </div>
 
 <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
-<script src="https://stackpath.bootstrapcdn.com/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/summernote/0.8.18/summernote.min.js"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function () {
