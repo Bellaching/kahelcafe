@@ -114,7 +114,8 @@ $totalItems = $totalItemsResult->fetch_assoc()['count'];
 $totalPages = ceil($totalItems / $itemsPerPage);
 
 // Fetch menu items
-$sql = "SELECT * FROM menu1" . ($selectedCategory ? " WHERE category = '$selectedCategory'" : "") . " LIMIT $offset, $itemsPerPage";
+$sql = "SELECT * FROM menu1 WHERE status = 'Available'" . ($selectedCategory ? " AND category = '$selectedCategory'" : "") . " LIMIT $offset, $itemsPerPage";
+
 $result = $conn->query($sql);
 
 ob_end_flush();
@@ -189,7 +190,9 @@ ob_end_flush();
     <div class="container-fluid">
     <?php include "filter.php";?>
         <div class="row g-4">
-            <?php while ($item = $result->fetch_assoc()) { ?>
+        <?php while ($item = $result->fetch_assoc()) {
+    if ($item['status'] !== 'Available') continue;
+?>
 
                 <div class="col-12 col-sm-6 col-md-4 col-lg-2 menu-card shadow-sm">
     <div class="card p-2 rounded-1 border-0 position-relative">
