@@ -192,16 +192,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['upload_receipt'])) {
 
 // QR Code Generation (UPDATED CODE)
 if ($order && $order['status'] === 'booked') {
-    $qrData = "Order ID: {$order['order_id']}\n"
-        . "Transaction ID: {$order['transaction_id']}\n"
-        . "Name: {$order['client_full_name']}\n"
-        . "Reservation Type: {$order['reservation_type']}\n"
-        . "Reservation Date: {$order['reservation_date']}\n"
-        . "Reservation Time: {$order['reservation_time']}\n"
-        . "Party Size: {$order['party_size']}\n"
-        . "Reservation Fee: ₱" . number_format($order['reservation_fee'], 2) . "\n"
-        . "Total: ₱" . number_format($order['total_price'], 2) . "\n"
-        . "Created At: {$order['created_at']}";
+    $reservationFee = number_format($order['reservation_fee'], 2);
+    $totalPrice = number_format($order['total_price'], 2);
+    
+    $qrData = <<<EOD
+    Order ID: {$order['order_id']}
+    
+    Transaction ID: {$order['transaction_id']}
+    
+    Name: {$order['client_full_name']}
+    
+    Reservation Type: {$order['reservation_type']}
+    
+    Reservation Date: {$order['reservation_date']}
+    
+    Reservation Time: {$order['reservation_time']}
+    
+    Party Size: {$order['party_size']}
+    
+    Reservation Fee: ₱{$reservationFee}
+    
+    Total: ₱{$totalPrice}
+    
+    Created At: {$order['created_at']}
+    EOD;
+    
+    
+    
 
 
     $qrCode = Builder::create()

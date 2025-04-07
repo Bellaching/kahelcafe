@@ -26,7 +26,6 @@ if ($action === 'read') {
 }
 
 if ($action === 'fetchNotifications') {
-    // Check if the session variable exists
     if (isset($_SESSION['user_id'])) {
         $userId = $_SESSION['user_id'];
         $query = "SELECT id, message, created_at FROM notifications WHERE user_id = ? AND is_read = 0 ORDER BY created_at DESC";
@@ -78,7 +77,6 @@ if ($action === 'getOrderItems') {
         }
 
        echo json_encode(['success' => true, 'items' => $items, 'receipt' => $items[0]['receipt'] ?? null]);
-
     } else {
         echo json_encode(['success' => false, 'message' => 'Failed to fetch items: ' . $conn->error]);
     }
@@ -88,46 +86,40 @@ if ($action === 'getOrderItems') {
 }
 
 if ($action === 'update') {
-    $id = $_POST['id']; // transaction_id
-    $status = $_POST['status'];
+    $id = (int)$_POST['id']; // Ensure ID is integer
+    $status = $conn->real_escape_string($_POST['status']); // Sanitize input
 
-    // Fetch the user_id associated with the order
-    $userQuery = "SELECT user_id FROM orders WHERE transaction_id = ?";
-    $userStmt = $conn->prepare($userQuery);
-    $userStmt->bind_param('i', $id);
-    $userStmt->execute();
-    $userStmt->bind_result($userId);
-    $userStmt->fetch();
-    $userStmt->close();
+    // Update only the specific order
+    $stmt = $conn->prepare("UPDATE orders SET status = ? WHERE transaction_id = ?");
+    $stmt->bind_param('si', $status, $id);
 
-    // Update the order status
-    if ($stmt = $conn->prepare("UPDATE orders SET status = ? WHERE transaction_id = ?")) {
-        $stmt->bind_param('si', $status, $id);
+    if ($stmt->execute()) {
+        // Get user_id for notification
+        $userQuery = "SELECT user_id FROM orders WHERE transaction_id = ?";
+        $userStmt = $conn->prepare($userQuery);
+        $userStmt->bind_param('i', $id);
+        $userStmt->execute();
+        $userStmt->bind_result($userId);
+        $userStmt->fetch();
+        $userStmt->close();
 
-        if ($stmt->execute()) {
-            // Insert a notification for the customer
-            $message = "Your order status has been updated to: $status.";
-            $notificationQuery = "INSERT INTO notifications (user_id, message) VALUES (?, ?)";
-            $notificationStmt = $conn->prepare($notificationQuery);
-            $notificationStmt->bind_param('is', $userId, $message);
-            $notificationStmt->execute();
-            $notificationStmt->close();
+        // Create notification
+        $message = "Your order status has been updated to: $status.";
+        $notificationStmt = $conn->prepare("INSERT INTO notifications (user_id, message) VALUES (?, ?)");
+        $notificationStmt->bind_param('is', $userId, $message);
+        $notificationStmt->execute();
+        $notificationStmt->close();
 
-            // Send real-time update via SSE
-            echo json_encode(['success' => true, 'status' => $status]);
-        } else {
-            echo json_encode(['success' => false, 'message' => 'Update failed: ' . $conn->error]);
-        }
-
-        $stmt->close();
+        echo json_encode(['success' => true, 'status' => $status]);
     } else {
-        echo json_encode(['success' => false, 'message' => 'Prepared statement failed: ' . $conn->error]);
+        echo json_encode(['success' => false, 'message' => 'Update failed: ' . $conn->error]);
     }
+
+    $stmt->close();
     exit();
 }
 
 if ($action === 'markAllAsRead') {
-    // Check if the session variable exists
     if (isset($_SESSION['user_id'])) {
         $userId = $_SESSION['user_id'];
         $updateQuery = "UPDATE notifications SET is_read = 1 WHERE user_id = ?";
@@ -148,22 +140,18 @@ if ($action === 'markAllAsRead') {
 }
 
 if ($action === 'delete') {
-    $id = $_POST['id'];
+    $id = (int)$_POST['id']; // Ensure ID is integer
 
-    // Sanitize inputs and prepare the query
-    if ($stmt = $conn->prepare("DELETE FROM orders WHERE transaction_id = ?")) {
-        $stmt->bind_param('i', $id);
+    $stmt = $conn->prepare("DELETE FROM orders WHERE transaction_id = ?");
+    $stmt->bind_param('i', $id);
 
-        if ($stmt->execute()) {
-            echo json_encode(['success' => true]);
-        } else {
-            echo json_encode(['success' => false, 'message' => 'Delete failed: ' . $conn->error]);
-        }
-
-        $stmt->close();
+    if ($stmt->execute()) {
+        echo json_encode(['success' => true]);
     } else {
-        echo json_encode(['success' => false, 'message' => 'Prepared statement failed: ' . $conn->error]);
+        echo json_encode(['success' => false, 'message' => 'Delete failed: ' . $conn->error]);
     }
+
+    $stmt->close();
     exit();
 }
 

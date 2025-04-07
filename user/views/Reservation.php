@@ -31,12 +31,10 @@ if ($isLoggedIn) {
 }
 
 function formatTimeSlot($time) {
-    // If your time is already in "10am - 11am" format, just return it
     if (preg_match('/\d{1,2}(am|pm)\s*-\s*\d{1,2}(am|pm)/i', $time)) {
         return $time;
     }
     
-    // If your time is in "10:00-11:00" format, convert it
     $parts = explode('-', $time);
     if (count($parts) === 2) {
         $start = DateTime::createFromFormat('H:i', trim($parts[0]));
@@ -46,7 +44,6 @@ function formatTimeSlot($time) {
         }
     }
     
-    // Return original if no conversion possible
     return $time;
 }
 
@@ -54,13 +51,14 @@ function getAvailableTimes($conn, $user_id, $date = null) {
     $times = [];
     $timeQuery = $conn->query("SELECT id, time FROM res_time ORDER BY time");
     while ($row = $timeQuery->fetch_assoc()) {
-        // Ensure time format is consistent (10am - 11am format)
         $formattedTime = $row['time'];
         $times[] = [
             'id' => $row['id'],
-            'time' => $formattedTime
+            'time' => $formattedTime,
+            'status' => 'available'
         ];
     }
+    
     if ($date) {
         foreach ($times as &$time) {
             $checkQuery = $conn->prepare("
@@ -77,15 +75,10 @@ function getAvailableTimes($conn, $user_id, $date = null) {
             if ($result->num_rows > 0) {
                 $res_status = $result->fetch_assoc();
                 if ($res_status['client_id'] == $user_id) {
-                    $time['res_status'] = 'your_reservation';
-                    $time['disabled'] = true;
-                } elseif ($res_status['res_status'] == 'booked') {
-                    $time['res_status'] = 'booked';
-                    $time['disabled'] = true;
+                    $time['status'] = 'your_reservation';
+                } elseif (in_array($res_status['res_status'], ['for confirmation', 'payment', 'paid', 'booked'])) {
+                    $time['status'] = 'pending';
                 }
-            } else {
-                $time['res_status'] = 'available';
-                $time['disabled'] = false;
             }
         }
     }
@@ -97,7 +90,6 @@ $selectedDate = $_POST['reservation_date'] ?? '';
 $times = getAvailableTimes($conn, $user_id, $selectedDate);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Double check user is logged in
     if (!$isLoggedIn) {
         ob_end_clean();
         echo json_encode(['status' => 'error', 'message' => 'You must be logged in to make a reservation']);
@@ -117,12 +109,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             throw new Exception("Missing required fields");
         }
 
-        // Verify the client_id matches the logged in user
         if ($client_id !== $user_id) {
             throw new Exception("Invalid user credentials");
         }
 
-        // Get time slot details
+        // Check for pending reservations
+        $checkPending = $conn->prepare("
+            SELECT id FROM reservation 
+            WHERE reservation_date = ? 
+            AND reservation_time_id = ?
+            AND res_status IN ('for confirmation', 'payment', 'paid', 'booked')
+        ");
+        $checkPending->bind_param("si", $reservation_date, $reservation_time_id);
+        $checkPending->execute();
+        $pendingResult = $checkPending->get_result();
+        
+        if ($pendingResult->num_rows > 0) {
+            throw new Exception("You still have a pending reservation");
+        }
+
         $timeQuery = $conn->prepare("SELECT id, time FROM res_time WHERE id = ?");
         $timeQuery->bind_param("i", $reservation_time_id);
         $timeQuery->execute();
@@ -176,7 +181,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
             $new_reservation_id = $conn->insert_id;
             
-            // Insert into reservation_time table
             $timeStmt = $conn->prepare("
                 INSERT INTO resservation_time (
                     id,
@@ -231,11 +235,18 @@ ob_end_flush();
     <title>Reservation</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
-
     <style>
         .order-h4 {
             color: #FF902A;
             font-weight: bold;
+        }
+        .pending-slot {
+            background-color: #E60000 !important;
+            color: white !important;
+        }
+        .your-reservation {
+            background-color: #9647FF !important;
+            color: white !important;
         }
     </style>
 </head>
@@ -271,6 +282,23 @@ ob_end_flush();
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                         <button type="button" class="btn btn-primary" id="confirmReservation">Yes, Confirm</button>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pending Reservation Modal -->
+    <div class="modal fade" id="pendingReservationModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-body text-center">
+                    <div class="confirmation-icon fs-1 text-warning mb-3">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                    <h4>Pending Reservation</h4>
+                    <p>This time slot already has a pending reservation.</p>
+                    <p>Please choose another time slot.</p>
+                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">OK</button>
                 </div>
             </div>
         </div>
@@ -326,7 +354,7 @@ ob_end_flush();
                                     </div>
                                     <div class="col-md-6 mb-3">
                                         <div class="p-1 text-white text-center" style="background-color: #E60000; border-radius: 5px;">
-                                            Fully Booked
+                                            Pending
                                         </div>
                                     </div>
                                     <div class="col-md-6 mb-3">
@@ -347,7 +375,11 @@ ob_end_flush();
                                     <button type="button" class="available-time-btn w-100 btn btn-sm" 
                                         id="time-btn-<?= $i ?>" 
                                         data-time-id="<?= $time['id'] ?>"
-                                        style="background-color: #07D090;">
+                                        data-status="<?= $time['status'] ?>"
+                                        style="background-color: <?= 
+                                            $time['status'] === 'your_reservation' ? '#9647FF' : 
+                                            ($time['status'] === 'pending' ? '#E60000' : '#07D090')
+                                        ?>;">
                                         <span class="text-truncate d-block text-light border-0"><?= htmlspecialchars($time['time']) ?></span>
                                     </button>
                                     </div>
@@ -427,6 +459,7 @@ ob_end_flush();
             // Modal instances
             const loginRequiredModal = new bootstrap.Modal(document.getElementById('loginRequiredModal'));
             const confirmationModal = new bootstrap.Modal(document.getElementById('confirmationModal'));
+            const pendingReservationModal = new bootstrap.Modal(document.getElementById('pendingReservationModal'));
             const successModal = new bootstrap.Modal(document.getElementById('successModal'));
             
             // Form elements
@@ -477,27 +510,28 @@ ob_end_flush();
                 partySizeInput.value = numberInput.value;
             }
             
-          // Time button selection
-document.querySelectorAll('.available-time-btn').forEach(button => {
-    button.addEventListener('click', function() {
-        // Remove selection from all buttons
-        document.querySelectorAll('.available-time-btn').forEach(btn => {
-            btn.classList.remove('border-dark', 'border-2');
-        });
-        
-        // Add selection to clicked button
-        this.classList.add('border-dark', 'border-2');
-        
-        // Get time data
-        const timeId = this.getAttribute('data-time-id');
-        const timeValue = this.textContent.trim(); // Changed to use the displayed text
-        
-        // Update form fields
-        timeResult.textContent = timeValue;
-        reservationTimeInput.value = timeId;
-        timeError.classList.add('d-none');
-    });
-});
+            // Time button selection
+            document.querySelectorAll('.available-time-btn').forEach(button => {
+                button.addEventListener('click', function() {
+                    // Remove selection from all buttons
+                    document.querySelectorAll('.available-time-btn').forEach(btn => {
+                        btn.classList.remove('border-dark', 'border-2');
+                    });
+                    
+                    // Add selection to clicked button
+                    this.classList.add('border-dark', 'border-2');
+                    
+                    // Get time data
+                    const timeId = this.getAttribute('data-time-id');
+                    const timeValue = this.textContent.trim();
+                    const timeStatus = this.getAttribute('data-status');
+                    
+                    // Update form fields
+                    timeResult.textContent = timeValue;
+                    reservationTimeInput.value = timeId;
+                    timeError.classList.add('d-none');
+                });
+            });
             
             // Calendar iframe communication
             window.addEventListener('message', function(event) {
@@ -545,8 +579,15 @@ document.querySelectorAll('.available-time-btn').forEach(button => {
                         // Show login required modal
                         loginRequiredModal.show();
                     } else {
-                        // Show confirmation modal
-                        confirmationModal.show();
+                        // Check if selected time is pending
+                        const selectedButton = document.querySelector('.available-time-btn.border-dark');
+                        if (selectedButton && selectedButton.getAttribute('data-status') === 'pending') {
+                            // Show pending reservation modal
+                            pendingReservationModal.show();
+                        } else {
+                            // Show confirmation modal
+                            confirmationModal.show();
+                        }
                     }
                 }
             });
@@ -590,50 +631,50 @@ document.querySelectorAll('.available-time-btn').forEach(button => {
             });
             
             function fetchReservationStatus(date) {
-    if (!date) return;
-    
-    fetch(`../user/res.php?date=${date}`)
-        .then(response => {
-            if (!response.ok) throw new Error('Network response was not ok');
-            return response.json();
-        })
-        .then(data => {
-            const buttons = document.querySelectorAll('.available-time-btn');
-            
-            if (data.status_reservations && data.status_reservations.length === buttons.length) {
-                data.status_reservations.forEach((res_status, index) => {
-                    let color = '#07D090'; // Available
-                    let isDisabled = false;
-                    
-                    if (res_status.client_id == <?php echo json_encode($user_id); ?>) {
-                        color = '#9647FF'; // Your reservation
-                        isDisabled = true;
-                    } else if (res_status.status === 'booked') {  // Changed from res_status.res_status to res_status.status
-                        color = '#E60000'; // Booked
-                        isDisabled = true;
-                    }
-                    
-                    buttons[index].style.backgroundColor = color;
-                    buttons[index].disabled = isDisabled;
-                    
-                    // Update the data attributes if needed
-                    buttons[index].dataset.timeId = res_status.time_id;
-                    buttons[index].dataset.timeValue = res_status.time;
-                });
+                if (!date) return;
+                
+                fetch(`../user/res.php?date=${date}`)
+                    .then(response => {
+                        if (!response.ok) throw new Error('Network response was not ok');
+                        return response.json();
+                    })
+                    .then(data => {
+                        const buttons = document.querySelectorAll('.available-time-btn');
+                        
+                        if (data.status_reservations && data.status_reservations.length === buttons.length) {
+                            data.status_reservations.forEach((res_status, index) => {
+                                let status = 'available';
+                                let color = '#07D090';
+                                
+                                if (res_status.client_id == <?php echo json_encode($user_id); ?>) {
+                                    status = 'your_reservation';
+                                    color = '#9647FF';
+                                } else if (['for confirmation', 'payment', 'paid', 'booked'].includes(res_status.status)) {
+                                    status = 'pending';
+                                    color = '#E60000';
+                                }
+                                
+                                buttons[index].style.backgroundColor = color;
+                                buttons[index].setAttribute('data-status', status);
+                                
+                                // Update the data attributes if needed
+                                buttons[index].dataset.timeId = res_status.time_id;
+                                buttons[index].dataset.timeValue = res_status.time;
+                            });
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error fetching reservation status:', error);
+                    });
             }
-        })
-        .catch(error => {
-            console.error('Error fetching reservation status:', error);
-        });
-}
 
-// Make sure to call this when date changes
-document.getElementById('date-picker').addEventListener('change', function() {
-    fetchReservationStatus(this.value);
-});
+            // Make sure to call this when date changes
+            document.getElementById('date-picker').addEventListener('change', function() {
+                fetchReservationStatus(this.value);
+            });
 
-// Call it initially if you have a default date
-fetchReservationStatus(document.getElementById('date-picker').value);
+            // Call it initially if you have a default date
+            fetchReservationStatus(document.getElementById('date-picker').value);
         });
     </script>
 </body>

@@ -1,16 +1,21 @@
 $(document).ready(function() {
+    // Initialize DataTable
     const table = initializeDataTable();
     setupEventHandlers(table);
+    
+    // Connect to SSE for real-time updates
+    connectToSSE();
 });
- 
+
 function initializeDataTable() {
-    return $('#userTable').DataTable({
+    return $('#ordersTable').DataTable({
         ajax: {
             url: './../user/index.php',
             type: 'POST',
-            data: { action: 'read',
-                sort: 'desc' // Add sort parameter
-             },
+            data: { 
+                action: 'read',
+                sort: 'desc'
+            },
             dataSrc: ''
         },
         columns: [
@@ -19,70 +24,157 @@ function initializeDataTable() {
             {
                 data: 'created_at',
                 render: function(data) {
-                    const date = new Date(data);
-                    return date.toLocaleDateString('en-US');
+                    return new Date(data).toLocaleDateString('en-US');
                 }  
             },
-            { data: 'total_price' },
+            { 
+                data: 'reservation_time',
+                render: function(data) {
+                    return data || 'N/A';
+                }
+            },
+            { 
+                data: 'total_price',
+                render: function(data) {
+                    const price = parseFloat(data) || 0;
+                    return '₱' + price.toFixed(2);
+                }
+            },
             { data: 'reservation_type' },
             {
                 data: 'status',
                 render: function(data) {
-                    const statusMap = {
-                       "for confirmation": '<span class="text-white bg-info p-2 rounded">For Confirmation</span>',
-                        "cancelled": '<span class="text-white bg-danger p-2 rounded">Cancelled</span>',
-                        "payment": '<span class="text-dark bg-warning p-2 rounded">payment</span>',
-                        "Paid": '<span class="text-light p-2 rounded" style="background-color: #28a745;">Paid</span>',
-                        "booked": '<span class="text-white bg-success p-2 rounded">Booked</span>',
-                        "rate us": '<span class="text-dark bg-secondary p-2 rounded">Rate Us</span>',
-                    };
-                    return statusMap[data] || data;
+                    return getStatusHtml(data);
                 }
             },
             {
                 data: null,
                 render: function(data, type, row) {
                     return `
-                        <button class="editBtn" onclick="openUpdateModal(${row.order_id})" data-id="${data.transaction_id}" 
-                        data-status="${data.status}" 
-                        data-client-name="${data.client_full_name}" 
-                        data-reservation-type="${data.reservation_type}" 
-                        data-total-price="${data.total_price}"
-                        data-created-at="${data.created_at}"
-                        data-receipt="${data.receipt}">
-                            <i class="fas fa-edit text-primary border-0"></i>
-                        </button>
-                        <button class="btn btn-danger btn-sm" onclick="deleteOrder(${row.transaction_id})">
-                            <i class="fa-solid fa-trash"></i>
-                        </button>
+                        <div class="d-flex">
+                            <button class="editBtn btn btn-sm"
+                                data-id="${row.transaction_id}" 
+                                data-status="${row.status}" 
+                                data-client-name="${row.client_full_name}" 
+                                data-reservation-type="${row.reservation_type}" 
+                                data-total-price="${row.total_price}"
+                                data-created-at="${row.created_at}"
+                                data-reservation-time="${row.reservation_time}"
+                                data-order-id="${row.order_id}">
+                                <i class="fa-regular fa-pen-to-square"></i>
+                            </button>
+                            <button class="deleteBtn btn btn-sm" 
+                                data-id="${row.transaction_id}">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </div>
                     `;
                 }
             }
-        ]
+        ],
+        responsive: true
     });
 }
 
+function getStatusHtml(status) {
+    const statusMap = {
+        "for confirmation": '<span class="badge bg-info">For Confirmation</span>',
+        "cancelled": '<span class="badge bg-danger">Cancelled</span>',
+        "payment": '<span class="badge bg-warning text-dark">Payment</span>',
+        "Paid": '<span class="badge bg-success">Paid</span>',
+        "booked": '<span class="badge bg-primary">Booked</span>',
+        "rate us": '<span class="badge bg-secondary">Rate Us</span>',
+    };
+    return statusMap[status.toLowerCase()] || status;
+}
+
 function setupEventHandlers(table) {
-    $('#userTable').on('click', '.editBtn', function() {
+    // Edit button handler
+    $('#ordersTable').on('click', '.editBtn', function() {
         const orderId = $(this).data('id');
         const status = $(this).data('status');
         const clientName = $(this).data('client-name');
         const reservationType = $(this).data('reservation-type');
         const totalPrice = $(this).data('total-price');
         const createdAt = $(this).data('created-at');
-        const receipt = $(this).data('receipt');
+        const reservationTime = $(this).data('reservation-time');
+        const orderIdForItems = $(this).data('order-id');
 
-        // Set modal data
+        // Set basic order info
         $('#updateUserModal').modal('show');
         $('#orderId').val(orderId);
         $('#status').val(status);
         $('#client_full_name_display').text(clientName);
         $('#reservation_type').text(reservationType);
-        $('#total_price1').text(`P ${totalPrice}`);
+        $('#total_price1').text('₱' + parseFloat(totalPrice).toFixed(2));
         $('#created_at').text(new Date(createdAt).toLocaleDateString('en-US'));
-        $('#receipt').text(`P ${receipt}`);
+        $('#transaction_id').text(orderId);
+        $('#reservation_time').text(reservationTime || 'N/A');
+
+        // Load order items and receipt
+        loadOrderItems(orderIdForItems);
     });
 
+    function loadOrderItems(orderId) {
+        $.ajax({
+            url: './../user/index.php',
+            type: 'POST',
+            data: { 
+                action: 'getOrderItems',
+                order_id: orderId
+            },
+            success: function(response) {
+                try {
+                    const result = JSON.parse(response);
+                    if (result.success) {
+                        const items = result.items;
+                        let itemsHtml = '';
+                        
+                        items.forEach(item => {
+                            const price = parseFloat(item.price) || 0;
+                            itemsHtml += `
+                                <tr>
+                                    <td>${item.item_name}</td>
+                                    <td>₱${price.toFixed(2)}</td>
+                                    <td>${item.size || 'N/A'}</td>
+                                    <td>${item.temperature || 'N/A'}</td>
+                                    <td>${item.quantity}</td>
+                                </tr>
+                            `;
+                        });
+                        
+                        $('#orderItemsTable tbody').html(itemsHtml);
+                        
+                        // Display receipt if available
+                        const receiptContent = $('#receiptContent');
+                        const receiptContainer = $('#receiptContainer');
+                        receiptContent.empty();
+                        
+                        if (result.receipt && result.receipt.trim() !== '') {
+                            const receiptPath = './../../uploads/' + result.receipt;
+                            
+                            receiptContent.html(`
+                                <img src="${receiptPath}" 
+                                     style="max-width: 100%; max-height: 300px; margin-top: 10px;" 
+                                     alt="Payment Receipt"
+                                     onerror="this.style.display='none'">
+                                <div style="margin-top: 5px;">
+                                    <a href="${receiptPath}" target="_blank">View Full Image</a>
+                                </div>
+                            `);
+                            receiptContainer.show();
+                        } else {
+                            receiptContainer.hide();
+                        }
+                    }
+                } catch (e) {
+                    console.error('Error parsing order items:', e);
+                }
+            }
+        });
+    }
+
+    // Save status button handler
     $('#saveStatusBtn').on('click', function() {
         const orderId = $('#orderId').val();
         const status = $('#status').val();
@@ -96,148 +188,87 @@ function setupEventHandlers(table) {
                 status: status
             },
             success: function(response) {
-                const result = JSON.parse(response);
-                if (result.success) {
-                    $('#updateUserModal').modal('hide');
-                    table.ajax.reload();  // Reload the table after update
-    
-                    // Check if the status has changed and reload the page once
-                    if (result.status) {
-                        window.location.reload();
+                try {
+                    const result = JSON.parse(response);
+                    if (result.success) {
+                        $('#updateUserModal').modal('hide');
+                        
+                        // Update only the specific row in the DataTable
+                        const row = table.row(`[data-id="${orderId}"]`).node();
+                        if (row) {
+                            $(row).find('td:eq(6)').html(getStatusHtml(status));
+                        }
+                        
+                        showAlert('Status updated successfully', 'success');
+                    } else {
+                        showAlert('Error updating status: ' + (result.message || 'Unknown error'), 'danger');
                     }
-                } else {
-                    alert('Error updating status');
+                } catch (e) {
+                    showAlert('Error parsing response', 'danger');
                 }
             },
             error: function(xhr, status, error) {
-                alert('An error occurred while updating the status.');
+                showAlert('An error occurred: ' + error, 'danger');
             }
         });
     });
 
-    $('#markAsReadBtn').on('click', function() {
-        $.ajax({
-            url: './../../admin/user/index.php',
-            type: 'POST',
-            data: { action: 'markAllAsRead' },
-            success: function(response) {
-                const result = JSON.parse(response);
-                if (result.success) {
-                    alert('All notifications marked as read.');
-                    location.reload(); // Reload the page to reflect changes
-                } else {
-                    alert('Failed to mark notifications as read.');
-                }
-            }
-        });
-    });
-
-    $('#notificationModal').on('show.bs.modal', function() {
-        fetchNotifications();
-    });
-}
-
-function fetchNotifications() {
-    $.ajax({
-        url: './../../admin/user/index.php',
-        type: 'POST',
-        data: { action: 'fetchNotifications' },
-        success: function(response) {
-            const data = JSON.parse(response);
-            if (data.success) {
-                $('.notification-count').text(data.notificationCount);
-                let notificationHtml = '';
-                data.notifications.forEach(notification => {
-                    notificationHtml += `
-                        <div class="notification-item mb-3">
-                            <p>${notification.message}</p>
-                            <small class="text-muted">${notification.created_at}</small>
-                        </div>
-                    `;
-                });
-                $('#notificationModal .modal-body').html(notificationHtml);
-            }
-        },
-        error: function(xhr, status, error) {
-            alert('An error occurred while fetching notifications.');
+    // Delete button handler
+    $('#ordersTable').on('click', '.deleteBtn', function() {
+        const transactionId = $(this).data('id');
+        if (confirm('Are you sure you want to delete this order?')) {
+            deleteOrder(transactionId, table);
         }
     });
 }
 
-function deleteOrder(transactionId) {
-    if (confirm('Are you sure you want to delete this order?')) {
-        $.ajax({
-            url: './../../admin/user/index.php',
-            type: 'POST',
-            data: { action: 'delete', id: transactionId },
-            success: function(response) {
-                const data = JSON.parse(response);
-                if (data.success) {
-                    alert('Order deleted successfully.');
-                    table.ajax.reload();
-                } else {
-                    alert('Failed to delete order.');
-                }
-            },
-            error: function(xhr, status, error) {
-                alert('An error occurred while deleting the order.');
+function deleteOrder(transactionId, table) {
+    $.ajax({
+        url: './../user/index.php',
+        type: 'POST',
+        data: { 
+            action: 'delete', 
+            id: transactionId 
+        },
+        success: function(response) {
+            const result = JSON.parse(response);
+            if (result.success) {
+                // Remove the row from DataTable
+                table.row(`[data-id="${transactionId}"]`).remove().draw();
+                showAlert('Order deleted successfully', 'success');
+            } else {
+                showAlert('Failed to delete order: ' + (result.message || 'Unknown error'), 'danger');
             }
-        });
-    }
-}
-
-
-function playNotificationSound() {
-    const audio = document.getElementById('notificationSound');
-    if (audio) {
-        audio.play().catch(error => console.error('Error playing sound:', error));
-    }
-}
-function updateNotifications(notifications) {
-    const notificationCount = notifications.length;
-    const notificationModalBody = document.querySelector('#notificationModal .modal-body');
-
-    // Update the notification count in the navbar
-    const notificationCountElement = document.querySelector('.notification-count');
-    if (notificationCount > 0) {
-        notificationCountElement.textContent = notificationCount;
-        notificationCountElement.style.display = 'inline-block';
-    } else {
-        notificationCountElement.style.display = 'none';
-    }
-
-    // Update the notification modal content
-    let notificationHtml = '';
-    notifications.forEach(notification => {
-        notificationHtml += `
-            <div class="notification-item mb-3">
-                <a href="order-track.php?notification_id=${notification.id}" style="text-decoration: none; color: inherit;">
-                    <p>${notification.message}</p>
-                    <small class="text-muted">${notification.created_at}</small>
-                </a>
-            </div>
-        `;
+        },
+        error: function(xhr, status, error) {
+            showAlert('An error occurred: ' + error, 'danger');
+        }
     });
-
-    notificationModalBody.innerHTML = notificationHtml || '<p>No new notifications.</p>';
 }
 
+function showAlert(message, type) {
+    const alertHtml = `
+        <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    `;
+    $('#alertContainer').html(alertHtml);
+    setTimeout(() => $('.alert').alert('close'), 3000);
+}
+
+// SSE functions
 let eventSource = null;
+
 function connectToSSE() {
-    // Close existing connection if it exists
     if (eventSource) {
         eventSource.close();
-        eventSource = null;
     }
 
-    // Establish a new SSE connection
     eventSource = new EventSource('./../../admin/user/sse.php');
 
     eventSource.onmessage = function(event) {
         const data = JSON.parse(event.data);
-        console.log('Received SSE data:', data); // Debugging
-
-        // Update notifications (if applicable)
         if (data.notifications && data.notifications.length > 0) {
             updateNotifications(data.notifications);
             playNotificationSound();
@@ -245,8 +276,36 @@ function connectToSSE() {
     };
 
     eventSource.onerror = function() {
-        console.error('SSE connection error. Reconnecting...');
-        eventSource.close();
-        setTimeout(connectToSSE, 5000); // Reconnect after 5 seconds
+        setTimeout(connectToSSE, 5000);
     };
 }
+
+function updateNotifications(notifications) {
+    const notificationCount = notifications.length;
+    $('.notification-count').text(notificationCount).toggle(notificationCount > 0);
+    
+    let notificationHtml = '';
+    notifications.forEach(notification => {
+        notificationHtml += `
+            <div class="notification-item mb-3">
+                <p>${notification.message}</p>
+                <small class="text-muted">${notification.created_at}</small>
+            </div>
+        `;
+    });
+    $('#notificationModal .modal-body').html(notificationHtml || '<p>No new notifications</p>');
+}
+
+function playNotificationSound() {
+    const audio = document.getElementById('notificationSound');
+    if (audio) {
+        audio.play().catch(error => console.error('Error playing sound:', error));
+    }
+}
+
+// Clean up on page unload
+$(window).on('beforeunload', function() {
+    if (eventSource) {
+        eventSource.close();
+    }
+});

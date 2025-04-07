@@ -10,7 +10,10 @@ include './../inc/topNav.php';
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Orders</title>
     <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+
+
     <!-- DataTables CSS -->
     <link href="https://cdn.datatables.net/1.13.1/css/jquery.dataTables.min.css" rel="stylesheet">
     <!-- Font Awesome -->

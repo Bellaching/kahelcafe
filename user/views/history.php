@@ -116,7 +116,10 @@ $offset = ($currentPage - 1) * $recordsPerPage;
         .alert-danger {
             margin-top: 20px;
         }
-        .badge-confirmation { background-color: #17a2b8; }
+        .badge-confirmation { 
+    background-color: black; 
+    color: white; /* White text on black background */
+}
         .badge-payment { background-color: #ffc107; color: #212529; }
         .badge-paid { background-color: #28a745; }
         .badge-booked { background-color: #6610f2; }
@@ -253,16 +256,20 @@ $offset = ($currentPage - 1) * $recordsPerPage;
                                 $serialNumber = $offset + 1;
                                 while ($order = mysqli_fetch_assoc($ordersResult)) {
                                     echo "<tr>
-                                        <td class='serial-number'>{$serialNumber}</td>
-                                        <td>{$order['order_id']}</td>
-                                        <td>{$order['client_full_name']}</td>
-                                        <td>{$order['total_price']}</td>
-                                        <td>{$order['transaction_id']}</td>
-                                        <td>" . date('M d, Y h:i A', strtotime($order['created_at'])) . "</td>
-                                        <td>{$order['reservation_type']}</td>
-                                        <td>{$order['party_size']}</td>
-                                        <td><span class='badge badge-" . strtolower(str_replace(' ', '', $order['status'])) . "'>" . ucfirst($order['status']) . "</span></td>
-                                    </tr>";
+                                    <td class='serial-number'>{$serialNumber}</td>
+                                    <td>{$order['order_id']}</td>
+                                    <td>{$order['client_full_name']}</td>
+                                    <td>{$order['total_price']}</td>
+                                    <td>{$order['transaction_id']}</td>
+                                    <td>" . date('M d, Y h:i A', strtotime($order['created_at'])) . "</td>
+                                    <td>{$order['reservation_type']}</td>
+                                    <td>{$order['party_size']}</td>
+                                    <td>
+                                        <span style='background-color: black; color: white; padding: 0.35em 0.65em; border-radius: 0.25rem; font-weight: 600;' class='badge badge-" . strtolower(str_replace(' ', '', $order['status'])) . "'>
+                                            " . ucfirst($order['status']) . "
+                                        </span>
+                                    </td>
+                                </tr>";
                                     $serialNumber++;
                                 }
                             } else {

@@ -66,10 +66,18 @@ include './../inc/topNav.php';
         <div class="col-12 col-md-10 col-lg-8">
             <p class="h2 font-weight-bold">
                 Order <span style="text-decoration: underline; text-decoration-color: #FF902B; text-underline-offset: 8px;">Management</span>
+
+                <?php include "./../../admin/views/qr_reader.php"?>
             </p>
+
+            
         </div>
+
+       
+
     </div>
 </div>
+
 
 <div class="d-flex justify-content-center w-100">
     <div class="container-fluid shadow p-3" style="margin: 0 1.5rem; background-color: #f8f9fa; border-radius: 5px;">

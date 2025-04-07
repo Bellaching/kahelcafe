@@ -221,6 +221,7 @@ if (isset($_POST['checkout'])) {
     // Insert into Orders table
     $reservation_fee = 50; 
     $status = "for confirmation";
+  
     
     $stmt = $conn->prepare("INSERT INTO Orders (user_id, client_full_name, total_price, transaction_id, reservation_type, status, reservation_fee, reservation_time_id, reservation_time, reservation_date, party_size) 
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");

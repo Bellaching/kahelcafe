@@ -57,8 +57,6 @@ if (isset($_SESSION['user_id'])) {
     $notifications = []; // Empty array if the user is not logged in
 }
 
-
-
 $sql = "SELECT id, message, created_at, is_read FROM notifications WHERE user_id = ? ORDER BY created_at DESC ";
 $stmt = $conn->prepare($sql);
 $stmt->bind_param("i", $userId);
@@ -200,84 +198,6 @@ include '../views/change_profile.php';
     .dropdown-menu {
         text-align: center;
     }
-
-    /* Notification Modal Styling */
-.modal-content {
-    border: none;
-    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.15);
-}
-
-.unread-notification {
-    background-color: rgba(255, 144, 43, 0.1); /* Light orange background */
-    border-left: 4px solid #FF902B;
-}
-
-.read-notification {
-    background-color: white;
-    border-left: 4px solid #e9ecef;
-}
-
-.notification-item:hover {
-    background-color: #f8f9fa;
-    cursor: pointer;
-}
-
-.modal-header {
-    padding: 15px 20px;
-}
-
-.modal-body {
-    padding: 0;
-}
-
-.modal-footer {
-    padding: 12px 20px;
-}
-
-/* Custom scrollbar for modal */
-.modal-body::-webkit-scrollbar {
-    width: 6px;
-}
-
-.modal-body::-webkit-scrollbar-track {
-    background: #f1f1f1;
-}
-
-.modal-body::-webkit-scrollbar-thumb {
-    background: #FF902B;
-    border-radius: 3px;
-}
-
-.modal-body::-webkit-scrollbar-thumb:hover {
-    background: #e67e22;
-}
-
-
-#markAsReadBtn {
-    background-color: #FF902B;
-    border-color: #FF902B;
-}
-
-#markAsReadBtn:hover {
-    background-color: #e67e22;
-    border-color: #e67e22;
-}
-
-#clearNotificationsBtn:hover {
-    background-color: #dc3545;
-    color: white;
-}
-
-.mark-as-read {
-    background: none;
-    border: none;
-    padding: 0;
-    margin-left: 10px;
-}
-
-.mark-as-read:hover {
-    opacity: 0.8;
-}
 }
     </style>
     <title>Change Profile</title>
@@ -310,26 +230,22 @@ include '../views/change_profile.php';
 
         <!-- Right-aligned icons -->
         <ul class="navbar-nav right-icons">
-            <!-- Notification Icon -->
-            <li class="nav-item position-relative">
-                <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#notificationModal">
-                    <i class="fa-solid fa-bell" id="noti"></i>
-                    <?php if ($notificationCount > 0): ?>
-                        <span class="notification-count"><?= $notificationCount; ?></span>
-                    <?php endif; ?>
-                    <audio id="notificationSound" src="./../../admin/user/notification-sound.mp3"></audio>
-                </a>
-            </li>
+            <?php if (isset($_SESSION['user_id'])): ?>
+                <!-- Notification Icon (only shown when logged in) -->
+                <li class="nav-item position-relative">
+                    <?php include "./../views/noti.php"?>
+                </li>
 
-            <!-- Cart Icon -->
-            <li class="nav-item position-relative">
-                <a class="nav-link" href="./../../user/views/cart.php">
-                    <i class="fa-solid fa-cart-shopping"></i>
-                    <?php if ($cartCount > 0): ?>
-                        <span class="cart-count"><?= $cartCount; ?></span>
-                    <?php endif; ?>
-                </a>
-            </li>
+                <!-- Cart Icon (only shown when logged in) -->
+                <li class="nav-item position-relative">
+                    <a class="nav-link" href="./../../user/views/cart.php">
+                        <i class="fa-solid fa-cart-shopping"></i>
+                        <?php if ($cartCount > 0): ?>
+                            <span class="cart-count"><?= $cartCount; ?></span>
+                        <?php endif; ?>
+                    </a>
+                </li>
+            <?php endif; ?>
 
             <!-- User Menu -->
             <?php if ($firstName): ?>
@@ -373,65 +289,54 @@ include '../views/change_profile.php';
     </div>
 </div>
  
+<?php if (isset($_SESSION['user_id'])): ?>
 <!-- Notification Modal -->
 <div class="modal fade" id="notificationModal" tabindex="-1" aria-labelledby="notificationModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content" style="border-radius: 15px; overflow: hidden;">
-            <div class="modal-header" style="background-color: #FF902B; color: white;">
-                <h5 class="modal-title" id="notificationModalLabel">
-                    <i class="fas fa-bell me-2"></i>Notifications
-                </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title text-light" id="notificationModalLabel">Notifications</h5>
+                <button type="button" class="btn-close text-light" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body p-0" style="max-height: 400px; overflow-y: auto;">
+            <div class="modal-body" style="max-height: 400px; overflow-y: auto;">
                 <?php if (!empty($notifications)): ?>
                     <?php foreach ($notifications as $notification): ?>
-                        <div class="notification-item p-3 border-bottom <?= $notification['is_read'] == 0 ? 'unread-notification' : 'read-notification'; ?>">
-                            <div class="d-flex justify-content-between align-items-start">
-                                <div class="flex-grow-1">
-                                    <p class="mb-1 <?= $notification['is_read'] == 0 ? 'fw-bold' : ''; ?>">
-                                        <?= htmlspecialchars($notification['message']); ?>
-                                    </p>
-                                    <small class="text-muted">
-                                        <i class="far fa-clock me-1"></i><?= $notification['created_at']; ?>
-                                    </small>
-                                </div>
-                                <?php if ($notification['is_read'] == 0): ?>
-                                    <button class="btn btn-sm mark-as-read" data-id="<?= $notification['id']; ?>" title="Mark as read">
-                                        <i class="fas fa-check-circle text-success"></i>
-                                    </button>
-                                <?php endif; ?>
-                            </div>
+                        <div class="notification-item mb-3 p-3 <?= $notification['is_read'] == 0 ? 'unread-notification' : ''; ?>">
+                            <a href="order-track.php?notification_id=<?= $notification['id']; ?>" style="text-decoration: none; color: inherit;">
+                                <p><?= htmlspecialchars($notification['message']); ?></p>
+                                <small class="text-muted"><?= $notification['created_at']; ?></small>
+                            </a>
                         </div>
                     <?php endforeach; ?>
                 <?php else: ?>
-                    <div class="text-center py-4">
-                        <i class="far fa-bell-slash fa-3x text-muted mb-3"></i>
-                        <p class="text-muted">No new notifications.</p>
-                    </div>
+                    <p>No new notifications.</p>
                 <?php endif; ?>
             </div>
-            <div class="modal-footer d-flex justify-content-between" style="background-color: #f8f9fa;">
-                <button type="button" class="btn btn-outline-danger" id="clearNotificationsBtn">
-                    <i class="fas fa-trash-alt me-1"></i>Clear All
-                </button>
-                <button type="button" class="btn btn-primary" id="markAsReadBtn">
-                    <i class="fas fa-check-circle me-1"></i>Mark All as Read
-                </button>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" id="markAsReadBtn">Mark All as Read</button>
             </div>
         </div>
     </div>
 </div>
+<?php endif; ?>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
+function reloadNav() {
+    $.ajax({
+        url: window.location.href,
+        success: function(response) {
+            var newNav = $(response).find('nav.navbar').html();  
+            $('nav.navbar').html(newNav); 
+        }
+    });
+}
 
+setInterval(reloadNav, 3000);
 
-
-
+<?php if (isset($_SESSION['user_id'])): ?>
 function checkAndPlayNotification() {
-   
     const notificationCount = <?= $notificationCount; ?>; 
 
     if (notificationCount > 0) {
@@ -440,116 +345,29 @@ function checkAndPlayNotification() {
     }
 }
 
-
-
-
+// Check for notifications every 3 seconds
 setInterval(checkAndPlayNotification, 3000);
-
 
 $(document).ready(function() {
     // Mark all notifications as read
     $('#markAsReadBtn').on('click', function() {
         $.ajax({
-            url: './../../admin/user/mark_notifications.php',
+            url: './../../admin/user/index.php',
             type: 'POST',
             data: { action: 'markAllAsRead' },
             success: function(response) {
                 const result = JSON.parse(response);
                 if (result.success) {
-                    // Update UI without reloading
-                    $('.unread-notification').removeClass('unread-notification').addClass('read-notification');
-                    $('.unread-notification p').removeClass('fw-bold');
-                    $('.notification-count').hide();
-                    $('.mark-as-read').remove();
-                    
-                    // Show toast notification
-                    showToast('All notifications marked as read', 'success');
+                    alert('All notifications marked as read.');
+                    location.reload(); // Reload the page to reflect changes
                 } else {
-                    showToast('Failed to mark notifications as read', 'error');
+                    alert('Failed to mark notifications as read.');
                 }
             }
         });
     });
-
-    // Clear all notifications
-    $('#clearNotificationsBtn').on('click', function() {
-        if (confirm('Are you sure you want to clear all notifications?')) {
-            $.ajax({
-                url: './../../admin/user/clear_notifications.php',
-                type: 'POST',
-                data: { action: 'clearAllNotifications' },
-                success: function(response) {
-                    const result = JSON.parse(response);
-                    if (result.success) {
-                        // Update UI without reloading
-                        $('.modal-body').html(`
-                            <div class="text-center py-4">
-                                <i class="far fa-bell-slash fa-3x text-muted mb-3"></i>
-                                <p class="text-muted">No new notifications.</p>
-                            </div>
-                        `);
-                        $('.notification-count').hide();
-                        
-                        // Show toast notification
-                        showToast('All notifications cleared', 'success');
-                    } else {
-                        showToast('Failed to clear notifications', 'error');
-                    }
-                }
-            });
-        }
-    });
-
-    // Mark single notification as read
-    $(document).on('click', '.mark-as-read', function(e) {
-        e.stopPropagation();
-        const notificationId = $(this).data('id');
-        const notificationItem = $(this).closest('.notification-item');
-        
-        $.ajax({
-            url: './../../admin/user/mark_notifications.php',
-            type: 'POST',
-            data: { action: 'markAsRead', id: notificationId },
-            success: function(response) {
-                const result = JSON.parse(response);
-                if (result.success) {
-                    // Update UI
-                    notificationItem.removeClass('unread-notification').addClass('read-notification');
-                    notificationItem.find('p').removeClass('fw-bold');
-                    $(this).remove();
-                    
-                    // Update notification count
-                    const currentCount = parseInt($('.notification-count').text());
-                    if (currentCount > 1) {
-                        $('.notification-count').text(currentCount - 1);
-                    } else {
-                        $('.notification-count').hide();
-                    }
-                }
-            }
-        });
-    });
-
-    // Toast notification function
-    function showToast(message, type) {
-        const toast = $(`
-            <div class="toast align-items-center text-white bg-${type === 'success' ? 'success' : 'danger'} border-0 show" role="alert" aria-live="assertive" aria-atomic="true">
-                <div class="d-flex">
-                    <div class="toast-body">
-                        ${message}
-                    </div>
-                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-                </div>
-            </div>
-        `);
-        
-        $('.toast-container').append(toast);
-        
-        setTimeout(() => {
-            toast.remove();
-        }, 3000);
-    }
 });
+
 $(document).ready(function() {
     function updateCartCount() {
         $.ajax({
@@ -596,6 +414,7 @@ function removeFromCart(cartItemId) {
         }
     });
 }
+<?php endif; ?>
 </script>
 
 </body>

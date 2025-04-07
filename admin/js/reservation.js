@@ -28,8 +28,7 @@ $(document).ready(function() {
                       
                         "for confirmation": '<span class="text-light bg-info p-2 rounded">For confirmation</span>',
                         "payment": '<span class="text-light bg-warning p-2 rounded">Payment</span>',
-                      "paid": '<span class="text-light p-2 rounded" style="background-color: #28a745;">Paid</span>',
-
+                       "paid": '<span class="text-light p-2 rounded" style="background: linear-gradient(135deg,rgb(255, 7, 222) 0%, #FF9800 100%);">Paid</span>',
                       
 
                         "booked": '<span class="text-white bg-success p-2 rounded">Booked</span>',

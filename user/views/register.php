@@ -12,8 +12,8 @@ $mail = new PHPMailer();
 $mail->isSMTP();
 $mail->Host = 'smtp.gmail.com';
 $mail->SMTPAuth = true;
-$mail->Username = 'jewellsalongcong09@gmail.com'; // Replace with your email
-$mail->Password = 'xmjw ytju kkeu adoj'; // Replace with your App Password
+$mail->Username = 'kahelcafeweb@gmail.com'; // Replace with your email
+$mail->Password = 'qccb avlu ejjb fkmv'; // Replace with your App Password
 $mail->SMTPSecure = 'tls';
 $mail->Port = 587;
 
@@ -97,7 +97,7 @@ if (empty($errors)) {
     if ($stmt->execute()) {
         // Prepare verification link
         $mail->addAddress($email); // Send to the registered email
-        $mail->setFrom('jewellsalongcong09@gmail.com', 'Jewell Salongcong');
+        $mail->setFrom('kahelcafeweb@gmail.com', 'Kahel Cafe');
         $mail->isHTML(true);
         $mail->Subject = 'Email Verification';
         $mail->Body = "Your verification code is: $verificationCode. It is valid for 2 minutes.";

@@ -410,7 +410,9 @@ if ($reservationId) {
 $note = $reservation['note_area'] ?? 'No notes available.';
 
 // Display the reservation information
-?><!DOCTYPE html>
+?>
+
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
