@@ -2,7 +2,7 @@ $(document).ready(function() {
     const table = initializeDataTable();
     setupEventHandlers(table);
 });
-
+ 
 function initializeDataTable() {
     return $('#userTable').DataTable({
         ajax: {

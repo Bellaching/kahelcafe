@@ -526,6 +526,7 @@ $(document).ready(function() {
     let selectedTimeId = '';
     let selectedDate = '';
     let selectedTime = '';
+    let itemToDelete = null;
 
     // Handle time selection
     $('.available-time-btn').click(function() {
@@ -632,8 +633,13 @@ $(document).ready(function() {
         // Adjust quantity
         if ($(this).hasClass('btn-increase')) {
             currentQuantity += 1;
-        } else if ($(this).hasClass('btn-decrease') && currentQuantity > 1) {
+        } else if ($(this).hasClass('btn-decrease')) {
             currentQuantity -= 1;
+        }
+
+        // Don't allow quantity to go below 0
+        if (currentQuantity < 0) {
+            currentQuantity = 0;
         }
 
         // Update input field
@@ -651,12 +657,14 @@ $(document).ready(function() {
             success: function(response) {
                 const result = JSON.parse(response);
                 if (result.success) {
-                    if (currentQuantity === 1) {
+                    if (currentQuantity === 0) {
+                        // Show delete confirmation modal
+                        itemToDelete = itemId;
                         $('#deleteModal').modal('show');
-                        $('#deleteBtn').data('id', itemId);
+                    } else {
+                        // Reload to update total price
+                        location.reload();
                     }
-                    // Reload to update total price
-                    location.reload();
                 } else {
                     alert('Failed to update quantity. Please try again.');
                 }
@@ -666,16 +674,16 @@ $(document).ready(function() {
 
     // Handle delete button click
     $('#deleteBtn').click(function() {
-        let itemId = $(this).data('id');
+        if (!itemToDelete) return;
         
         $.ajax({
             url: '',
             type: 'POST',
-            data: { remove_item: true, item_id: itemId },
+            data: { remove_item: true, item_id: itemToDelete },
             success: function(response) {
                 const result = JSON.parse(response);
                 if (result.success) {
-                    $(`.cart-item[data-id="${itemId}"]`).remove();
+                    $(`.cart-item[data-id="${itemToDelete}"]`).remove();
                     $('#alert').show().delay(3000).fadeOut();
                     $('#deleteModal').modal('hide');
                     location.reload();

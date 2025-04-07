@@ -2,8 +2,7 @@
 include './../user/authenticate.php';
 include __DIR__ . '/../../connection/connection.php';
 
-$userId = $_SESSION['user_id'] ?? 0; // Adjust based on your session variable
-$username = $_SESSION['username'] ?? '';
+$userId = $_SESSION['user_id'] ?? 0; 
 
 // Handle AJAX actions for notifications
 if (isset($_GET['action'])) {
@@ -347,6 +346,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) ){
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- Bootstrap Bundle with Popper -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
 
     
     <style>
@@ -880,7 +881,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) ){
     </div>
 </div>
 
-<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+
 
 
 <!-- Notification sound -->
@@ -1010,44 +1011,44 @@ $(document).ready(function() {
     });
 });
 
-function startNotificationCheck() {
-    // Check for new notifications every 30 seconds
-    notificationCheckInterval = setInterval(checkForNewNotifications, 30000);
-    // Initial check
-    checkForNewNotifications();
-}
+// function startNotificationCheck() {
+//     // Check for new notifications every 30 seconds
+//     notificationCheckInterval = setInterval(checkForNewNotifications, 30000);
+//     // Initial check
+//     checkForNewNotifications();
+// }
 
-function stopNotificationCheck() {
-    clearInterval(notificationCheckInterval);
-}
+// function stopNotificationCheck() {
+//     clearInterval(notificationCheckInterval);
+// }
 
-function checkForNewNotifications() {
-    $.ajax({
-        url: '?action=check_notifications&user_id=<?php echo $user_id; ?>',
-        type: 'GET',
-        dataType: 'json',
-        success: function(response) {
-            if (response.count > 0) {
-                // Update notification count
-                updateNotificationCount(response.count);
+// function checkForNewNotifications() {
+//     $.ajax({
+//         url: '?action=check_notifications&user_id=<?php echo $user_id; ?>',
+//         type: 'GET',
+//         dataType: 'json',
+//         success: function(response) {
+//             if (response.count > 0) {
+//                 // Update notification count
+//                 updateNotificationCount(response.count);
                 
-                // If there are new notifications, play sound and show toast
-                if (response.count > newNotifications) {
-                    newNotifications = response.count;
-                    playNotificationSound();
-                    showToast('You have ' + response.count + ' new notification(s)');
-                }
-            } else {
-                // No new notifications
-                newNotifications = 0;
-                $('.notification-count').fadeOut();
-            }
-        },
-        error: function(xhr, status, error) {
-            console.error('Error checking notifications:', error);
-        }
-    });
-}
+//                 // If there are new notifications, play sound and show toast
+//                 if (response.count > newNotifications) {
+//                     newNotifications = response.count;
+//                     playNotificationSound();
+//                     showToast('You have ' + response.count + ' new notification(s)');
+//                 }
+//             } else {
+//                 // No new notifications
+//                 newNotifications = 0;
+//                 $('.notification-count').fadeOut();
+//             }
+//         },
+//         error: function(xhr, status, error) {
+//             console.error('Error checking notifications:', error);
+//         }
+//     });
+// }
 
 function updateNotificationCount(count) {
     const badge = $('.notification-count');

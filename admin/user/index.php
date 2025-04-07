@@ -3,14 +3,14 @@
 session_start();
 
 include './../../connection/connection.php';
-
+ 
 // Get the action
 $action = isset($_POST['action']) ? $_POST['action'] : '';
 
 if ($action === 'read') {
     $sort = isset($_POST['sort']) && $_POST['sort'] === 'desc' ? 'DESC' : 'ASC';
     
-    $query = "SELECT order_id, client_full_name, created_at, transaction_id, total_price, reservation_type, status 
+    $query = "SELECT order_id, client_full_name, created_at, transaction_id, total_price, reservation_time, reservation_type, status 
               FROM orders 
               ORDER BY created_at $sort";
               
