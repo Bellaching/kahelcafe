@@ -289,6 +289,14 @@ ob_end_flush();
     <title>Menu</title>
     <link rel="stylesheet" href="menu.css">
     <link href="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-bs4.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+
+
+<!-- DataTables CSS -->
+<link href="https://cdn.datatables.net/1.13.1/css/jquery.dataTables.min.css" rel="stylesheet">
+<!-- Font Awesome -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
   
     <style>
         .add-index {
@@ -739,9 +747,9 @@ function renderMenuItems($result) {
     </nav>
 </div>
 
-<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/summernote/0.8.18/summernote.min.js"></script>
+    <!-- jQuery, DataTable, and Bootstrap JS -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.1/js/jquery.dataTables.min.js"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         const categorySelect = document.getElementById('menuCategory');
