@@ -21,8 +21,11 @@ if (!isset($_SESSION['user_id']) || !isset($_SESSION['role'])) {
 $role = $_SESSION['role'];  
 $user_id = $_SESSION['user_id'];  
 
+// Determine which table to query based on role
+$table = ($role === 'owner' || $role === 'staff') ? 'admin_list' : 'users';
+
 // Prepare and execute the query to fetch user details
-$query = "SELECT username, role FROM admin_list WHERE id = ?";
+$query = "SELECT username, role FROM $table WHERE id = ?";
 $stmt = $conn->prepare($query);
 if (!$stmt) {
     // Log error if the statement preparation fails
@@ -52,9 +55,10 @@ if ($role !== $fetched_role) {
     exit();
 }
 
+// Store username in session for later use
+$_SESSION['username'] = $username;
+
 // Debugging: Log session and user data (remove in production)
 error_log("Session Data: " . print_r($_SESSION, true));
 error_log("User Data: User ID: $user_id, Role: $role, Username: $username");
-
-
 ?>

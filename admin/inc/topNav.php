@@ -2,7 +2,8 @@
 include './../user/authenticate.php';
 include __DIR__ . '/../../connection/connection.php';
 
-$userId = $_SESSION['user_id'] ?? 0; 
+$userId = $_SESSION['user_id'] ?? 0; // Adjust based on your session variable
+$username = $_SESSION['username'] ?? '';
 
 // Handle AJAX actions for notifications
 if (isset($_GET['action'])) {

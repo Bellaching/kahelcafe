@@ -199,31 +199,42 @@ $sql = "SELECT * FROM menu1 $whereClause ORDER BY name ASC LIMIT $offset, $items
                     <div class="row w-100 position-relative z-1 gx-3">
                         <?php foreach ($menuRow as $index => $menu): ?>
                             <div class="col-md-4 d-flex justify-content-center mb-4">
-                                <div class="card flex-fill p-3 shadow-lg"
-                                    style="border-radius: 15px; 
-                                    margin-top: <?php echo $index == 1 ? '-30px' : '-20px'; ?>;
-                                    margin-bottom: 20px;
-                                    z-index: 1;">
-                                    
-                                    <img src="<?php echo $menu['image']; ?>" 
-                                         class="card-img-top img-fluid rounded" 
-                                         alt="<?php echo $menu['name']; ?>" 
-                                         style="height: 200px; object-fit: cover;">
-                                    
-                                    <div class="card-body d-flex flex-column">
-                                        <div class="d-flex justify-content-between">
-                                            <h5 class="card-title text-dark"><?php echo $menu['name']; ?></h5>
-                                            <p class="card-text text-success fw-bold">P<?php echo number_format($menu['price'], 2); ?></p>
-                                        </div>
-                                        <button class="btn mt-auto rounded-pill add-to-cart-btn" 
-                                                style="background-color: #E48700; color: white;" 
-                                                data-bs-toggle="modal" 
-                                                data-bs-target="#itemModal<?php echo $menu['id']; ?>">
-                                            <i class="fas fa-shopping-cart me-2"></i> Add to Cart
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
+    <div class="card flex-fill p-3 shadow-lg"
+        style="border-radius: 15px; 
+        margin-top: <?php echo $index == 1 ? '-30px' : '-20px'; ?>;
+        margin-bottom: 20px;
+        z-index: 1; position: relative;">
+        
+        <!-- Image container with rating badge -->
+        <div style="position: relative;">
+            <img src="<?php echo $menu['image']; ?>" 
+                 class="card-img-top img-fluid rounded" 
+                 alt="<?php echo $menu['name']; ?>" 
+                 style="height: 200px; object-fit: cover;">
+
+            <!-- Rating badge -->
+            <div class="position-absolute top-0 start-0 m-2 px-2 py-1 d-flex align-items-center"
+                 style="background-color: white; border-radius: 10px;">
+                <span class="text-dark fw-bold me-1"><?php echo number_format($menu['rating'], 1); ?></span>
+                <i class="fas fa-star text-warning"></i>
+            </div>
+        </div>
+
+        <div class="card-body d-flex flex-column">
+            <div class="d-flex justify-content-between">
+                <h5 class="card-title text-dark"><?php echo $menu['name']; ?></h5>
+                <p class="card-text text-success fw-bold">P<?php echo number_format($menu['price'], 2); ?></p>
+            </div>
+            <button class="btn mt-auto rounded-pill add-to-cart-btn" 
+                    style="background-color: #E48700; color: white;" 
+                    data-bs-toggle="modal" 
+                    data-bs-target="#itemModal<?php echo $menu['id']; ?>">
+                <i class="fas fa-shopping-cart me-2"></i> Add to Cart
+            </button>
+        </div>
+    </div>
+</div>
+
 
                             <!-- Add to Cart Modal for Each Item -->
                             <div class="modal fade" id="itemModal<?php echo $menu['id']; ?>" tabindex="-1" aria-labelledby="itemModalLabel<?php echo $menu['id']; ?>" aria-hidden="true">

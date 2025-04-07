@@ -12,224 +12,27 @@ include './../inc/topNav.php';
     <link href="https://cdn.datatables.net/1.13.1/css/jquery.dataTables.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
-
-    <style>
-        * {
-            padding: 0;
-            margin: 0;
-            box-sizing: border-box;
-        }
-
-        .modal-body {
-            display: flex; 
-            flex-direction: column;
-        }
-
-        .update-down {
-            display: flex;
-            flex-direction: column;
-        }
-
-        .order-sum {
-            display: flex;
-            flex-direction: row;
-            flex-wrap: wrap;
-        }
-
-        .order-s {
-            color: #FF902B;
-            font-weight: bold;
-            margin-bottom: 15px;
-        }
-
-        .p1 {
-            color: #FF902B;
-            font-weight: bold;
-        }
-
-        .p {
-            color: #616161;
-        }
-
-        .l {
-            color: #000000;
-            font-weight: 500;
-        }
-
-        .upsta {
-            color: white;
-            background-color: #FF902B;
-            border: none;
-            padding: 10px 25px;
-            border-radius: 50px;
-            font-weight: 500;
-        }
-
-        .theadmodal {
-            background-color: #FF902B;
-            color:#FF902B;
-        }
-
-        .account-text {
-            font-size: 2rem;
-            font-weight: bold;
-        }
-
-        .management-underline {
-            text-decoration: underline;
-            text-decoration-color: #FF902B;
-            text-underline-offset: 8px;
-        }
-
-        .status-badge {
-            padding: 5px 10px;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            font-weight: 500;
-        }
-
-        .action-btns .btn {
-            padding: 5px 10px;
-            margin: 0 3px;
-        }
-
-        .items-table {
-            width: 100%;
-            margin-bottom: 20px;
-        }
-
-        .items-table th {
-            background-color: #f8f9fa;
-            padding: 10px;
-            text-align: left;
-        }
-
-        .items-table td {
-            padding: 10px;
-            border-bottom: 1px solid #dee2e6;
-        }
-
-        .receipt-container {
-            margin-top: 20px;
-            padding: 15px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            background-color: #f9f9f9;
-        }
-
-        .receipt-title {
-            font-weight: bold;
-            margin-bottom: 10px;
-        }
-
-        .receipt-image {
-            max-width: 100%;
-            max-height: 300px;
-            margin-top: 10px;
-        }
-
-        .modal-content {
-            background-color: white;
-            color: white;
-        }
-        
-      
-
-        .order-details-section {
-            margin-top: 20px;
-            padding: 15px;
-            border: 1px solid #eee;
-            border-radius: 5px;
-            background-color: #f5f5f5;
-        }
-
-        @media (max-width: 768px) {
-            .account-text {
-                font-size: 1.5rem;
-            }
-            
-            .order-sum {
-                flex-direction: column;
-            }
-            
-            .modal-dialog {
-                margin: 0.5rem;
-            }
-
-            .modal-content {
-                padding: 1rem;
-            }
-
-            .update-down {
-                flex-direction: column;
-            }
-
-            .form-group {
-                margin-bottom: 1rem;
-            }
-
-            .modal-body {
-                padding: 1rem;
-            }
-
-            .modal-footer {
-                flex-direction: column;
-                align-items: center;
-            }
-
-            .modal-footer .btn {
-                width: 100%;
-                margin-bottom: 0.5rem;
-            }
-
-            .action-btns .btn {
-                padding: 3px 6px;
-                margin: 0 2px;
-                font-size: 0.8rem;
-            }
-
-            .items-table th, 
-            .items-table td {
-                padding: 8px 5px;
-                font-size: 0.9rem;
-            }
-        }
-        
-        /* Notification styles */
-        .update-notification {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            background-color: #4CAF50;
-            color: white;
-            padding: 15px;
-            border-radius: 5px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-            z-index: 1000;
-            display: none;
-        }
-    </style>
 </head>
 
-<body>
+<body style="padding: 0; margin: 0; box-sizing: border-box;">
 
 <!-- Update notification -->
-<div class="update-notification" id="updateNotification">
+<div class="position-fixed" style="bottom: 20px; right: 20px; background-color: #4CAF50; color: white; padding: 15px; border-radius: 5px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); z-index: 1000; display: none;" id="updateNotification">
     New orders available. Updating...
 </div>
 
 <div class="container-fluid mb-3">
-    <div class="row mt-5 ms-lg-5 ms-md-3 ms-sm-0">
+    <div class="row mt-5" style="margin-left: 1.5rem;">
         <div class="col-12 col-md-10 col-lg-8">
-            <p class="account-text">
-                Order <span class="management-underline">Management</span>
+            <p class="h2 font-weight-bold">
+                Order <span style="text-decoration: underline; text-decoration-color: #FF902B; text-underline-offset: 8px;">Management</span>
             </p>
         </div>
     </div>
 </div>
 
 <div class="d-flex justify-content-center w-100">
-    <div class="container-fluid shadow p-3 mx-lg-5 mx-md-3 mx-sm-1 bg-body-tertiary rounded">
+    <div class="container-fluid shadow p-3" style="margin: 0 1.5rem; background-color: #f8f9fa; border-radius: 5px;">
         <div class="table-responsive">
             <table id="ordersTable" class="display w-100">
                 <thead>
@@ -255,20 +58,20 @@ include './../inc/topNav.php';
 <!-- Modal for Update Status -->
 <div class="modal fade container-fluid" id="updateUserModal" tabindex="-1" role="dialog" aria-labelledby="updateUserModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg" role="document">
-        <div class="modal-content container-fluid">
-            <div class="modal-header">
+        <div class="modal-content container-fluid" style="border: 2px solid #FF902B;">
+            <div class="modal-header" style="background-color: #FF902B; color: white;">
                 <h5 class="modal-title">Update Order Status</h5>
                 <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                     <span aria-hidden="true">&times;</span>
                 </button>
             </div>
-            <div class="modal-body container-fluid bg-white">
-                <div class="order-details-section bg-white">
-                    <h5 class="order-s mb-3">Order Items</h5>
+            <div class="modal-body container-fluid bg-white" style="display: flex; flex-direction: column;">
+                <div class="bg-white" style="margin-top: 20px; padding: 15px; border: 1px solid #eee; border-radius: 5px; background-color: #f5f5f5;">
+                    <h5 style="color: #FF902B; font-weight: bold; margin-bottom: 15px;">Order Items</h5>
                     <div class="table-responsive bg-white">
-                        <table class="table items-table bg-white" id="orderItemsTable">
-                            <thead class="theadmodal bg-white">
-                                <tr class="bg-white"></tr>
+                        <table class="table bg-white" id="orderItemsTable" style="width: 100%; margin-bottom: 20px;">
+                            <thead class="bg-white">
+                                <tr class="bg-white">
                                     <th>Item Name</th>
                                     <th>Price</th>
                                     <th>Size</th>
@@ -283,52 +86,52 @@ include './../inc/topNav.php';
                         </table>
                     </div>
                     
-                    <div id="receiptContainer" class="receipt-container">
-                        <div class="receipt-title">Payment Receipt:</div>
+                    <div id="receiptContainer" style="margin-top: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 5px; background-color: #f9f9f9;">
+                        <div style="font-weight: bold; margin-bottom: 10px;">Payment Receipt:</div>
                         <div id="receiptContent"></div>
                     </div>
                 </div>
 
-                <div class="form-group update-down d-flex flex-column">
-                    <h5 class="order-s">Order Summary</h5>
-                    <div class="form-group order-sum d-flex flex-row flex-wrap">
-                        <div class="d-flex flex-column gap-3 m-3 col-md-5">
+                <div class="form-group" style="display: flex; flex-direction: column;">
+                    <h5 style="color: #FF902B; font-weight: bold; margin-bottom: 15px;">Order Summary</h5>
+                    <div class="form-group" style="display: flex; flex-direction: row; flex-wrap: wrap;">
+                        <div class="d-flex flex-column gap-3 m-3" style="width: 100%; max-width: 45%;">
                             <div class="d-flex flex-row mb-3 align-items-baseline">
-                                <label class="l mr-5">Client Name</label>
-                                <p id="client_full_name_display" class="p mb-0 ml-auto text-right"></p>
+                                <label style="color: #000000; font-weight: 500; margin-right: 2rem;">Client Name</label>
+                                <p id="client_full_name_display" style="color: #616161; margin-bottom: 0; margin-left: auto;"></p>
                             </div>
 
                             <div class="d-flex flex-row mb-3 align-items-baseline">
-                                <label class="l mr-5">Transaction no.</label>
-                                <p id="transaction_id" class="p mb-0 ml-auto text-right"></p>
+                                <label style="color: #000000; font-weight: 500; margin-right: 2rem;">Transaction no.</label>
+                                <p id="transaction_id" style="color: #616161; margin-bottom: 0; margin-left: auto;"></p>
                             </div>
 
                             <div class="d-flex flex-row mb-3 align-items-baseline">
-                                <label class="l mr-5">Reservation Type</label>
-                                <p id="reservation_type" class="p mb-0 ml-auto text-right"></p>
+                                <label style="color: #000000; font-weight: 500; margin-right: 2rem;">Reservation Type</label>
+                                <p id="reservation_type" style="color: #616161; margin-bottom: 0; margin-left: auto;"></p>
                             </div>
                         </div>
 
-                        <div class="d-flex flex-column gap-3 m-3 col-md-5">
+                        <div class="d-flex flex-column gap-3 m-3" style="width: 100%; max-width: 45%;">
                             <div class="d-flex flex-row mb-3 align-items-baseline">
-                                <label class="l mr-5">Date</label>
-                                <p id="created_at" class="p mb-0 ml-auto text-right"></p>
+                                <label style="color: #000000; font-weight: 500; margin-right: 2rem;">Date</label>
+                                <p id="created_at" style="color: #616161; margin-bottom: 0; margin-left: auto;"></p>
                             </div>
 
                             <div class="d-flex flex-row mb-3 align-items-baseline">
-                                <label class="l mr-5">Reservation Time</label>
-                                <p id="reservation_time" class="p mb-0 ml-auto text-right"></p>
+                                <label style="color: #000000; font-weight: 500; margin-right: 2rem;">Reservation Time</label>
+                                <p id="reservation_time" style="color: #616161; margin-bottom: 0; margin-left: auto;"></p>
                             </div>
 
                             <div class="d-flex flex-row mb-1 align-items-baseline mt-2">
-                                <label class="l mr-5 fs-5 bold">Total Price</label>
-                                <p id="total_price1" class="p1 mb-0 ml-auto bold text-right"></p>
+                                <label style="color: #000000; font-weight: 500; margin-right: 2rem; font-size: 1.1rem;">Total Price</label>
+                                <p id="total_price1" style="color: #FF902B; font-weight: bold; margin-bottom: 0; margin-left: auto;"></p>
                             </div>
                         </div>
                     </div>
 
-                    <div class="form-group p-3 mb-3 mx-lg-5 mx-md-3 mx-sm-1">
-                        <label for="status" class="fw-bold">Order Status</label>
+                    <div class="form-group p-3 mb-3" style="margin: 0 1.5rem;">
+                        <label for="status" class="font-weight-bold">Order Status</label>
                         <select class="form-control container-fluid" id="status" name="status">
                             <option value="for confirmation">For Confirmation</option>
                             <option value="payment">Payment</option>
@@ -343,7 +146,7 @@ include './../inc/topNav.php';
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                <button type="button" class="btn upsta" id="saveStatusBtn">Update Status</button>
+                <button type="button" class="btn" id="saveStatusBtn" style="color: white; background-color: #FF902B; border: none; padding: 10px 25px; border-radius: 50px; font-weight: 500;">Update Status</button>
             </div>
         </div>
     </div>
@@ -353,7 +156,7 @@ include './../inc/topNav.php';
 <div class="modal fade" id="deleteUserModal" tabindex="-1" role="dialog" aria-labelledby="deleteUserModalLabel" aria-hidden="true">
     <div class="modal-dialog" role="document">
         <div class="modal-content">
-            <div class="modal-header" style="background-color: white; color: white;">
+            <div class="modal-header" style="background-color: #FF902B; color: white;">
                 <h5 class="modal-title" id="deleteUserModalLabel">Delete Confirmation</h5>
                 <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                     <span aria-hidden="true">&times;</span>
@@ -508,12 +311,12 @@ function initializeDataTable() {
                 data: 'status',
                 render: function(data) {
                     const statusMap = {
-                        "for confirmation": '<span class="status-badge bg-info">For Confirmation</span>',
-                        "cancelled": '<span class="status-badge bg-danger">Cancelled</span>',
-                        "payment": '<span class="status-badge bg-warning text-dark">Payment</span>',
-                        "PAID": '<span class="status-badge bg-success">Paid</span>',
-                        "booked": '<span class="status-badge bg-primary">Booked</span>',
-                        "rate us": '<span class="status-badge bg-secondary">Rate Us</span>',
+                        "for confirmation": '<span style="padding: 5px 10px; border-radius: 20px; font-size: 0.8rem; font-weight: 500; background-color: #17a2b8; color: white;">For Confirmation</span>',
+                        "cancelled": '<span style="padding: 5px 10px; border-radius: 20px; font-size: 0.8rem; font-weight: 500; background-color: #dc3545; color: white;">Cancelled</span>',
+                        "payment": '<span style="padding: 5px 10px; border-radius: 20px; font-size: 0.8rem; font-weight: 500; background-color: #ffc107; color: #212529;">Payment</span>',
+                        "PAID": '<span style="padding: 5px 10px; border-radius: 20px; font-size: 0.8rem; font-weight: 500; background-color: #28a745; color: white;">Paid</span>',
+                        "booked": '<span style="padding: 5px 10px; border-radius: 20px; font-size: 0.8rem; font-weight: 500; background-color: #007bff; color: white;">Booked</span>',
+                        "rate us": '<span style="padding: 5px 10px; border-radius: 20px; font-size: 0.8rem; font-weight: 500; background-color: #6c757d; color: white;">Rate Us</span>',
                     };
                     return statusMap[data.toLowerCase()] || data;
                 }
@@ -522,8 +325,8 @@ function initializeDataTable() {
                 data: null,
                 render: function(data, type, row) {
                     return `
-                        <div class="action-btns">
-                            <button class="btn btn-sm btn-warning editBtn" data-id="${row.transaction_id}" 
+                        <div class="d-flex">
+                            <button class="btn btn-sm btn-warning mr-1" style="padding: 5px 10px;" data-id="${row.transaction_id}" 
                                 data-status="${row.status}" 
                                 data-client-name="${row.client_full_name}" 
                                 data-reservation-type="${row.reservation_type}" 
@@ -533,14 +336,15 @@ function initializeDataTable() {
                                 data-order-id="${row.order_id}">
                                 <i class="fas fa-edit"></i>
                             </button>
-                            <button class="btn btn-sm btn-danger delete-btn" data-id="${row.transaction_id}">
+                            <button class="btn btn-sm btn-danger" style="padding: 5px 10px;" data-id="${row.transaction_id}">
                                 <i class="fa-solid fa-trash"></i>
                             </button>
                         </div>
                     `;
                 }
             }
-        ]
+        ],
+        responsive: true
     });
     return table;
 }
@@ -612,7 +416,7 @@ function setupEventHandlers(table) {
                     if (result.receipt) {
                         if (result.receipt.startsWith('http') || result.receipt.startsWith('data:image')) {
                             // It's an image URL or base64
-                            receiptContent.html(`<img src="${result.receipt}" class="receipt-image" alt="Payment Receipt">`);
+                            receiptContent.html(`<img src="${result.receipt}" style="max-width: 100%; max-height: 300px; margin-top: 10px;" alt="Payment Receipt">`);
                         } else {
                             // It's text or other format
                             receiptContent.text(result.receipt);

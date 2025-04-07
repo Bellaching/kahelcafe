@@ -191,27 +191,37 @@ ob_end_flush();
             <?php while ($item = $result->fetch_assoc()) { ?>
 
                 <div class="col-12 col-sm-6 col-md-4 col-lg-2 menu-card shadow-sm">
-                    <div class="card p-2 rounded-1 border-0">
-                        <div class="img-container"  style="overflow: hidden; height: 150px;">
-                            <img src="<?php echo $item['image']; ?>" class="card-img-top" alt="<?php echo $item['name']; ?>" style="max-height: 100%; max-width: 100%; object-fit: contain;">
-                        </div>
-                        <div class="card-body text-center p-3">
-                            <div class="menu-item-container d-flex flex-row gap-3 flex-nowrap align-items-center justify-content-between">
-                                <div class="category-title text-truncate">
-                                    <h5 class="mb-0"><?php echo $item['name']; ?></h5>
-                                </div>
-                                <div class="price-info text-success">
-                                    <p class="mb-0"><strong><?php echo $item['price']; ?></strong></p>
-                                </div>
-                            </div>
-                            <button 
-                                class="btn btn-sm btn-primary p-2 mt-2 border-0 w-100" 
-                                onclick="checkVerification(<?php echo $userVerified; ?>, '<?php echo $item['id']; ?>')">
-                                <i class="fa-solid fa-cart-shopping"></i> Add to cart
-                            </button>
-                        </div>
-                    </div>
+    <div class="card p-2 rounded-1 border-0 position-relative">
+        
+        <!-- Image container with rating -->
+        <div class="img-container position-relative" style="overflow: hidden; height: 150px;">
+            <img src="<?php echo $item['image']; ?>" class="card-img-top" alt="<?php echo $item['name']; ?>" style="max-height: 100%; max-width: 100%; object-fit: contain;">
+            
+            <!-- Rating badge -->
+            <div class="position-absolute top-0 start-0 m-2 px-2 py-1 d-flex align-items-center"
+                 style="background-color: white; border-radius: 10px;">
+                <span class="text-dark fw-bold me-1"><?php echo number_format($item['rating'], 1); ?></span>
+                <i class="fas fa-star text-warning"></i>
+            </div>
+        </div>
+
+        <div class="card-body text-center p-3">
+            <div class="menu-item-container d-flex flex-row gap-3 flex-nowrap align-items-center justify-content-between">
+                <div class="category-title text-truncate">
+                    <h5 class="mb-0"><?php echo $item['name']; ?></h5>
                 </div>
+                <div class="price-info text-success">
+                    <p class="mb-0"><strong><?php echo $item['price']; ?></strong></p>
+                </div>
+            </div>
+            <button 
+                class="btn btn-sm btn-primary p-2 mt-2 border-0 w-100" 
+                onclick="checkVerification(<?php echo $userVerified; ?>, '<?php echo $item['id']; ?>')">
+                <i class="fa-solid fa-cart-shopping"></i> Add to cart
+            </button>
+        </div>
+    </div>
+</div>
 
                 <div class="modal fade" id="itemModal<?php echo $item['id']; ?>" tabindex="-1" aria-labelledby="itemModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
