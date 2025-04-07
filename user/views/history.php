@@ -143,7 +143,7 @@ $offset = ($currentPage - 1) * $recordsPerPage;
         <div class="profile-container d-flex align-items-center">
             <!-- Profile Picture with fallback -->
             <?php if (!empty($profileImagePath)): ?>
-                <img src="<?php echo $profileImagePath; ?>" alt="<?php echo $clientFullName; ?>" class="rounded-circle border border-3 border-white" style="width: 130px; height: 120px; object-fit: cover;">
+                <img src="<?php echo $profileImagePath; ?>" alt="<?php echo $clientFullName; ?>" class="rounded-circle border border-3 border-white" style="width: 150px; height: 140px; object-fit: cover;">
             <?php else: ?>
                 <div class="rounded-circle border border-3 border-white d-flex align-items-center justify-content-center bg-secondary" style="width: 130px; height: 120px;">
                     <i class="fas fa-user fa-3x text-white"></i>

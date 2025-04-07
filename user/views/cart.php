@@ -731,8 +731,8 @@ document.getElementById('date-picker').addEventListener('change', function() {
     fetchReservationStatus(this.value);
 });
 
-// Call it initially if you have a default date
-fetchReservationStatus(document.getElementById('date-picker').value);
+// // Call it initially if you have a default date
+// fetchReservationStatus(document.getElementById('date-picker').value);
 
 
 });

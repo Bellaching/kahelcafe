@@ -30,13 +30,37 @@ if ($isLoggedIn) {
     $clientQuery->close();
 }
 
+function formatTimeSlot($time) {
+    // If your time is already in "10am - 11am" format, just return it
+    if (preg_match('/\d{1,2}(am|pm)\s*-\s*\d{1,2}(am|pm)/i', $time)) {
+        return $time;
+    }
+    
+    // If your time is in "10:00-11:00" format, convert it
+    $parts = explode('-', $time);
+    if (count($parts) === 2) {
+        $start = DateTime::createFromFormat('H:i', trim($parts[0]));
+        $end = DateTime::createFromFormat('H:i', trim($parts[1]));
+        if ($start && $end) {
+            return $start->format('ga') . ' - ' . $end->format('ga');
+        }
+    }
+    
+    // Return original if no conversion possible
+    return $time;
+}
+
 function getAvailableTimes($conn, $user_id, $date = null) {
     $times = [];
     $timeQuery = $conn->query("SELECT id, time FROM res_time ORDER BY time");
     while ($row = $timeQuery->fetch_assoc()) {
-        $times[] = $row;
+        // Ensure time format is consistent (10am - 11am format)
+        $formattedTime = $row['time'];
+        $times[] = [
+            'id' => $row['id'],
+            'time' => $formattedTime
+        ];
     }
-    
     if ($date) {
         foreach ($times as &$time) {
             $checkQuery = $conn->prepare("
@@ -320,13 +344,12 @@ ob_end_flush();
                             <div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-3 g-2" id="Available-Time-show">
                                 <?php foreach ($times as $i => $time): ?>
                                     <div class="col">
-                                        <button type="button" class="available-time-btn w-100 btn btn-sm" 
-                                            id="time-btn-<?= $i ?>" 
-                                            data-time-id="<?= $time['id'] ?>"
-                                            data-time-value="<?= htmlspecialchars($time['time']) ?>"
-                                            style="background-color: #07D090;">
-                                            <span class="text-truncate d-block text-light border-0"><?= htmlspecialchars($time['time']) ?></span>
-                                        </button>
+                                    <button type="button" class="available-time-btn w-100 btn btn-sm" 
+                                        id="time-btn-<?= $i ?>" 
+                                        data-time-id="<?= $time['id'] ?>"
+                                        style="background-color: #07D090;">
+                                        <span class="text-truncate d-block text-light border-0"><?= htmlspecialchars($time['time']) ?></span>
+                                    </button>
                                     </div>
                                 <?php endforeach; ?>
                             </div>
@@ -454,27 +477,27 @@ ob_end_flush();
                 partySizeInput.value = numberInput.value;
             }
             
-            // Time button selection
-            document.querySelectorAll('.available-time-btn').forEach(button => {
-                button.addEventListener('click', function() {
-                    // Remove selection from all buttons
-                    document.querySelectorAll('.available-time-btn').forEach(btn => {
-                        btn.classList.remove('border-dark', 'border-2');
-                    });
-                    
-                    // Add selection to clicked button
-                    this.classList.add('border-dark', 'border-2');
-                    
-                    // Get time data
-                    const timeId = this.getAttribute('data-time-id');
-                    const timeValue = this.getAttribute('data-time-value');
-                    
-                    // Update form fields
-                    timeResult.textContent = timeValue;
-                    reservationTimeInput.value = timeId;
-                    timeError.classList.add('d-none');
-                });
-            });
+          // Time button selection
+document.querySelectorAll('.available-time-btn').forEach(button => {
+    button.addEventListener('click', function() {
+        // Remove selection from all buttons
+        document.querySelectorAll('.available-time-btn').forEach(btn => {
+            btn.classList.remove('border-dark', 'border-2');
+        });
+        
+        // Add selection to clicked button
+        this.classList.add('border-dark', 'border-2');
+        
+        // Get time data
+        const timeId = this.getAttribute('data-time-id');
+        const timeValue = this.textContent.trim(); // Changed to use the displayed text
+        
+        // Update form fields
+        timeResult.textContent = timeValue;
+        reservationTimeInput.value = timeId;
+        timeError.classList.add('d-none');
+    });
+});
             
             // Calendar iframe communication
             window.addEventListener('message', function(event) {

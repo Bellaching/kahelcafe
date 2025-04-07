@@ -15,6 +15,43 @@ if (!isset($_SESSION['user_id'])) {
 
 $userId = $_SESSION['user_id']; // Fetch the user ID from the session
 
+// profile
+
+$stmt = $conn->prepare("SELECT firstname, lastname, email, profile_picture FROM client WHERE id = ?");
+$stmt->bind_param("i", $userId);
+$stmt->execute();
+$result = $stmt->get_result();
+$client = $result->fetch_assoc();
+
+
+if (!$userId) {
+    $userId = [
+        'firstname' => 'Guest',
+        'lastname' => 'User',
+        'email' => 'no-email@example.com',
+        'profile_picture' => ''
+    ];
+}
+
+
+$clientFullName = htmlspecialchars($client['firstname'] . ' ' . $client['lastname']);
+$email = htmlspecialchars($client['email']);
+$clientProfilePicture = htmlspecialchars($client['profile_picture']);
+
+
+$profileImagePath = '';
+if (!empty($clientProfilePicture)) {
+ 
+    $potentialPath = './../../uploads/' . $clientProfilePicture;
+    if (file_exists($potentialPath)) {
+        $profileImagePath = $potentialPath;
+    }
+}
+
+
+// end
+
+
 // Fetch the most recent order for the logged-in user
 $query = "SELECT * FROM Orders WHERE user_id = ? ORDER BY created_at DESC LIMIT 1";
 $stmt = $conn->prepare($query);
@@ -507,6 +544,29 @@ $note = $orderItems[0]['note'] ?? 'No notes available.';
 </head>
 <body>
     <div class="container mt-3 mt-md-5">
+
+    <div class="sched-banner position-relative mb-5 mt-5" style="background-image: url('./../asset/img/sched-reservation/sched-banner.png'); background-size: cover; background-position: center; min-height: 600px;">
+    <div class="container position-absolute bottom-0 start-0 p-3 d-flex align-items-center">
+        <div class="profile-container d-flex align-items-center">
+            <!-- Profile Picture with fallback -->
+            <?php if (!empty($profileImagePath)): ?>
+                <img src="<?php echo $profileImagePath; ?>" alt="<?php echo $clientFullName; ?>" class="rounded-circle border border-3 border-white" style="width: 150px; height: 140px; object-fit: cover;">
+            <?php else: ?>
+                <div class="rounded-circle border border-3 border-white d-flex align-items-center justify-content-center bg-secondary" style="width: 130px; height: 120px;">
+                    <i class="fas fa-user fa-3x text-white"></i>
+                </div>
+            <?php endif; ?>
+        </div>
+        <div class="client-info ms-3 text-white">
+            <!-- Client Full Name -->
+            <h5 class="mb-1"><?php echo $clientFullName; ?></h5>
+            <!-- Client Email -->
+            <p class="mb-0"><?php echo $email; ?></p>
+        </div>
+    </div>
+</div>
+
+
         <h3 class="text-center text-md-start">Order Tracking</h3>
 
         <!-- Order Tracking Steps -->
@@ -516,7 +576,7 @@ $note = $orderItems[0]['note'] ?? 'No notes available.';
                 <div class="title">For Confirmation</div>
                 <div class="description">We're confirming your order</div>
             </div>
-            <div class="step <?php echo ($order['status'] === 'payment' ? 'active' : ''); ?>">
+            <div class="step <?php echo ($order['status'] === 'payment' && $order['status'] === 'Paid' ? 'active' : '' ); ?>">
                 <div class="icon"></div>
                 <div class="title">Payment</div>
                 <div class="description">Payment processing</div>
@@ -792,9 +852,10 @@ $note = $orderItems[0]['note'] ?? 'No notes available.';
                     </div>
 
                     <div class="qr my-4 d-flex justify-content-center rounded-pill">
-                        <a href="<?php echo $qrFile; ?>" download="reservation_qr_<?php echo $reservation['id']; ?>.png" class="btn p-2 w-100 rounded-pill text-light" style="background-color: #FF902B;">
-                            Download QR Code
-                        </a>
+                    <a href="<?php echo $qrFile; ?>" download="order_qr_<?php echo $order['order_id']; ?>.png" class="btn p-2 w-100 rounded-pill text-light" style="background-color: #FF902B;">
+    Download QR Code
+</a>
+
                     </div>
                 <?php elseif ($order['status'] === 'for confirmation'): ?>
                     <div class="order-sums">
@@ -926,6 +987,15 @@ $note = $orderItems[0]['note'] ?? 'No notes available.';
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.7/dist/umd/popper.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/5.3.3/js/bootstrap.min.js"></script>
+
+    <script>
+  setTimeout(function() {
+    const alert = document.getElementById('successAlert');
+    if (alert) {
+      alert.style.display = 'none';
+    }
+  }, 5000); // 5000 milliseconds = 5 seconds
+</script>
     <script>
         $(document).ready(function () {
             // Timer functionality for payment status
@@ -1026,6 +1096,41 @@ $note = $orderItems[0]['note'] ?? 'No notes available.';
                 }
                 ?>
             <?php endif; ?>
+            
+            // Status checking and auto-reload functionality
+            let currentStatus = "<?php echo $order['status']; ?>";
+            let checkInterval;
+            
+            function checkStatus() {
+                $.ajax({
+                    url: 'check-order-status.php',
+                    type: 'GET',
+                    data: { order_id: <?php echo $order['order_id']; ?> },
+                    dataType: 'json',
+                    success: function(response) {
+                        if (response.status && response.status !== currentStatus) {
+                            // Status has changed, reload the page
+                            window.location.reload();
+                        }
+                    },
+                    error: function() {
+                        console.log('Error checking order status');
+                    },
+                    complete: function() {
+                    // Check again after 3 seconds (more frequent checking)
+                    setTimeout(checkStatus, 3000);
+                }
+                });
+            }
+            
+            
+            // Start checking status every 5 seconds
+            checkInterval = setInterval(checkStatus, 5000);
+            
+            // Stop checking when the page is unloaded
+            $(window).on('beforeunload', function() {
+                clearInterval(checkInterval);
+            });
             
             // Star Rating Hover Effect
             $('.star-rating i').on('mouseenter', function() {
