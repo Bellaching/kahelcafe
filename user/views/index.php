@@ -361,6 +361,13 @@ $sql = "SELECT * FROM menu1 $whereClause ORDER BY name ASC LIMIT $offset, $items
         </div>
     </div>
 
+      <!-- Virtual Tour and Other Sections -->
+      <div class="container text-center my-4">
+      <?php 
+        include "./../views/virt.php";
+      ?>
+    </div>
+
     <!-- Virtual Tour and Other Sections -->
     <div class="container text-center my-4">
         <h2>How to order and reserve</h2>

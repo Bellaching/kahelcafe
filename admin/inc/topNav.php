@@ -658,6 +658,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) ){
                             <li><a class="dropdown-item" href="./../views/reservation.php">Reservation Management</a></li>
                             <li><a class="dropdown-item" href="./../views/report.php">Performance Report</a></li>
                             <li><a class="dropdown-item" href="../views/menuManagement.php">Menu Management</a></li>
+                            <li><a class="dropdown-item" href="../views/content.php">Virtual Management</a></li>
                         </ul>
                     </li>
                     <li class="nav-item position-relative me-3">
@@ -682,7 +683,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) ){
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle text-black" href="#" id="adminDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">Admin Side</a>
                         <ul class="dropdown-menu" aria-labelledby="adminDropdown">
-                            <li><a class="dropdown-item" href="#">Order Management</a></li>
+                            <li><a class="dropdown-item" href="./../views/accountManagement.php">Order Management</a></li>
                             <li><a class="dropdown-item" href="./../views/reservation.php">Reservation Management</a></li>
                             <li><a class="dropdown-item" href="../views/menuManagement.php">Menu Management</a></li>
                         </ul>

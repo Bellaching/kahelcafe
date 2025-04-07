@@ -32,7 +32,7 @@ function initializeDataTable() {
                        "for confirmation": '<span class="text-white bg-info p-2 rounded">For Confirmation</span>',
                         "cancelled": '<span class="text-white bg-danger p-2 rounded">Cancelled</span>',
                         "payment": '<span class="text-dark bg-warning p-2 rounded">payment</span>',
-                        "PAID": '<span class="text-dark bg-warning p-2 rounded">Paid</span>',
+                        "Paid": '<span class="text-light p-2 rounded" style="background-color: #28a745;">Paid</span>',
                         "booked": '<span class="text-white bg-success p-2 rounded">Booked</span>',
                         "rate us": '<span class="text-dark bg-secondary p-2 rounded">Rate Us</span>',
                     };
