@@ -80,7 +80,9 @@ include './../inc/topNav.php';
 </div>
 
 
-<div class="d-flex justify-content-center w-100">
+
+
+<div class="d-flex justify-content-center w-100 mb-5">
     <div class="container-fluid shadow p-3" style="margin: 0 1.5rem; background-color: #f8f9fa; border-radius: 5px;">
         <div class="table-responsive">
             <table id="ordersTable" class="display w-100">

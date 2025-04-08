@@ -143,21 +143,23 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['addMenuItem'])) {
          $hasErrors = true;
      }
 
-    // If no errors, proceed with database insertion
-    if (empty(array_filter($errors))) {
-        $sizeStr = !empty($menuSize) ? implode(',', $menuSize) : '';
-        $tempStr = !empty($menuTemperature) ? implode(',', $menuTemperature) : '';
-        
-        $sql = "INSERT INTO menu1 (image, name, description, category, size, temperature, quantity, price, status)
-                VALUES ('$menuImage', '$menuName', '$menuDescription', '$menuCategory', '$sizeStr', '$tempStr', $menuQuantity, $menuPrice, '$productStatus')";
+     $productStatus = !empty($productStatus) ? $productStatus : 'Available';  // Set default status to 'Available'
 
-        if ($conn->query($sql)) {
-            header("Location: menuManagement.php");
-            exit();
-        } else {
-            $errors['general'][] = "Database error: " . $conn->error;
-        }
-    }
+     if (empty(array_filter($errors))) {
+         $sizeStr = !empty($menuSize) ? implode(',', $menuSize) : '';
+         $tempStr = !empty($menuTemperature) ? implode(',', $menuTemperature) : '';
+     
+         $sql = "INSERT INTO menu1 (image, name, description, category, size, temperature, quantity, price, status)
+                 VALUES ('$menuImage', '$menuName', '$menuDescription', '$menuCategory', '$sizeStr', '$tempStr', $menuQuantity, $menuPrice, '$productStatus')";
+     
+         if ($conn->query($sql)) {
+             header("Location: menuManagement.php");
+             exit();
+         } else {
+             $errors['general'][] = "Database error: " . $conn->error;
+         }
+     }
+     
 }
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['deleteMenuItem'])) {

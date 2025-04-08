@@ -179,7 +179,6 @@ foreach ($_SESSION['cart'] as $item) {
 
 // Calculate total price (subtotal + reservation fee)
 $totalPrice = $subtotal + $reservation_fee;
-
 // Handle checkout
 if (isset($_POST['checkout'])) {
     $userNote = $_POST['note'] ?? '';
@@ -189,107 +188,239 @@ if (isset($_POST['checkout'])) {
     $reservation_time_id = $_POST['reservation_time_id'] ?? 0;
     $party_size = $_POST['party_size'] ?? 1;
 
-    // First get the actual time value from the database
+    // Get reservation time
+    $reservation_time = '';
     $timeQuery = $conn->prepare("SELECT time FROM res_time WHERE id = ?");
-    $timeQuery->bind_param("i", $reservation_time_id);
-    $timeQuery->execute();
-    $timeResult = $timeQuery->get_result();
-    $timeRow = $timeResult->fetch_assoc();
-    $reservation_time = $timeRow['time'] ?? '';
-    $timeQuery->close();
+    if ($timeQuery) {
+        $timeQuery->bind_param("i", $reservation_time_id);
+        $timeQuery->execute();
+        $timeResult = $timeQuery->get_result();
+        $timeRow = $timeResult->fetch_assoc();
+        $reservation_time = $timeRow['time'] ?? '';
+        $timeQuery->close();
+    }
 
     // Check for pending orders
     $pendingStatuses = ['for confirmation', 'payment', 'booked'];
     $placeholders = implode(',', array_fill(0, count($pendingStatuses), '?'));
     $query = "SELECT COUNT(*) FROM Orders WHERE user_id = ? AND status IN ($placeholders)";
     $stmt = $conn->prepare($query);
-    if (!$stmt) {
-        die("Prepare failed: " . $conn->error);
-    }
-    
-    // Bind parameters correctly
-    $params = array_merge([$clientId], $pendingStatuses);
-    $types = str_repeat('s', count($pendingStatuses));
-    $stmt->bind_param("i" . $types, ...$params);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $row = $result->fetch_array();
-    $pendingCount = $row[0];
-    $stmt->close();
-
-    if ($pendingCount > 0) {
-        die(json_encode(['success' => false, 'message' => "You already have pending orders. Please wait for them to be processed."]));
-    }
-
-    // Insert into Orders table
-    $status = "for confirmation";
-    
-    $stmt = $conn->prepare("INSERT INTO Orders (user_id, client_full_name, total_price, transaction_id, reservation_type, status, reservation_fee, reservation_time_id, reservation_time, reservation_date, party_size) 
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-
-    if (!$stmt) {
-        die("Prepare failed: " . $conn->error);
-    }
-
-    // Corrected bind_param with proper types
-    $bindResult = $stmt->bind_param(
-        "isdsssiissi",  // i=integer, s=string, d=double
-        $clientId, 
-        $clientFullName, 
-        $totalPrice, 
-        $transactionId, 
-        $reservationType, 
-        $status, 
-        $reservation_fee, 
-        $reservation_time_id, 
-        $reservation_time, 
-        $reservation_date, 
-        $party_size
-    );
-
-    if (!$bindResult) {
-        die("Bind failed: " . $stmt->error);
-    }
-
-    $executeResult = $stmt->execute();
-    if (!$executeResult) {
-        die("Execute failed: " . $stmt->error);
-    }
-
-    $orderId = $stmt->insert_id;
-    $stmt->close();
-
-    // Insert order items
-    foreach ($_SESSION['cart'] as $item) {
-        $stmt = $conn->prepare("INSERT INTO order_items (order_id, item_id, item_name, size, temperature, quantity, price, note) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-        $stmt->bind_param(
-            "iisssids",
-            $orderId,
-            $item['id'],
-            $item['name'],
-            $item['size'],
-            $item['temperature'],
-            $item['quantity'],
-            $item['price'],
-            $item['note']
-        );
+    if ($stmt) {
+        $params = array_merge([$clientId], $pendingStatuses);
+        $types = str_repeat('s', count($pendingStatuses));
+        $stmt->bind_param("i" . $types, ...$params);
         $stmt->execute();
+        $result = $stmt->get_result();
+        $row = $result->fetch_array();
+        $pendingCount = $row[0];
         $stmt->close();
+
+        if ($pendingCount > 0) {
+            die(json_encode(['success' => false, 'message' => "You already have pending orders. Please wait for them to be processed."]));
+        }
     }
 
-    // Clear cart after successful order
-    $stmt = $conn->prepare("DELETE FROM cart WHERE user_id = ?");
-    $stmt->bind_param("i", $clientId);
-    $stmt->execute();
-    $stmt->close();
-    unset($_SESSION['cart']);
+    // Start transaction
+    $conn->begin_transaction();
 
-    // Return success response
-    echo json_encode([
-        'success' => true,
-        'redirect' => "./../../user/views/order-track.php?transaction_id=" . $transactionId
-    ]);
-    exit;
+    try {
+        // First, check and update inventory quantities from menu1
+        foreach ($_SESSION['cart'] as $item) {
+            // Check current quantity and status from menu1
+            $checkStmt = $conn->prepare("SELECT quantity, status FROM menu1 WHERE id = ? FOR UPDATE");
+            if (!$checkStmt) {
+                throw new Exception("Prepare failed: " . $conn->error);
+            }
+            $checkStmt->bind_param("i", $item['id']);
+            $checkStmt->execute();
+            $checkResult = $checkStmt->get_result();
+            $itemRow = $checkResult->fetch_assoc();
+            $checkStmt->close();
+            
+            if (!$itemRow) {
+                throw new Exception("Item not found in menu: " . $item['name']);
+            }
+            
+            if ($itemRow['quantity'] < $item['quantity']) {
+                throw new Exception("Not enough stock for item: " . $item['name']);
+            }
+            
+            // Calculate new quantity
+            $newQuantity = $itemRow['quantity'] - $item['quantity'];
+            $newStatus = ($newQuantity <= 0) ? 'unavailable' : $itemRow['status'];
+            
+            // Update quantity and status in menu1
+            $updateStmt = $conn->prepare("UPDATE menu1 SET quantity = ?, status = ? WHERE id = ?");
+            if (!$updateStmt) {
+                throw new Exception("Prepare failed: " . $conn->error);
+            }
+            $updateStmt->bind_param("isi", $newQuantity, $newStatus, $item['id']);
+            if (!$updateStmt->execute()) {
+                throw new Exception("Update failed: " . $updateStmt->error);
+            }
+            $updateStmt->close();
+        }
+
+        // Insert into Orders table
+        $status = "for confirmation";
+        $stmt = $conn->prepare("INSERT INTO Orders (user_id, client_full_name, total_price, transaction_id, reservation_type, status, reservation_fee, reservation_time_id, reservation_time, reservation_date, party_size) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+
+        if (!$stmt) {
+            throw new Exception("Prepare failed: " . $conn->error);
+        }
+
+        $bindResult = $stmt->bind_param(
+            "isdsssiissi",
+            $clientId, 
+            $clientFullName, 
+            $totalPrice, 
+            $transactionId, 
+            $reservationType, 
+            $status, 
+            $reservation_fee, 
+            $reservation_time_id, 
+            $reservation_time, 
+            $reservation_date, 
+            $party_size
+        );
+
+        if (!$bindResult) {
+            throw new Exception("Bind failed: " . $stmt->error);
+        }
+
+        if (!$stmt->execute()) {
+            throw new Exception("Execute failed: " . $stmt->error);
+        }
+
+        $orderId = $stmt->insert_id;
+        $stmt->close();
+
+        // Insert order items
+        foreach ($_SESSION['cart'] as $item) {
+            $stmt = $conn->prepare("INSERT INTO order_items (order_id, item_id, item_name, size, temperature, quantity, price, note) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+            if (!$stmt) {
+                throw new Exception("Prepare failed: " . $conn->error);
+            }
+            $stmt->bind_param(
+                "iisssids",
+                $orderId,
+                $item['id'],
+                $item['name'],
+                $item['size'],
+                $item['temperature'],
+                $item['quantity'],
+                $item['price'],
+                $item['note']
+            );
+            if (!$stmt->execute()) {
+                throw new Exception("Execute failed: " . $stmt->error);
+            }
+            $stmt->close();
+        }
+
+        // Clear cart after successful order
+        $stmt = $conn->prepare("DELETE FROM cart WHERE user_id = ?");
+        if ($stmt) {
+            $stmt->bind_param("i", $clientId);
+            $stmt->execute();
+            $stmt->close();
+        }
+        unset($_SESSION['cart']);
+
+        // Commit transaction
+        $conn->commit();
+
+        // Return success response
+        echo json_encode([
+            'success' => true,
+            'redirect' => "./../../user/views/order-track.php?transaction_id=" . $transactionId
+        ]);
+        exit;
+    } catch (Exception $e) {
+        // Rollback transaction on error
+        $conn->rollback();
+        error_log("Error during checkout: " . $e->getMessage());
+        echo json_encode([
+            'success' => false,
+            'message' => "Error processing order: " . $e->getMessage()
+        ]);
+        exit;
+    }
+}
+
+// Function to handle order cancellation and return quantities
+function cancelOrderAndReturnQuantities($orderId, $conn) {
+    // Start transaction
+    $conn->begin_transaction();
+
+    try {
+        // Get all items from the order
+        $stmt = $conn->prepare("SELECT item_id, quantity FROM order_items WHERE order_id = ?");
+        if (!$stmt) {
+            throw new Exception("Prepare failed: " . $conn->error);
+        }
+        $stmt->bind_param("i", $orderId);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $orderItems = [];
+        while ($row = $result->fetch_assoc()) {
+            $orderItems[] = $row;
+        }
+        $stmt->close();
+
+        // Return quantities to menu1 inventory
+        foreach ($orderItems as $item) {
+            // Get current quantity and status
+            $checkStmt = $conn->prepare("SELECT quantity, status FROM menu1 WHERE id = ? FOR UPDATE");
+            if (!$checkStmt) {
+                throw new Exception("Prepare failed: " . $conn->error);
+            }
+            $checkStmt->bind_param("i", $item['item_id']);
+            $checkStmt->execute();
+            $checkResult = $checkStmt->get_result();
+            $currentRow = $checkResult->fetch_assoc();
+            $checkStmt->close();
+            
+            if (!$currentRow) {
+                throw new Exception("Item not found in menu: ID " . $item['item_id']);
+            }
+            
+            $newQuantity = $currentRow['quantity'] + $item['quantity'];
+            $newStatus = ($newQuantity > 0 && $currentRow['status'] == 'unavailable') ? 'available' : $currentRow['status'];
+            
+            // Update quantity and status
+            $updateStmt = $conn->prepare("UPDATE menu1 SET quantity = ?, status = ? WHERE id = ?");
+            if (!$updateStmt) {
+                throw new Exception("Prepare failed: " . $conn->error);
+            }
+            $updateStmt->bind_param("isi", $newQuantity, $newStatus, $item['item_id']);
+            if (!$updateStmt->execute()) {
+                throw new Exception("Update failed: " . $updateStmt->error);
+            }
+            $updateStmt->close();
+        }
+
+        // Update order status to canceled
+        $updateOrderStmt = $conn->prepare("UPDATE Orders SET status = 'canceled' WHERE id = ?");
+        if (!$updateOrderStmt) {
+            throw new Exception("Prepare failed: " . $conn->error);
+        }
+        $updateOrderStmt->bind_param("i", $orderId);
+        if (!$updateOrderStmt->execute()) {
+            throw new Exception("Update failed: " . $updateOrderStmt->error);
+        }
+        $updateOrderStmt->close();
+
+        // Commit transaction
+        $conn->commit();
+        return true;
+    } catch (Exception $e) {
+        // Rollback on error
+        $conn->rollback();
+        error_log("Error canceling order: " . $e->getMessage());
+        return false;
+    }
 }
 ?>
 <!DOCTYPE html>

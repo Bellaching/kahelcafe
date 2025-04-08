@@ -14,14 +14,17 @@ if (!isset($_SESSION['user_id'])) {
     die("You must be logged in to view this page.");
 }
 
+
 $userId = $_SESSION['user_id'];
 
 // profile
+
 $stmt = $conn->prepare("SELECT firstname, lastname, email, profile_picture FROM client WHERE id = ?");
 $stmt->bind_param("i", $userId);
 $stmt->execute();
 $result = $stmt->get_result();
 $client = $result->fetch_assoc();
+
 
 if (!$userId) {
     $userId = [
@@ -32,19 +35,22 @@ if (!$userId) {
     ];
 }
 
+
 $clientFullName = htmlspecialchars($client['firstname'] . ' ' . $client['lastname']);
 $email = htmlspecialchars($client['email']);
 $clientProfilePicture = htmlspecialchars($client['profile_picture']);
 
+
 $profileImagePath = '';
 if (!empty($clientProfilePicture)) {
+ 
     $potentialPath = './../../uploads/' . $clientProfilePicture;
     if (file_exists($potentialPath)) {
         $profileImagePath = $potentialPath;
     }
 }
 
-// 1. First check reservation status from reservation table
+
 $query = "SELECT * FROM reservation WHERE client_id = ? ORDER BY date_created DESC LIMIT 1";
 $stmt = $conn->prepare($query);
 
@@ -136,81 +142,52 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['timeout_reservation']
     $stmt2->close();
     
     header('Content-Type: application/json');
-    echo json_encode(['status' => 'success', 'message' => 'Reservation cancelled due to timeout']);
+    echo json_encode(['status' => 'success', 'message' => 'Reservation cancel due to timeout']);
     exit();
 }
 
 // 4. Handle Manual Cancellation
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['cancel_reservation'], $_POST['id'])) {
-    $reservationId = (int)$_POST['id'];
-    
-    // Validate reservation ID
-    if ($reservationId <= 0) {
-        header('Content-Type: application/json');
-        echo json_encode(['status' => 'error', 'message' => 'Invalid reservation ID']);
-        exit();
-    }
+    $reservationId = $_POST['id'];
 
-    // Start transaction
-    $conn->begin_transaction();
-    
-    try {
-        // Update reservation status
-        $cancelQuery = "UPDATE reservation SET 
-                        res_status = 'cancel', 
-                        reservation_date = NULL 
-                        WHERE id = ? AND client_id = ?";
-        $stmt = $conn->prepare($cancelQuery);
-        
-        if (!$stmt) {
-            throw new Exception('SQL Error: ' . $conn->error);
-        }
-        
-        $stmt->bind_param("ii", $reservationId, $userId);
-        if (!$stmt->execute()) {
-            throw new Exception('Execute failed: ' . $stmt->error);
-        }
-        
-        // Check if any row was actually updated
-        if ($stmt->affected_rows === 0) {
-            throw new Exception('No reservation found with that ID for this user');
-        }
-        
-        // Delete from resservation_time
-        $deleteTimeQuery = "DELETE FROM resservation_time WHERE reservation_time_id = ?";
-        $stmt2 = $conn->prepare($deleteTimeQuery);
-        
-        if (!$stmt2) {
-            throw new Exception('SQL Error: ' . $conn->error);
-        }
-        
-        $stmt2->bind_param("i", $reservationId);
-        if (!$stmt2->execute()) {
-            throw new Exception('Execute failed: ' . $stmt2->error);
-        }
-        
-        // Commit transaction
-        $conn->commit();
-        
-        header('Content-Type: application/json');
-        echo json_encode(['status' => 'success', 'message' => 'Reservation cancelled successfully']);
-        exit();
-        
-    } catch (Exception $e) {
-        // Rollback transaction on error
-        $conn->rollback();
+    $cancelQuery = "UPDATE reservation SET 
+                    res_status = 'cancel', 
+                    reservation_date = NULL 
+                    WHERE id = ?";
+    $stmt = $conn->prepare($cancelQuery);
+
+    if (!$stmt) {
         header('Content-Type: application/json');
         http_response_code(500);
-        echo json_encode([
-            'status' => 'error', 
-            'message' => 'Error cancelling reservation',
-            'debug' => $e->getMessage() // Only for debugging, remove in production
-        ]);
+        echo json_encode(['status' => 'error', 'message' => 'SQL Error: ' . $conn->error]);
         exit();
     }
+
+    $stmt->bind_param("i", $reservationId);
+    $stmt->execute();
+    
+    $deleteTimeQuery = "DELETE FROM resservation_time WHERE reservation_time_id = ?";
+    $stmt2 = $conn->prepare($deleteTimeQuery);
+    $stmt2->bind_param("i", $reservationId);
+    $stmt2->execute();
+    
+    if ($stmt->execute()) {
+        ob_clean();
+        header('Content-Type: application/json');
+        echo json_encode(['status' => 'success', 'message' => 'Reservation cancel successfully']);
+        exit();
+    } else {
+        header('Content-Type: application/json');
+        http_response_code(500);
+        echo json_encode(['status' => 'error', 'message' => 'Error executing query: ' . $stmt->error]);
+        exit();
+    }
+    $stmt->close();
+
+    exit();
 }
 
-// 5. Handle Receipt Upload
+// 5. Handle Receipt Upload - FIXED SECTION
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['upload_receipt'])) {
     $reservationId = $_POST['reservation_id'] ?? null;
     if (!$reservationId) {
@@ -423,6 +400,8 @@ if ($reservationId) {
 }
 
 $note = $reservation['note_area'] ?? 'No notes available.';
+
+// Display the reservation information
 ?>
 
 <!DOCTYPE html>
@@ -600,6 +579,16 @@ $note = $reservation['note_area'] ?? 'No notes available.';
             transform: translate(-50%, -50%);
         }
 
+        /* .qr-container {
+            margin-top: 1rem;
+            text-align: center;
+        }
+
+        .qr-container img {
+            max-width: 100%;
+            height: auto;
+        } */
+
         /* Center content for confirmation status */
         .confirmation-center {
             text-align: center;
@@ -650,27 +639,30 @@ $note = $reservation['note_area'] ?? 'No notes available.';
     </style>
 </head>
 <body>
-    <div class="container mt-3">
-        <div class="sched-banner position-relative mb-5 mt-5" style="background-image: url('./../asset/img/sched-reservation/sched-banner.png'); background-size: cover; background-position: center; min-height: 600px;">
-            <div class="container position-absolute bottom-0 start-0 p-3 d-flex align-items-center">
-                <div class="profile-container d-flex align-items-center">
-                    <!-- Profile Picture with fallback -->
-                    <?php if (!empty($profileImagePath)): ?>
-                        <img src="<?php echo $profileImagePath; ?>" alt="<?php echo $clientFullName; ?>" class="rounded-circle border border-3 border-white" style="width: 150px; height: 140px; object-fit: cover;">
-                    <?php else: ?>
-                        <div class="rounded-circle border border-3 border-white d-flex align-items-center justify-content-center bg-secondary" style="width: 130px; height: 120px;">
-                            <i class="fas fa-user fa-3x text-white"></i>
-                        </div>
-                    <?php endif; ?>
+
+
+    <div class="container mt-3 ">
+
+    <div class="sched-banner position-relative mb-5 mt-5" style="background-image: url('./../asset/img/sched-reservation/sched-banner.png'); background-size: cover; background-position: center; min-height: 600px;">
+    <div class="container position-absolute bottom-0 start-0 p-3 d-flex align-items-center">
+        <div class="profile-container d-flex align-items-center">
+            <!-- Profile Picture with fallback -->
+            <?php if (!empty($profileImagePath)): ?>
+                <img src="<?php echo $profileImagePath; ?>" alt="<?php echo $clientFullName; ?>" class="rounded-circle border border-3 border-white" style="width: 150px; height: 140px; object-fit: cover;">
+            <?php else: ?>
+                <div class="rounded-circle border border-3 border-white d-flex align-items-center justify-content-center bg-secondary" style="width: 130px; height: 120px;">
+                    <i class="fas fa-user fa-3x text-white"></i>
                 </div>
-                <div class="client-info ms-3 text-white">
-                    <!-- Client Full Name -->
-                    <h5 class="mb-1"><?php echo $clientFullName; ?></h5>
-                    <!-- Client Email -->
-                    <p class="mb-0"><?php echo $email; ?></p>
-                </div>
-            </div>
+            <?php endif; ?>
         </div>
+        <div class="client-info ms-3 text-white">
+            <!-- Client Full Name -->
+            <h5 class="mb-1"><?php echo $clientFullName; ?></h5>
+            <!-- Client Email -->
+            <p class="mb-0"><?php echo $email; ?></p>
+        </div>
+    </div>
+</div>
 
         <h3>Reservation Tracking</h3>
 
@@ -766,6 +758,7 @@ $note = $reservation['note_area'] ?? 'No notes available.';
 
             <div class="right-content col-md-4 px-5 ">
                 <?php if ($reservation['res_status'] === 'payment'): ?>
+                
                         <div class="border rounded shadow-sm p-3">
                             <form method="POST" enctype="multipart/form-data" class="mt-3" id="receiptForm">
                              <input type="hidden" name="reservation_id" value="<?php echo htmlspecialchars($reservation['id']); ?>">
@@ -797,31 +790,36 @@ $note = $reservation['note_area'] ?? 'No notes available.';
                                 <button type="button" class="btn btn-danger rounded mt-3 w-100" data-bs-toggle="modal" data-bs-target="#cancelReservationModal">Cancel Reservation</button>
                             </form>
                         </div>
+                   
                 <?php elseif ($reservation['res_status'] === 'paid'): ?>
                     <div class="text-center p-4 rounded shadow container-fluid mb-5" style="background-color: #FF902B; color: white;">
-                        <div class="check-circle ">
+                    <div class="check-circle ">
                             <i class="fas fa-check"></i>
                         </div>
                         <h4 class="mb-2"><i class="bi bi-check-circle-fill"></i> Payment Successful!</h4>
                         <p>Your payment has been received. <strong>Kahel Cafe</strong> is currently verifying your receipt. Please wait for confirmation.</p>
                     </div>
+                   
                 <?php elseif ($reservation['res_status'] === 'booked' || $reservation['res_status'] === 'rate us'): ?>
                     <form method="POST" class="mt-3">
-                        <div class="text-center mt-4">
-                            <h5>Scan to View Reservation Details</h5>
-                            <img src="<?php echo $qrFile; ?>" alt="Reservation QR Code" class="img-fluid" />
-                            <br>
+                  
+                    <div class="text-center mt-4">
+                        <h5>Scan to View Reservation Details</h5>
+                        <img src="<?php echo $qrFile; ?>" alt="Reservation QR Code" class="img-fluid" />
+                        <br>
                         </div>
-                    </form>
-                    <div class="alert alert-info mt-2 text-center">
-                        <strong>Please show this QR code to the cashier.</strong>
-                    </div>
-                    
-                    <div class="qr container-fluid my-4 d-flex justify-content-center rounded-pill">
+                        </form>
+                        <div class="alert alert-info mt-2 text-center">
+                            <strong>Please show this QR code to the cashier.</strong>
+                        </div>
+                      
+                        <div class="qr container-fluid my-4 d-flex justify-content-center rounded-pill">
                         <a href="<?php echo $qrFile; ?>" download="reservation_qr_<?php echo $reservation['id']; ?>.png" class="btn p-2 w-100 rounded-pill text-light" style="background-color: #FF902B;">
                             Download QR Code
                         </a>
-                    </div>
+                   
+                        </div>
+                   
 
                     <?php if ($reservation['res_status'] === 'rate us'): ?>
                         <div class="back mt-3">
@@ -923,7 +921,9 @@ $note = $reservation['note_area'] ?? 'No notes available.';
                 },
                 error: function(xhr, status, error) {
                     // Handle AJAX errors
-                    let errorMessage = 'Error uploading receipt. Please try again.';
+                    // let errorMessage = 'Error uploading receipt. Please try again.';
+                    alert(response.message);
+                    window.location.reload();
                     try {
                         const response = JSON.parse(xhr.responseText);
                         if (response.message) {
@@ -1037,49 +1037,46 @@ $note = $reservation['note_area'] ?? 'No notes available.';
         <?php endif; ?>
         
         // Cancel reservation handler - FIXED
-        $('#confirmCancel').on('click', function() {
-            var reservationId = <?php echo $reservation['id']; ?>;
+        $('#confirmCancel').on('click', function () {
+            var reservationId = <?php echo json_encode($reservation['id']); ?>;
             
-            // Show loading state
-            var cancelBtn = $(this);
-            cancelBtn.prop('disabled', true);
-            cancelBtn.html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processing...');
+            console.log('Attempting to cancel reservation ID:', reservationId);
             
+            // Create form data
+            var formData = new FormData();
+            formData.append('cancel_reservation', 'true');
+            formData.append('id', reservationId);
+            
+            // Submit the request
             $.ajax({
                 type: 'POST',
-                url: ,
-                data: {
-                    cancel_reservation: true,
-                    id: reservationId
-                },
-                dataType: 'json',
+                url: window.location.href,
+                data: formData,
+                processData: false,
+                contentType: false,
                 success: function(response) {
-                    if (response.status === 'success') {
-                        // Show success message and reload
-                        alert(response.message);
-                        window.location.reload();
-                    } else {
-                        // Show error message
-                        alert(response.message || 'Error cancelling reservation');
-                        cancelBtn.prop('disabled', false);
-                        cancelBtn.text('Yes, Cancel Reservation');
+                    try {
+                        // Try to parse JSON response
+                        var jsonResponse = JSON.parse(response);
+                        if (jsonResponse.status === 'success') {
+                            alert('Reservation canceled successfully');
+                            window.location.reload();
+                        } else {
+                            alert('Error: ' + (jsonResponse.message || 'Unknown error occurred'));
+                        }
+                    } catch (e) {
+                        // If not JSON, check for HTML response
+                        if (response.indexOf('success') !== -1) {
+                            alert('Reservation canceled successfully');
+                            window.location.reload();
+                        } else {
+                            alert('Error canceling reservation');
+                        }
                     }
                 },
                 error: function(xhr, status, error) {
-                    // Handle AJAX errors
-                    var errorMessage = 'Error cancelling reservation. Please try again.';
-                    try {
-                        var response = JSON.parse(xhr.responseText);
-                        if (response.message) {
-                            errorMessage = response.message;
-                        }
-                    } catch (e) {
-                        console.error('Error parsing response:', e);
-                    }
-                    
-                    alert(errorMessage);
-                    cancelBtn.prop('disabled', false);
-                    cancelBtn.text('Yes, Cancel Reservation');
+                    console.error('Error:', error);
+                    alert('Error canceling reservation. Please try again.');
                 }
             });
         });

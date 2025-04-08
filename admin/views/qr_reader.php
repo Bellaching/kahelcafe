@@ -52,9 +52,12 @@
        <!-- Trigger Button -->
 <!-- Trigger Button -->
 <div class="">
-  <button type="button" style="background-color: #07D090; color: white; padding: 6px 16px; font-size: 14px; border-radius: 6px; font-weight: 500; border: none;" data-bs-toggle="modal" data-bs-target="#qrScannerModal">
-    <i class="fas fa-qrcode me-1"></i> Scan QR Code
-  </button>
+<button type="button" class="btn btn-sm fw-medium rounded-3 py-3 px-3 text-light" style="background-color: #07D090;" data-bs-toggle="modal" data-bs-target="#qrScannerModal">
+    <i class="fas fa-qrcode me-1 text-light"></i> Scan QR Code
+</button>
+
+
+
 </div>
 
 
