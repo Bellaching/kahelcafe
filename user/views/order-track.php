@@ -178,7 +178,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['upload_receipt'])) {
                 $stmt->execute();
                 $stmt->close();
 
-                echo "<div class='alert alert-success'>Receipt uploaded successfully and order status updated to paid!</div>";
+                // Redirect to refresh the page and show updated status
+                header("Location: ".$_SERVER['PHP_SELF']);
+                exit();
             } else {
                 echo "<div class='alert alert-danger'>Failed to upload the receipt.</div>";
             }
@@ -593,7 +595,7 @@ $note = $orderItems[0]['note'] ?? 'No notes available.';
                 <div class="title">For Confirmation</div>
                 <div class="description">We're confirming your order</div>
             </div>
-            <div class="step <?php echo ($order['status'] === 'payment' && $order['status'] === 'Paid' ? 'active' : '' ); ?>">
+            <div class="step <?php echo ($order['status'] === 'payment' || $order['status'] === 'Paid' ? 'active' : ''); ?>">
                 <div class="icon"></div>
                 <div class="title">Payment</div>
                 <div class="description">Payment processing</div>
@@ -652,7 +654,7 @@ $note = $orderItems[0]['note'] ?? 'No notes available.';
                     </table>
                 </div>
 
-                <?php if ($order['status'] === 'payment' || $order['status'] === 'booked'): ?>
+                <?php if ($order['status'] === 'payment' || $order['status'] === 'booked' || $order['status'] === 'Paid'): ?>
                     <div class="order-sum">
                         <h5 class="bold">Order Summary</h5>
                         <div class="row">
@@ -686,7 +688,7 @@ $note = $orderItems[0]['note'] ?? 'No notes available.';
                                 </div>
                                 <div class="d-flex justify-content-between w-100">
                                     <p><strong>Reservation Fee:</strong></p>
-                                    <p><?php echo htmlspecialchars($order['reservation_fee']); ?></p>
+                                    <p>₱<?php echo number_format($order['reservation_fee'], 2); ?></p>
                                 </div>
                             </div>
                         </div>
@@ -712,65 +714,6 @@ $note = $orderItems[0]['note'] ?? 'No notes available.';
                         </div>
                     </div>
 
-                <?php elseif ($order['status'] === 'Paid' ): ?>
-                    <div class="order-sum">
-                        <h5 class="bold">Order Summary</h5>
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="d-flex justify-content-between w-100">
-                                    <p><strong>Name:</strong></p>
-                                    <p><?php echo htmlspecialchars($order['client_full_name']); ?></p>
-                                </div>
-                                <div class="d-flex justify-content-between w-100">
-                                    <p><strong>Transaction ID:</strong></p>
-                                    <p><?php echo htmlspecialchars($order['transaction_id']); ?></p>
-                                </div>
-                                <div class="d-flex justify-content-between w-100">
-                                    <p><strong>Reservation Type:</strong></p>
-                                    <p><?php echo htmlspecialchars($order['reservation_type']); ?></p>
-                                </div>
-                            </div>
-
-                            <div class="col-md-6">
-                                <div class="d-flex justify-content-between w-100">
-                                    <p><strong>Reservation Date:</strong></p>
-                                    <p><?php echo htmlspecialchars($order['reservation_date']); ?></p>
-                                </div>
-                                <div class="d-flex justify-content-between w-100">
-                                    <p><strong>Reservation Time:</strong></p>
-                                    <p><?php echo htmlspecialchars($order['reservation_time']); ?></p>
-                                </div>
-                                <div class="d-flex justify-content-between w-100">
-                                    <p><strong>Party Size:</strong></p>
-                                    <p><?php echo htmlspecialchars($order['party_size']); ?></p>
-                                </div>
-                                <div class="d-flex justify-content-between w-100">
-                                    <p><strong>Reservation Fee:</strong></p>
-                                    <p><?php echo htmlspecialchars($order['reservation_fee']); ?></p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <p><strong>Total Price:</strong> ₱<?php echo number_format($order['total_price'], 2); ?></p>
-                    </div>
-
-                    <div class="note-section mt-4">
-                        <label for="user-note" class="p-1">Notes</label>
-                        <div id="user-note" class="form-control" style="border-color: #B3B3B3; border-radius: 10px; height: 150px; overflow-y: auto; padding: 10px; background-color: #f8f9fa; pointer-events: none; user-select: none;">
-                            <?php
-                            $hasNotes = false;
-                            foreach ($orderItems as $item) {
-                                if (!empty($item['note'])) {
-                                    echo "<p>" . htmlspecialchars($item['note']) . "</p>";
-                                    $hasNotes = true;
-                                }
-                            }
-                            if (!$hasNotes) {
-                                echo "No notes available.";
-                            }
-                            ?>
-                        </div>
-                    </div>
                 <?php elseif ($order['status'] === 'for confirmation'): ?>
                     <div id="user-note" class="form-control" style="border-radius: 10px; height: 150px; overflow-y: auto;">
                         <?php
@@ -791,7 +734,7 @@ $note = $orderItems[0]['note'] ?? 'No notes available.';
 
             <div class="right col-12 col-lg-4 px-3 px-md-5 border border-1 rounded">
                 <?php if ($order['status'] === 'payment'): ?>
-                    <form method="POST" enctype="multipart/form-data" class="mt-3">
+                    <form method="POST" enctype="multipart/form-data" class="mt-3" id="receiptForm">
                         <input type="hidden" name="order_id" value="<?php echo htmlspecialchars($order['order_id']); ?>">
                         
                         <!-- Timer Section -->
@@ -869,10 +812,9 @@ $note = $orderItems[0]['note'] ?? 'No notes available.';
                     </div>
 
                     <div class="qr my-4 d-flex justify-content-center rounded-pill">
-                    <a href="<?php echo $qrFile; ?>" download="order_qr_<?php echo $order['order_id']; ?>.png" class="btn p-2 w-100 rounded-pill text-light" style="background-color: #FF902B;">
-    Download QR Code
-</a>
-
+                        <a href="<?php echo $qrFile; ?>" download="order_qr_<?php echo $order['order_id']; ?>.png" class="btn p-2 w-100 rounded-pill text-light" style="background-color: #FF902B;">
+                            Download QR Code
+                        </a>
                     </div>
                 <?php elseif ($order['status'] === 'for confirmation'): ?>
                     <div class="order-sums mb-5">
@@ -906,7 +848,7 @@ $note = $orderItems[0]['note'] ?? 'No notes available.';
                   
                         <div class="d-flex justify-content-between w-100">
                             <p><strong>Reservation Fee:</strong></p>
-                            <p><?php echo htmlspecialchars($order['reservation_fee']); ?></p>
+                            <p>₱<?php echo number_format($order['reservation_fee'], 2); ?></p>
                         </div>
                         <div class="d-flex justify-content-between w-100">
                             <p><strong>Total Price:</strong></p>
@@ -954,7 +896,7 @@ $note = $orderItems[0]['note'] ?? 'No notes available.';
                         </div>
                         <div class="d-flex justify-content-between w-100">
                             <p><strong>Reservation Fee:</strong></p>
-                            <p><?php echo htmlspecialchars($order['reservation_fee']); ?></p>
+                            <p>₱<?php echo number_format($order['reservation_fee'], 2); ?></p>
                         </div>
                         <div class="d-flex justify-content-between w-100">
                             <p><strong>Total Price:</strong></p>
@@ -1005,30 +947,6 @@ $note = $orderItems[0]['note'] ?? 'No notes available.';
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.7/dist/umd/popper.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/5.3.3/js/bootstrap.min.js"></script>
 
-    <script>
-
-function reloadBodyContent() {
-    $.ajax({
-        url: window.location.href,  // Fetch the same page to get updated body content
-        success: function(response) {
-            // Replace the entire body content with the updated response
-            $('body').html($(response).find('body').html());
-        }
-    });
-}
-
-// Reload the body every 3 seconds (3000 milliseconds)
-setInterval(reloadBodyContent, 3000);
-
-
-
-  setTimeout(function() {
-    const alert = document.getElementById('successAlert');
-    if (alert) {
-      alert.style.display = 'none';
-    }
-  }, 5000); // 5000 milliseconds = 5 seconds
-</script>
     <script>
         $(document).ready(function () {
             // Timer functionality for payment status
@@ -1132,7 +1050,6 @@ setInterval(reloadBodyContent, 3000);
             
             // Status checking and auto-reload functionality
             let currentStatus = "<?php echo $order['status']; ?>";
-            let checkInterval;
             
             function checkStatus() {
                 $.ajax({
@@ -1148,22 +1065,12 @@ setInterval(reloadBodyContent, 3000);
                     },
                     error: function() {
                         console.log('Error checking order status');
-                    },
-                    complete: function() {
-                    // Check again after 3 seconds (more frequent checking)
-                    setTimeout(checkStatus, 3000);
-                }
+                    }
                 });
             }
             
-            
-            // Start checking status every 5 seconds
-            checkInterval = setInterval(checkStatus, 5000);
-            
-            // Stop checking when the page is unloaded
-            $(window).on('beforeunload', function() {
-                clearInterval(checkInterval);
-            });
+            // Check status every 3 seconds
+            setInterval(checkStatus, 3000);
             
             // Star Rating Hover Effect
             $('.star-rating i').on('mouseenter', function() {
@@ -1234,6 +1141,28 @@ setInterval(reloadBodyContent, 3000);
                     },
                     error: function() {
                         alert('Error updating rating.');
+                    }
+                });
+            });
+            
+            // Handle form submission for receipt upload
+            $('#receiptForm').on('submit', function(e) {
+                e.preventDefault();
+                
+                var formData = new FormData(this);
+                
+                $.ajax({
+                    url: $(this).attr('action'),
+                    type: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    success: function(response) {
+                        // Reload the page after successful submission
+                        window.location.reload();
+                    },
+                    error: function() {
+                        alert('Error uploading receipt.');
                     }
                 });
             });

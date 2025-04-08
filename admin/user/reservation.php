@@ -23,7 +23,7 @@ try {
                   ORDER BY r.date_created DESC"; // Added ORDER BY to ensure latest first
         
         $result = $conn->query($query);
-        
+         
         if ($result === false) {
             throw new Exception('Database query failed: ' . $conn->error);
         }

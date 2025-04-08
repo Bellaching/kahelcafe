@@ -113,8 +113,8 @@ include './../inc/topNav.php';
             <!-- Orange Header -->
             <div class="modal-header" style="background-color: #FF902B; color: white;">
                 <h5 class="modal-title">Update Order Status</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
+                
+                    
                 </button>
             </div>
 

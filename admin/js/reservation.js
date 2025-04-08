@@ -25,12 +25,12 @@ $(document).ready(function() {
                 data: 'res_status',
                 render: function(data) {
                     const statusMap = {
-                      
+                       
                         "for confirmation": '<span class="text-light bg-info p-2 rounded">For confirmation</span>',
                         "payment": '<span class="text-light bg-warning p-2 rounded">Payment</span>',
                        "paid": '<span class="text-light p-2 rounded" style="background: linear-gradient(135deg,rgb(255, 7, 222) 0%, #FF9800 100%);">Paid</span>',
                       
-
+ 
                         "booked": '<span class="text-white bg-success p-2 rounded">Booked</span>',
                         "rate us": '<span class="text-light bg-secondary p-2 rounded">Complete</span>',
                         "cancel": '<span class="text-white bg-danger p-2 rounded">Cancelled</span>'
@@ -71,16 +71,16 @@ $(document).ready(function() {
         ]
     });
 
-    // Function to refresh DataTable
+  
     function refreshTable() {
-        table.ajax.reload(null, false); // false means don't reset user paging
+        table.ajax.reload(null, false); 
     }
 
-    // Set up polling to check for updates every 30 seconds
-    const pollInterval = 30000; // 30 seconds
+    
+    const pollInterval = 30000;
     let pollingTimer = setInterval(refreshTable, pollInterval);
 
-    // Optionally, you can stop polling when the tab is not active
+   
     $(window).blur(function() {
         clearInterval(pollingTimer);
     }).focus(function() {
@@ -150,7 +150,7 @@ $(document).ready(function() {
                     }
                 }
             });
-        }
+        } 
     };
 
     $('#saveStatusBtn').on('click', function() {

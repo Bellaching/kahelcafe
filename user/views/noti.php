@@ -30,15 +30,21 @@ function getLatestNotifications($conn, $limit = 10) {
     $orderQuery .= " ORDER BY last_updated DESC LIMIT $limit";
     $orderResult = mysqli_query($conn, $orderQuery);
     
-    while ($row = mysqli_fetch_assoc($orderResult)) {
-        $notifications[] = [
-            'type' => 'order',
-            'id' => $row['order_id'],
-            'name' => $row['client_full_name'],
-            'status' => $row['status'],
-            'time' => $row['last_updated'],
-            'is_read' => in_array($row['order_id'], $_SESSION['read_notifications']['order'] ?? [])
-        ];
+       // Check if query succeeded
+       if ($orderResult === false) {
+        // Log or handle the error
+        error_log("Order query failed: " . mysqli_error($conn));
+    } else {
+        while ($row = mysqli_fetch_assoc($orderResult)) {
+            $notifications[] = [
+                'type' => 'order',
+                'id' => $row['order_id'],
+                'name' => $row['client_full_name'],
+                'status' => $row['status'],
+                'time' => $row['last_updated'],
+                'is_read' => in_array($row['order_id'], $_SESSION['read_notifications']['order'] ?? [])
+            ];
+        }
     }
     
     // Get reservations (excluding cleared)
@@ -126,7 +132,8 @@ if (isset($_GET['action'])) {
                 <?php foreach ($notifications as $notification): ?>
                     <div class="notification-item <?= $notification['is_read'] ? '' : 'unread' ?>" 
                          data-type="<?= $notification['type'] ?>" 
-                         data-id="<?= $notification['id'] ?>">
+                         data-id="<?= $notification['id'] ?>"
+                         data-url="<?= $notification['type'] === 'reservation' ? 'reservation_track.php?id=' . $notification['id'] : 'order-track.php?order_id=' . $notification['id'] ?>">
                         <div class="notification-message">
                             <?= htmlspecialchars($notification['name']) ?>
                             <span class="notification-status"><?= htmlspecialchars($notification['status']) ?></span>
@@ -275,7 +282,10 @@ $unreadCount = count(array_filter($notifications, fn($n) => !$n['is_read']));
 <div class="notification-modal" id="notificationModal">
     <div class="notification-header">
         <strong>Notifications</strong>
-      
+        <div class="notification-actions">
+            <button id="markAllRead">Mark all as read</button>
+            <button id="clearAll">Clear all</button>
+        </div>
     </div>
     <div class="notification-list" id="notificationList">
         <?php if (empty($notifications)): ?>
@@ -284,7 +294,8 @@ $unreadCount = count(array_filter($notifications, fn($n) => !$n['is_read']));
             <?php foreach ($notifications as $notification): ?>
                 <div class="notification-item <?= $notification['is_read'] ? '' : 'unread' ?>" 
                      data-type="<?= $notification['type'] ?>" 
-                     data-id="<?= $notification['id'] ?>">
+                     data-id="<?= $notification['id'] ?>"
+                     data-url="<?= $notification['type'] === 'reservation' ? 'reservation_track.php?id=' . $notification['id'] : 'order-track.php?order_id=' . $notification['id'] ?>">
                     <div class="notification-message">
                         <?= htmlspecialchars($notification['name']) ?>
                         <span class="notification-status"><?= htmlspecialchars($notification['status']) ?></span>
@@ -354,7 +365,10 @@ $unreadCount = count(array_filter($notifications, fn($n) => !$n['is_read']));
             
             if (data.success) {
                 document.getElementById('notificationList').innerHTML = data.content;
-                document.querySelector('.notification-badge').textContent = data.unreadCount;
+                const badge = document.querySelector('.notification-badge');
+                if (badge) {
+                    badge.textContent = data.unreadCount;
+                }
                 
                 // Reattach click handlers
                 document.querySelectorAll('.notification-item').forEach(item => {
@@ -368,25 +382,26 @@ $unreadCount = count(array_filter($notifications, fn($n) => !$n['is_read']));
     
     // Handle notification click
     async function handleNotificationClick() {
-        const type = this.dataset.type;
-        const id = this.dataset.id;
+        const url = this.dataset.url;
         
         // Mark as read visually
         this.classList.remove('unread');
         
         // Update server
-        await fetch(`?action=mark_read&type=${type}&id=${id}`);
+        try {
+            await fetch(`?action=mark_read&type=${this.dataset.type}&id=${this.dataset.id}`);
+        } catch (error) {
+            console.error('Error marking as read:', error);
+        }
         
         // Update badge count
         const badge = document.querySelector('.notification-badge');
-        badge.textContent = Math.max(0, parseInt(badge.textContent) - 1);
+        if (badge) {
+            badge.textContent = Math.max(0, parseInt(badge.textContent) - 1);
+        }
         
         // Redirect
-        if (type === 'reservation') {
-            window.location.href = `reservation_track.php?id=${id}`;
-        } else {
-            window.location.href = `order-track.php?order_id=${id}`;
-        }
+        window.location.href = url;
     }
     
     // Mark all as read
@@ -396,10 +411,17 @@ $unreadCount = count(array_filter($notifications, fn($n) => !$n['is_read']));
         });
         
         // Update badge
-        document.querySelector('.notification-badge').textContent = '0';
+        const badge = document.querySelector('.notification-badge');
+        if (badge) {
+            badge.textContent = '0';
+        }
         
         // Update server
-        await fetch('?action=mark_all_read');
+        try {
+            await fetch('?action=mark_all_read');
+        } catch (error) {
+            console.error('Error marking all as read:', error);
+        }
     });
     
     // Clear all
@@ -407,10 +429,17 @@ $unreadCount = count(array_filter($notifications, fn($n) => !$n['is_read']));
         document.getElementById('notificationList').innerHTML = `
             <div class="no-notifications">No new notifications</div>
         `;
-        document.querySelector('.notification-badge').textContent = '0';
+        const badge = document.querySelector('.notification-badge');
+        if (badge) {
+            badge.textContent = '0';
+        }
         
         // Update server
-        await fetch('?action=clear_all');
+        try {
+            await fetch('?action=clear_all');
+        } catch (error) {
+            console.error('Error clearing all:', error);
+        }
     });
     
     // Initial click handlers

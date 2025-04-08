@@ -72,7 +72,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['register'])) {
     // Validate password
     if (empty($password)) {
         $errors['password'] = "Password is required.";
-    }elseif (strlen($password) < 8) {
+    } elseif (strlen($password) < 8) {
         $errors['password'] = "Password must be at least 8 characters long.";
     }
 
@@ -81,37 +81,35 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['register'])) {
         $errors['confirm_password'] = "Passwords do not match.";
     }
 
-   
-  // If there are no errors, proceed with registration
-if (empty($errors)) {
-    $verificationCode = generateVerificationCode();
-    $expiryTime = date("Y-m-d H:i:s", strtotime('+2 minutes'));
+    // If there are no errors, proceed with registration
+    if (empty($errors)) {
+        $verificationCode = generateVerificationCode();
+        $expiryTime = date("Y-m-d H:i:s", strtotime('+2 minutes'));
 
-    // Directly use the password without hashing
-    $plainPassword = $password; // Use the plain password
+        // Hash the password before storing it
+        $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
 
-    // Insert the new email and verification code into the database
-    $stmt = $conn->prepare("INSERT INTO client (email, firstname, lastname, contact_number, password, verification_code, code_expiry) VALUES (?, ?, ?, ?, ?, ?, ?)");
-    $stmt->bind_param("sssssss", $email, $firstname, $lastname, $contact_number, $plainPassword, $verificationCode, $expiryTime);
+        // Insert the new email and verification code into the database
+        $stmt = $conn->prepare("INSERT INTO client (email, firstname, lastname, contact_number, password, verification_code, code_expiry) VALUES (?, ?, ?, ?, ?, ?, ?)");
+        $stmt->bind_param("sssssss", $email, $firstname, $lastname, $contact_number, $hashedPassword, $verificationCode, $expiryTime);
 
-    if ($stmt->execute()) {
-        // Prepare verification link
-        $mail->addAddress($email); // Send to the registered email
-        $mail->setFrom('kahelcafeweb@gmail.com', 'Kahel Cafe');
-        $mail->isHTML(true);
-        $mail->Subject = 'Email Verification';
-        $mail->Body = "Your verification code is: $verificationCode. It is valid for 2 minutes.";
+        if ($stmt->execute()) {
+            // Prepare verification link
+            $mail->addAddress($email); // Send to the registered email
+            $mail->setFrom('kahelcafeweb@gmail.com', 'Kahel Cafe');
+            $mail->isHTML(true);
+            $mail->Subject = 'Email Verification';
+            $mail->Body = "Your verification code is: $verificationCode. It is valid for 2 minutes.";
 
-        if ($mail->send()) {
-            $registrationSuccess = true; // Set registration success only after sending the email
+            if ($mail->send()) {
+                $registrationSuccess = true; // Set registration success only after sending the email
+            } else {
+                $errors['email'] = "Error sending verification email: " . $mail->ErrorInfo;
+            }
         } else {
-            $errors['email'] = "Error sending verification email: " . $mail->ErrorInfo;
+            $errors['database'] = "Error executing insert statement: " . $stmt->error;
         }
-    } else {
-        $errors['database'] = "Error executing insert statement: " . $stmt->error;
     }
-}
-
 }
 
 function generateVerificationCode() {

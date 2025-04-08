@@ -1,6 +1,6 @@
 <?php 
 include './../../connection/connection.php';
-include './../inc/topNav.php';
+
 ?>
 
 <!DOCTYPE html>
@@ -12,12 +12,16 @@ include './../inc/topNav.php';
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet">
 
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- Bootstrap Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    
 
-
-    <!-- DataTables CSS -->
-    <link href="https://cdn.datatables.net/1.13.1/css/jquery.dataTables.min.css" rel="stylesheet">
-    <!-- Font Awesome -->
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+<!-- DataTables CSS -->
+<link href="https://cdn.datatables.net/1.13.1/css/jquery.dataTables.min.css" rel="stylesheet">
+<!-- Font Awesome -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
     
     <style>
         * {
@@ -130,6 +134,7 @@ include './../inc/topNav.php';
             <div class="col-12 col-md-10 col-lg-8">
                 <p class="account-text">
                     Reservation <span class="management-underline">Management</span>
+                    <?php include "./../../admin/views/qr_reader.php"?>
                 </p>
             </div>
         </div>

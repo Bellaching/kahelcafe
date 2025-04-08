@@ -338,8 +338,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) ){
                 </ul>
             </li>
 
+            <?php include "noti.php" ?>
+
             <!-- Notification Button (put this in your navbar) -->
-                <?php include './../inc/noti.php' ?>
+             
           
             <li class="nav-item dropdown">
                 <a class="nav-link dropdown-toggle text-black" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false"><?php echo htmlspecialchars($username); ?>(<?php echo htmlspecialchars($role); ?>)</a>
@@ -361,7 +363,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) ){
                 </ul>
             </li>
 
-            <?php include './../inc/noti.php' ?>
+         
           
             <li class="nav-item dropdown">
                 <a class="nav-link dropdown-toggle text-black" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false"><?php echo htmlspecialchars($username); ?>(<?php echo htmlspecialchars($role); ?>)</a>

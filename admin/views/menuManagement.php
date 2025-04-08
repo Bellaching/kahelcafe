@@ -35,6 +35,7 @@ $errors = [
     'editProductStatus' => ''
 ];
 
+
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['addMenuItem'])) {
     // Initialize variables
     $menuImage = '';
@@ -48,62 +49,99 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['addMenuItem'])) {
     $productStatus = isset($_POST['productStatus']) ? $conn->real_escape_string($_POST['productStatus']) : '';
 
     // Validation
-    if (empty($menuName)) {
+    $hasErrors = false;
+    
+    // Image validation
+    if (!isset($_FILES['menuImage']) ){
+        $errors['menuImage'] = "Image is required.";
+        $hasErrors = true;
+    } else {
+        if ($_FILES['menuImage']['error'] != 0) {
+            $errors['menuImage'] = "Image upload error occurred.";
+            $hasErrors = true;
+        } else {
+            $check = getimagesize($_FILES["menuImage"]["tmp_name"]);
+            if($check === false) {
+                $errors['menuImage'] = "File is not an image.";
+                $hasErrors = true;
+            }
+            
+            if ($_FILES["menuImage"]["size"] > 5000000) {
+                $errors['menuImage'] = "Image is too large. Maximum size is 5MB.";
+                $hasErrors = true;
+            }
+        }
+    }
+
+    // Name validation
+    if (empty(trim($menuName))) {
         $errors['menuName'] = "Menu name is required.";
+        $hasErrors = true;
+    } elseif (strlen(trim($menuName)) > 255) {
+        $errors['menuName'] = "Menu name must be less than 255 characters.";
+        $hasErrors = true;
     }
-    if (empty($menuDescription)) {
+
+    // Description validation
+    if (empty(trim($menuDescription))) {
         $errors['menuDescription'] = "Description is required.";
+        $hasErrors = true;
     }
+
+    // Category validation
+    $validCategories = ['Coffee', 'Non-Coffee', 'Signature Frappe', 'Starters', 'Pasta', 'Sandwich', 'Rice Meal', 'All Day Breakfast'];
     if (empty($menuCategory)) {
         $errors['menuCategory'] = "Category is required.";
+        $hasErrors = true;
+    } elseif (!in_array($menuCategory, $validCategories)) {
+        $errors['menuCategory'] = "Invalid category selected.";
+        $hasErrors = true;
     }
-    
-    // Validate size and temperature based on category
+
+    // Size validation (only for certain categories)
     if ($menuCategory === 'Coffee' || $menuCategory === 'Non-Coffee' || $menuCategory === 'Signature Frappe') {
         if (empty($menuSize)) {
             $errors['menuSize'] = "Please select at least one size.";
-        }
-        if (empty($menuTemperature)) {
-            $errors['menuTemperature'] = "Please select at least one temperature.";
-        }
-    }
-    
-    if ($menuQuantity <= 0) {
-        $errors['menuQuantity'] = "Quantity must be greater than 0.";
-    }
-    if ($menuPrice <= 0) {
-        $errors['menuPrice'] = "Price must be greater than 0.";
-    }
-    if (empty($productStatus)) {
-        $errors['productStatus'] = "Product status is required.";
-    }
-
-    // Handle image upload
-    if (isset($_FILES['menuImage']) && $_FILES['menuImage']['error'] == 0) {
-        $target_dir = "././../../uploads/";
-        $image_file = $target_dir . basename($_FILES["menuImage"]["name"]);
-        
-        // Check if file is an image
-        $check = getimagesize($_FILES["menuImage"]["tmp_name"]);
-        if($check === false) {
-            $errors['menuImage'] = "File is not an image.";
-        }
-        
-        // Check file size (5MB max)
-        if ($_FILES["menuImage"]["size"] > 5000000) {
-            $errors['menuImage'] = "Image is too large. Maximum size is 5MB.";
-        }
-        
-        if(empty($errors['menuImage'])) {
-            if (!move_uploaded_file($_FILES["menuImage"]["tmp_name"], $image_file)) {
-                $errors['menuImage'] = "Error uploading image.";
-            } else {
-                $menuImage = $image_file;
+            $hasErrors = true;
+        } else {
+            $validSizes = ['Small', 'Medium', 'Large'];
+            foreach ($menuSize as $size) {
+                if (!in_array($size, $validSizes)) {
+                    $errors['menuSize'] = "Invalid size selected.";
+                    $hasErrors = true;
+                    break;
+                }
             }
         }
-    } else {
-        $errors['menuImage'] = "Image is required.";
     }
+
+     // Quantity validation
+     if ($menuQuantity <= 0) {
+        $errors['menuQuantity'] = "Quantity must be greater than 0.";
+        $hasErrors = true;
+    } elseif ($menuQuantity > 100) {
+        $errors['menuQuantity'] = "Quantity cannot exceed 100.";
+        $hasErrors = true;
+    }
+
+    // Price validation
+    if ($menuPrice <= 0) {
+        $errors['menuPrice'] = "Price must be greater than 0.";
+        $hasErrors = true;
+    } elseif ($menuPrice > 1000) {
+        $errors['menuPrice'] = "Price cannot exceed ₱1000.";
+        $hasErrors = true;
+    }
+
+     // Status validation
+     $validStatuses = ['Available', 'Unavailable'];
+     if (empty($productStatus)) {
+         $errors['productStatus'] = "Product status is required.";
+         $hasErrors = true;
+     } elseif (!in_array($productStatus, $validStatuses)) {
+         $errors['productStatus'] = "Invalid status selected.";
+         $hasErrors = true;
+     }
 
     // If no errors, proceed with database insertion
     if (empty(array_filter($errors))) {
@@ -288,15 +326,13 @@ ob_end_flush();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Menu</title>
     <link rel="stylesheet" href="menu.css">
-    <link href="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-bs4.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet">
-
-
 
 <!-- DataTables CSS -->
 <link href="https://cdn.datatables.net/1.13.1/css/jquery.dataTables.min.css" rel="stylesheet">
 <!-- Font Awesome -->
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+
   
     <style>
         .add-index {
@@ -620,13 +656,14 @@ function renderMenuItems($result) {
                             </div>
                         </div>
                         <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="menuName" class="form-label">Menu Name</label>
-                                <input type="text" class="form-control <?php echo !empty($errors['menuName']) ? 'is-invalid' : '' ?>" id="menuName" name="menuName" value="<?php echo isset($_POST['menuName']) ? htmlspecialchars($_POST['menuName']) : '' ?>">
-                                <?php if (!empty($errors['menuName'])): ?>
-                                    <div class="error-message"><?php echo htmlspecialchars($errors['menuName']); ?></div>
-                                <?php endif; ?>
-                            </div>
+                        <div class="mb-3">
+    <label for="menuName" class="form-label">Menu Name</label>
+    <input type="text" class="form-control <?php echo !empty($errors['menuName']) ? 'is-invalid' : '' ?>" id="menuName" name="menuName" value="<?php echo isset($_POST['menuName']) ? htmlspecialchars($_POST['menuName']) : '' ?>">
+    <?php if (!empty($errors['menuName'])): ?>
+        <div class="error-message"><?php echo htmlspecialchars($errors['menuName']); ?></div>
+    <?php endif; ?>
+</div>
+
                             <div class="mb-3">
                                 <label for="menuCategory" class="form-label">Category</label>
                                 <select class="form-select <?php echo !empty($errors['menuCategory']) ? 'is-invalid' : '' ?>" id="menuCategory" name="menuCategory">
@@ -643,20 +680,22 @@ function renderMenuItems($result) {
                                     <div class="error-message"><?php echo htmlspecialchars($errors['menuCategory']); ?></div>
                                 <?php endif; ?>
                             </div>
-                            <div class="mb-3 container-fluid" id="menuSizeContainer">
-                                <label for="menuSize" class="form-label">Size</label>
-                                <div class="container-fluid">
-                                    <input type="checkbox" name="menuSize[]" value="Small" id="sizeSmall" <?php echo (isset($_POST['menuSize']) && in_array('Small', $_POST['menuSize'])) ? 'checked' : '' ?>>
-                                    <label for="sizeSmall" class="me-3">Small</label>
-                                    <input type="checkbox" name="menuSize[]" value="Medium" id="sizeMedium" <?php echo (isset($_POST['menuSize']) && in_array('Medium', $_POST['menuSize'])) ? 'checked' : '' ?>>
-                                    <label for="sizeMedium" class="me-3">Medium</label>
-                                    <input type="checkbox" name="menuSize[]" value="Large" id="sizeLarge" <?php echo (isset($_POST['menuSize']) && in_array('Large', $_POST['menuSize'])) ? 'checked' : '' ?>>
-                                    <label for="sizeLarge">Large</label>
-                                </div>
-                                <?php if (!empty($errors['menuSize'])): ?>
-                                    <div class="checkbox-error"><?php echo htmlspecialchars($errors['menuSize']); ?></div>
-                                <?php endif; ?>
-                            </div>
+
+                           <!-- For checkboxes -->
+<div class="mb-3 container-fluid" id="menuSizeContainer">
+    <label for="menuSize" class="form-label">Size</label>
+    <div class="container-fluid">
+        <input type="checkbox" name="menuSize[]" value="Small" id="sizeSmall" <?php echo (isset($_POST['menuSize']) && in_array('Small', $_POST['menuSize']) ? 'checked' : '' )?>>
+        <label for="sizeSmall" class="me-3">Small</label>
+        <input type="checkbox" name="menuSize[]" value="Medium" id="sizeMedium" <?php echo (isset($_POST['menuSize']) && in_array('Medium', $_POST['menuSize']) ? 'checked' : '' )?>>
+        <label for="sizeMedium" class="me-3">Medium</label>
+        <input type="checkbox" name="menuSize[]" value="Large" id="sizeLarge" <?php echo (isset($_POST['menuSize']) && in_array('Large', $_POST['menuSize']) ? 'checked' : '' )?>>
+        <label for="sizeLarge">Large</label>
+    </div>
+    <?php if (!empty($errors['menuSize'])): ?>
+        <div class="checkbox-error"><?php echo htmlspecialchars($errors['menuSize']); ?></div>
+    <?php endif; ?>
+</div>
                             <div class="mb-3 container-fluid" id="menuTemperatureContainer">
                                 <label for="menuTemperature" class="form-label">Temperature</label>
                                 <div class="container-fluid">

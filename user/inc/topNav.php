@@ -35,34 +35,34 @@ if (isset($_SESSION['user_id'])) {
     $stmt->fetch();
     $stmt->close();
 
-    // Fetch the notification count (unread notifications)
-    $sql = "SELECT COUNT(*) FROM notifications WHERE user_id = ? AND is_read = 0";
-    $stmt = $conn->prepare($sql);
-    $stmt->bind_param("i", $userId);
-    $stmt->execute();
-    $stmt->bind_result($notificationCount);
-    $stmt->fetch();
-    $stmt->close();
+    // // Fetch the notification count (unread notifications)
+    // $sql = "SELECT COUNT(*) FROM notifications WHERE user_id = ? AND is_read = 0";
+    // $stmt = $conn->prepare($sql);
+    // $stmt->bind_param("i", $userId);
+    // $stmt->execute();
+    // $stmt->bind_result($notificationCount);
+    // $stmt->fetch();
+    // $stmt->close();
 
     // Fetch all notifications for the user
-    $sql = "SELECT id, message, created_at FROM notifications WHERE user_id = ? ORDER BY created_at DESC";
-    $stmt = $conn->prepare($sql);
-    $stmt->bind_param("i", $userId);
-    $stmt->execute();
-    $notifications = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-    $stmt->close();
+    // $sql = "SELECT id, message, created_at FROM notifications WHERE user_id = ? ORDER BY created_at DESC";
+    // $stmt = $conn->prepare($sql);
+    // $stmt->bind_param("i", $userId);
+    // $stmt->execute();
+    // $notifications = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    // $stmt->close();
 } else {
     $cartCount = 0; // Default if the user is not logged in
     $notificationCount = 0; // Default if the user is not logged in
     $notifications = []; // Empty array if the user is not logged in
 }
 
-$sql = "SELECT id, message, created_at, is_read FROM notifications WHERE user_id = ? ORDER BY created_at DESC ";
-$stmt = $conn->prepare($sql);
-$stmt->bind_param("i", $userId);
-$stmt->execute();
-$notifications = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-$stmt->close();
+// $sql = "SELECT id, message, created_at, is_read FROM notifications WHERE user_id = ? ORDER BY created_at DESC ";
+// $stmt = $conn->prepare($sql);
+// $stmt->bind_param("i", $userId);
+// $stmt->execute();
+// $notifications = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+// $stmt->close();
 
 include '../views/change_profile.php';
 ?>
@@ -233,7 +233,9 @@ include '../views/change_profile.php';
             <?php if (isset($_SESSION['user_id'])): ?>
                 <!-- Notification Icon (only shown when logged in) -->
                 <li class="nav-item position-relative">
-                    <?php include "./../views/noti.php"?>
+
+                <?php include "./../views/noti.php" ?>
+               
                 </li>
 
                 <!-- Cart Icon (only shown when logged in) -->

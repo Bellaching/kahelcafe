@@ -1,9 +1,18 @@
 <?php
 
-
 include __DIR__ . '/../../connection/connection.php';
 
 
+// Initialize session storage if not exists
+if (!isset($_SESSION['read_notifications'])) {
+    $_SESSION['read_notifications'] = [];
+}
+
+if (!isset($_SESSION['cleared_notifications'])) {
+    $_SESSION['cleared_notifications'] = [];
+}
+
+// Function to get latest notifications (excluding cleared ones)
 function getLatestNotifications($conn, $limit = 10) {
     $notifications = [];
     
@@ -19,15 +28,21 @@ function getLatestNotifications($conn, $limit = 10) {
     $orderQuery .= " ORDER BY last_updated DESC LIMIT $limit";
     $orderResult = mysqli_query($conn, $orderQuery);
     
-    while ($row = mysqli_fetch_assoc($orderResult)) {
-        $notifications[] = [
-            'type' => 'order',
-            'id' => $row['order_id'],
-            'name' => $row['client_full_name'],
-            'status' => $row['status'],
-            'time' => $row['last_updated'],
-            'is_read' => in_array($row['order_id'], $_SESSION['read_notifications']['order'])
-        ];
+    // Check if query succeeded
+    if ($orderResult === false) {
+        // Log or handle the error
+        error_log("Order query failed: " . mysqli_error($conn));
+    } else {
+        while ($row = mysqli_fetch_assoc($orderResult)) {
+            $notifications[] = [
+                'type' => 'order',
+                'id' => $row['order_id'],
+                'name' => $row['client_full_name'],
+                'status' => $row['status'],
+                'time' => $row['last_updated'],
+                'is_read' => in_array($row['order_id'], $_SESSION['read_notifications']['order'] ?? [])
+            ];
+        }
     }
     
     // Get reservations
@@ -42,15 +57,21 @@ function getLatestNotifications($conn, $limit = 10) {
     $reservationQuery .= " ORDER BY date_created DESC LIMIT $limit";
     $reservationResult = mysqli_query($conn, $reservationQuery);
     
-    while ($row = mysqli_fetch_assoc($reservationResult)) {
-        $notifications[] = [
-            'type' => 'reservation',
-            'id' => $row['id'],
-            'name' => $row['clientFullName'],
-            'status' => $row['res_status'],
-            'time' => $row['date_created'],
-            'is_read' => in_array($row['id'], $_SESSION['read_notifications']['reservation'])
-        ];
+    // Check if query succeeded
+    if ($reservationResult === false) {
+        // Log or handle the error
+        error_log("Reservation query failed: " . mysqli_error($conn));
+    } else {
+        while ($row = mysqli_fetch_assoc($reservationResult)) {
+            $notifications[] = [
+                'type' => 'reservation',
+                'id' => $row['id'],
+                'name' => $row['clientFullName'],
+                'status' => $row['res_status'],
+                'time' => $row['date_created'],
+                'is_read' => in_array($row['id'], $_SESSION['read_notifications']['reservation'] ?? [])
+            ];
+        }
     }
     
     // Sort by newest first
@@ -60,32 +81,44 @@ function getLatestNotifications($conn, $limit = 10) {
     
     return array_slice($notifications, 0, $limit);
 }
-
 // Handle AJAX actions
 if (isset($_GET['action'])) {
     header('Content-Type: application/json');
     
     switch ($_GET['action']) {
         case 'mark_read':
-            if (isset($_GET['type'], $_GET['id'])) {
-                $_SESSION['read_notifications'][$_GET['type']][] = $_GET['id'];
+            if (!isset($_SESSION['read_notifications'][$_GET['type']])) {
+                $_SESSION['read_notifications'][$_GET['type']] = [];
             }
+            $_SESSION['read_notifications'][$_GET['type']][] = $_GET['id'];
             echo json_encode(['success' => true]);
             exit;
             
         case 'mark_all_read':
-            $latest = getLatestNotifications($conn, 100);
-            foreach ($latest as $notification) {
-                $_SESSION['read_notifications'][$notification['type']][] = $notification['id'];
-            }
+            $_SESSION['read_notifications'] = [
+                'order' => array_merge(
+                    $_SESSION['read_notifications']['order'] ?? [],
+                    array_column(array_filter(getLatestNotifications($conn, 100), 'id')
+                  )  ),
+                'reservation' => array_merge(
+                    $_SESSION['read_notifications']['reservation'] ?? [],
+                    array_column(array_filter(getLatestNotifications($conn, 100), 'id')
+                )
+           ) ];
             echo json_encode(['success' => true]);
             exit;
             
         case 'clear_all':
-            $latest = getLatestNotifications($conn, 100);
-            foreach ($latest as $notification) {
-                $_SESSION['cleared_notifications'][$notification['type']][] = $notification['id'];
-            }
+            $_SESSION['cleared_notifications'] = [
+                'order' => array_merge(
+                    $_SESSION['cleared_notifications']['order'] ?? [],
+                    array_column(array_filter(getLatestNotifications($conn, 100), 'id'))
+                ),
+                'reservation' => array_merge(
+                    $_SESSION['cleared_notifications']['reservation'] ?? [],
+                    array_column(array_filter(getLatestNotifications($conn, 100), 'id')
+                )
+           ) ];
             echo json_encode(['success' => true]);
             exit;
             
@@ -113,9 +146,10 @@ if (isset($_GET['action'])) {
                 <?php endforeach; ?>
             <?php endif;
             
+            $content = ob_get_clean();
             echo json_encode([
                 'success' => true,
-                'content' => ob_get_clean(),
+                'content' => $content,
                 'unreadCount' => $unreadCount
             ]);
             exit;
@@ -125,6 +159,7 @@ if (isset($_GET['action'])) {
 $notifications = getLatestNotifications($conn, 10);
 $unreadCount = count(array_filter($notifications, fn($n) => !$n['is_read']));
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -132,6 +167,7 @@ $unreadCount = count(array_filter($notifications, fn($n) => !$n['is_read']));
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Notifications</title>
     <style>
+        /* Notification Button */
         #notificationButton {
             position: relative;
             background: none;
@@ -140,6 +176,7 @@ $unreadCount = count(array_filter($notifications, fn($n) => !$n['is_read']));
             cursor: pointer;
             padding: 8px;
         }
+        
         .notification-badge {
             position: absolute;
             top: 0;
@@ -154,6 +191,8 @@ $unreadCount = count(array_filter($notifications, fn($n) => !$n['is_read']));
             align-items: center;
             justify-content: center;
         }
+        
+        /* Modal */
         .notification-modal {
             position: fixed;
             top: 60px;
@@ -167,6 +206,7 @@ $unreadCount = count(array_filter($notifications, fn($n) => !$n['is_read']));
             display: none;
             flex-direction: column;
         }
+        
         .notification-header {
             padding: 12px 16px;
             border-bottom: 1px solid #eee;
@@ -174,6 +214,7 @@ $unreadCount = count(array_filter($notifications, fn($n) => !$n['is_read']));
             justify-content: space-between;
             align-items: center;
         }
+        
         .notification-actions button {
             background: none;
             border: none;
@@ -182,25 +223,31 @@ $unreadCount = count(array_filter($notifications, fn($n) => !$n['is_read']));
             margin-left: 10px;
             font-size: 12px;
         }
+        
         .notification-list {
             overflow-y: auto;
             max-height: 60vh;
         }
+        
         .notification-item {
             padding: 12px 16px;
             border-bottom: 1px solid #f0f0f0;
             cursor: pointer;
             transition: background 0.2s;
         }
+        
         .notification-item.unread {
             background: #e3f2fd;
         }
+        
         .notification-item:hover {
             background: #f5f5f5;
         }
+        
         .notification-message {
             font-weight: 500;
         }
+        
         .notification-meta {
             font-size: 12px;
             color: #666;
@@ -208,6 +255,7 @@ $unreadCount = count(array_filter($notifications, fn($n) => !$n['is_read']));
             display: flex;
             justify-content: space-between;
         }
+        
         .notification-status {
             display: inline-block;
             padding: 2px 6px;
@@ -215,6 +263,7 @@ $unreadCount = count(array_filter($notifications, fn($n) => !$n['is_read']));
             background: #e0e0e0;
             font-size: 12px;
         }
+        
         .no-notifications {
             padding: 20px;
             text-align: center;
@@ -223,10 +272,13 @@ $unreadCount = count(array_filter($notifications, fn($n) => !$n['is_read']));
     </style>
 </head>
 <body>
+
+<!-- Notification Button -->
 <button id="notificationButton">
     🔔 <span class="notification-badge"><?= $unreadCount ?></span>
 </button>
 
+<!-- Notification Modal -->
 <div class="notification-modal" id="notificationModal">
     <div class="notification-header">
         <strong>Notifications</strong>
@@ -258,42 +310,53 @@ $unreadCount = count(array_filter($notifications, fn($n) => !$n['is_read']));
 </div>
 
 <script>
-    const refreshInterval = 3000;
+    // Global refresh interval
+    let refreshInterval = 3000; // 3 seconds
     let refreshTimer;
     let isModalOpen = false;
     
+    // Toggle modal
     const notificationButton = document.getElementById('notificationButton');
     const modal = document.getElementById('notificationModal');
     
     notificationButton.addEventListener('click', (e) => {
         e.stopPropagation();
-        isModalOpen = !modal.style.display || modal.style.display === 'none';
+        isModalOpen = !isModalOpen;
         modal.style.display = isModalOpen ? 'flex' : 'none';
         
         if (isModalOpen) {
+            // Refresh immediately when opening
             refreshNotifications();
+            // Start auto-refresh
             startAutoRefresh();
         } else {
+            // Stop auto-refresh when closing
             stopAutoRefresh();
         }
     });
     
+    // Close when clicking outside
     document.addEventListener('click', (e) => {
         if (!modal.contains(e.target) && e.target !== notificationButton) {
+            isModalOpen = false;
             modal.style.display = 'none';
             stopAutoRefresh();
         }
     });
     
+    // Auto-refresh control
     function startAutoRefresh() {
         stopAutoRefresh();
         refreshTimer = setInterval(refreshNotifications, refreshInterval);
     }
     
     function stopAutoRefresh() {
-        clearInterval(refreshTimer);
+        if (refreshTimer) {
+            clearInterval(refreshTimer);
+        }
     }
     
+    // Refresh notifications
     async function refreshNotifications() {
         try {
             const response = await fetch('?action=refresh');
@@ -302,50 +365,69 @@ $unreadCount = count(array_filter($notifications, fn($n) => !$n['is_read']));
             if (data.success) {
                 document.getElementById('notificationList').innerHTML = data.content;
                 document.querySelector('.notification-badge').textContent = data.unreadCount;
-                attachClickHandlers();
+                
+                // Reattach click handlers
+                document.querySelectorAll('.notification-item').forEach(item => {
+                    item.addEventListener('click', handleNotificationClick);
+                });
             }
         } catch (error) {
             console.error('Refresh failed:', error);
         }
     }
     
+    // Handle notification click
     async function handleNotificationClick() {
         const type = this.dataset.type;
         const id = this.dataset.id;
         
+        // Mark as read visually
         this.classList.remove('unread');
+        
+        // Update server
         await fetch(`?action=mark_read&type=${type}&id=${id}`);
         
+        // Update badge count
         const badge = document.querySelector('.notification-badge');
         badge.textContent = Math.max(0, parseInt(badge.textContent) - 1);
         
-        window.location.href = type === 'reservation' 
-            ? `reservation.php?id=${id}` 
-            : `index.php?order_id=${id}`;
+        // Redirect
+        if (type === 'reservation') {
+            window.location.href = `reservation.php?id=${id}`;
+        } else {
+            window.location.href = `index.php?order_id=${id}`;
+        }
     }
     
+    // Mark all as read
     document.getElementById('markAllRead').addEventListener('click', async () => {
         document.querySelectorAll('.notification-item').forEach(item => {
             item.classList.remove('unread');
         });
+        
+        // Update badge
         document.querySelector('.notification-badge').textContent = '0';
+        
+        // Update server
         await fetch('?action=mark_all_read');
     });
     
+    // Clear all
     document.getElementById('clearAll').addEventListener('click', async () => {
-        document.getElementById('notificationList').innerHTML = 
-            '<div class="no-notifications">No new notifications</div>';
+        document.getElementById('notificationList').innerHTML = `
+            <div class="no-notifications">No new notifications</div>
+        `;
         document.querySelector('.notification-badge').textContent = '0';
+        
+        // Update server
         await fetch('?action=clear_all');
     });
     
-    function attachClickHandlers() {
-        document.querySelectorAll('.notification-item').forEach(item => {
-            item.addEventListener('click', handleNotificationClick);
-        });
-    }
-    
-    attachClickHandlers();
+    // Initial click handlers
+    document.querySelectorAll('.notification-item').forEach(item => {
+        item.addEventListener('click', handleNotificationClick);
+    });
 </script>
+
 </body>
 </html>
