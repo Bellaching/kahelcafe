@@ -315,69 +315,116 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) ){
 <body>
 <nav class="navbar navbar-expand-lg navbar-default shadow-bottom">
     <div class="container-fluid navbar-container">
-        <a class="navbar-brand" href="#">
+        <!-- Brand/logo on the left -->
+        <a class="navbar-brand me-auto" href="#">
             <img src="./../../components/icon/kahel-cafe-logo.png" alt="MyWebsite" class="img-fluid" style="max-height: 60px;">
         </a>
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+        
+        <!-- Mobile toggle button -->
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
             <i class="fas fa-bars text-dark"></i>
         </button>
+        
+        <!-- Navigation items - all pushed to the right -->
         <div class="collapse navbar-collapse" id="navbarNav">
-    <ul class="navbar-nav ms-auto">
-        <!-- Owner Side -->
-        <?php if ($role === 'owner'): ?>
-            <li class="nav-item dropdown">
-                <a class="nav-link dropdown-toggle text-black" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">Admin side</a>
-                <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
-                    <li><a class="dropdown-item" href="./../views/accountManagement.php">Account Management</a></li>
-                    <li><a class="dropdown-item" href="./../views/client.php">Client Management</a></li>
-                    <li><a class="dropdown-item" href="./../views/index.php">Order Management</a></li>
-                    <li><a class="dropdown-item" href="./../views/reservation.php">Reservation Management</a></li>
-                    <li><a class="dropdown-item" href="./../views/report.php">Performance Report</a></li>
-                    <li><a class="dropdown-item" href="../views/menuManagement.php">Menu Management</a></li>
-                    <li><a class="dropdown-item" href="../views/content.php">Virtual Management</a></li>
-                </ul>
-            </li>
+            <div class="d-flex align-items-center ms-auto">
+                <!-- Owner Side -->
+                <?php if ($role === 'owner'): ?>
+                    <div class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle text-black" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">Admin side</a>
+                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
+                            <li><a class="dropdown-item" href="./../views/accountManagement.php">Account Management</a></li>
+                            <li><a class="dropdown-item" href="./../views/client.php">Client Management</a></li>
+                            <li><a class="dropdown-item" href="./../views/index.php">Order Management</a></li>
+                            <li><a class="dropdown-item" href="./../views/reservation.php">Reservation Management</a></li>
+                            <li><a class="dropdown-item" href="./../views/report.php">Performance Report</a></li>
+                            <li><a class="dropdown-item" href="../views/menuManagement.php">Menu Management</a></li>
+                            <li><a class="dropdown-item" href="../views/content.php">Virtual Management</a></li>
+                        </ul>
+                    </div>
 
-            <?php include "noti.php" ?>
+                    <!-- Notification Icon - properly aligned -->
+                    <li class="nav-item position-relative mx-2" style="top: -15px;">
+                        <?php include "noti.php" ?>
+                    </div>
 
-            <!-- Notification Button (put this in your navbar) -->
-             
-          
-            <li class="nav-item dropdown">
-                <a class="nav-link dropdown-toggle text-black" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false"><?php echo htmlspecialchars($username); ?>(<?php echo htmlspecialchars($role); ?>)</a>
-                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
-                    <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#changeProfileModal"><i class="fa-regular fa-user me-2"></i>Change Profile</a></li>
-                    <li><a class="dropdown-item" href="./../views/login.php"><i class="fa-solid fa-power-off me-2"></i>Logout</a></li>
-                </ul>
-            </li>
-        <?php endif; ?>
+                    <div class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle text-black" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <?php echo htmlspecialchars($username); ?>(<?php echo htmlspecialchars($role); ?>)
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                            <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#changeProfileModal"><i class="fa-regular fa-user me-2"></i>Change Profile</a></li>
+                            <li><a class="dropdown-item" href="./../views/login.php"><i class="fa-solid fa-power-off me-2"></i>Logout</a></li>
+                        </ul>
+                    </div>
+                <?php endif; ?>
 
-        <!-- Staff Side -->
-        <?php if ($role === 'staff'): ?>
-            <li class="nav-item dropdown">
-                <a class="nav-link dropdown-toggle text-black" href="#" id="adminDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">Admin Side</a>
-                <ul class="dropdown-menu" aria-labelledby="adminDropdown">
-                    <li><a class="dropdown-item" href="./../views/accountManagement.php">Order Management</a></li>
-                    <li><a class="dropdown-item" href="./../views/reservation.php">Reservation Management</a></li>
-                    <li><a class="dropdown-item" href="../views/menuManagement.php">Menu Management</a></li>
-                </ul>
-            </li>
+                <!-- Staff Side -->
+                <?php if ($role === 'staff'): ?>
+                    <div class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle text-black" href="#" id="adminDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">Admin Side</a>
+                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="adminDropdown">
+                            <li><a class="dropdown-item" href="./../views/accountManagement.php">Order Management</a></li>
+                            <li><a class="dropdown-item" href="./../views/reservation.php">Reservation Management</a></li>
+                            <li><a class="dropdown-item" href="../views/menuManagement.php">Menu Management</a></li>
+                        </ul>
+                    </div>
 
-         
-          
-            <li class="nav-item dropdown">
-                <a class="nav-link dropdown-toggle text-black" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false"><?php echo htmlspecialchars($username); ?>(<?php echo htmlspecialchars($role); ?>)</a>
-                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
-                    <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#changeProfileModal"><i class="fa-regular fa-user me-2"></i>Change Profile</a></li>
-                    <li><a class="dropdown-item" href="./../views/login.php"><i class="fa-solid fa-power-off me-2"></i>Logout</a></li>
-                </ul>
-            </li>
-        <?php endif; ?>
-    </ul>
-</div>
+                    <div class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle text-black" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <?php echo htmlspecialchars($username); ?>(<?php echo htmlspecialchars($role); ?>)
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                            <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#changeProfileModal"><i class="fa-regular fa-user me-2"></i>Change Profile</a></li>
+                            <li><a class="dropdown-item" href="./../views/login.php"><i class="fa-solid fa-power-off me-2"></i>Logout</a></li>
+                        </ul>
+                    </div>
+                <?php endif; ?>
+            </div>
+        </div>
     </div>
 </nav>
 
+<style>
+    /* Additional CSS to ensure perfect alignment */
+    .navbar-nav, .d-flex.align-items-center {
+        gap: 0.5rem;
+    }
+    
+    .nav-item {
+        display: flex;
+        align-items: center;
+    }
+    
+    /* Ensure notification icon aligns perfectly */
+    #notificationDropdown {
+        padding: 0.5rem 1rem;
+    }
+    
+    /* Mobile view adjustments */
+    @media (max-width: 991.98px) {
+        .d-flex.align-items-center {
+            flex-direction: column;
+            align-items: flex-end !important;
+            width: 100%;
+            padding: 0.5rem 0;
+        }
+        
+        .nav-item {
+            width: 100%;
+            justify-content: flex-end;
+            padding: 0.25rem 0;
+        }
+        
+        .dropdown-menu {
+            position: static !important;
+            transform: none !important;
+            width: 100%;
+            border: none;
+            box-shadow: none;
+        }
+    }
+</style>
 <!-- Change Profile Modal -->
 <div class="modal fade" id="changeProfileModal" tabindex="-1" aria-labelledby="changeProfileModalLabel" aria-hidden="true">
     <div class="modal-dialog">

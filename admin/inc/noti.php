@@ -2,14 +2,19 @@
 
 include __DIR__ . '/../../connection/connection.php';
 
-
 // Initialize session storage if not exists
 if (!isset($_SESSION['read_notifications'])) {
-    $_SESSION['read_notifications'] = [];
+    $_SESSION['read_notifications'] = [
+        'order' => [],
+        'reservation' => []
+    ];
 }
 
 if (!isset($_SESSION['cleared_notifications'])) {
-    $_SESSION['cleared_notifications'] = [];
+    $_SESSION['cleared_notifications'] = [
+        'order' => [],
+        'reservation' => []
+    ];
 }
 
 // Function to get latest notifications (excluding cleared ones)
@@ -22,17 +27,13 @@ function getLatestNotifications($conn, $limit = 10) {
                    WHERE status NOT IN ('completed', 'booked', 'rate us')";
                    
     if (!empty($_SESSION['cleared_notifications']['order'])) {
-        $orderQuery .= " AND order_id NOT IN (" . implode(',', $_SESSION['cleared_notifications']['order']) . ")";
+        $orderQuery .= " AND order_id NOT IN (" . implode(',', array_map('intval', $_SESSION['cleared_notifications']['order'])) . ")";
     }
     
     $orderQuery .= " ORDER BY last_updated DESC LIMIT $limit";
     $orderResult = mysqli_query($conn, $orderQuery);
     
-    // Check if query succeeded
-    if ($orderResult === false) {
-        // Log or handle the error
-        error_log("Order query failed: " . mysqli_error($conn));
-    } else {
+    if ($orderResult) {
         while ($row = mysqli_fetch_assoc($orderResult)) {
             $notifications[] = [
                 'type' => 'order',
@@ -43,6 +44,8 @@ function getLatestNotifications($conn, $limit = 10) {
                 'is_read' => in_array($row['order_id'], $_SESSION['read_notifications']['order'] ?? [])
             ];
         }
+    } else {
+        error_log("Order query failed: " . mysqli_error($conn));
     }
     
     // Get reservations
@@ -51,17 +54,13 @@ function getLatestNotifications($conn, $limit = 10) {
                          WHERE res_status NOT IN ('completed', 'booked', 'rate us')";
                          
     if (!empty($_SESSION['cleared_notifications']['reservation'])) {
-        $reservationQuery .= " AND id NOT IN (" . implode(',', $_SESSION['cleared_notifications']['reservation']) . ")";
+        $reservationQuery .= " AND id NOT IN (" . implode(',', array_map('intval', $_SESSION['cleared_notifications']['reservation'])) . ")";
     }
     
     $reservationQuery .= " ORDER BY date_created DESC LIMIT $limit";
     $reservationResult = mysqli_query($conn, $reservationQuery);
     
-    // Check if query succeeded
-    if ($reservationResult === false) {
-        // Log or handle the error
-        error_log("Reservation query failed: " . mysqli_error($conn));
-    } else {
+    if ($reservationResult) {
         while ($row = mysqli_fetch_assoc($reservationResult)) {
             $notifications[] = [
                 'type' => 'reservation',
@@ -72,6 +71,8 @@ function getLatestNotifications($conn, $limit = 10) {
                 'is_read' => in_array($row['id'], $_SESSION['read_notifications']['reservation'] ?? [])
             ];
         }
+    } else {
+        error_log("Reservation query failed: " . mysqli_error($conn));
     }
     
     // Sort by newest first
@@ -81,44 +82,47 @@ function getLatestNotifications($conn, $limit = 10) {
     
     return array_slice($notifications, 0, $limit);
 }
+
 // Handle AJAX actions
 if (isset($_GET['action'])) {
     header('Content-Type: application/json');
     
     switch ($_GET['action']) {
         case 'mark_read':
-            if (!isset($_SESSION['read_notifications'][$_GET['type']])) {
-                $_SESSION['read_notifications'][$_GET['type']] = [];
+            if (isset($_GET['type']) && isset($_GET['id'])) {
+                $type = $_GET['type'];
+                $id = (int)$_GET['id'];
+                
+                if (!in_array($id, $_SESSION['read_notifications'][$type] ?? [])) {
+                    $_SESSION['read_notifications'][$type][] = $id;
+                }
             }
-            $_SESSION['read_notifications'][$_GET['type']][] = $_GET['id'];
             echo json_encode(['success' => true]);
             exit;
             
         case 'mark_all_read':
-            $_SESSION['read_notifications'] = [
-                'order' => array_merge(
-                    $_SESSION['read_notifications']['order'] ?? [],
-                    array_column(array_filter(getLatestNotifications($conn, 100), 'id')
-                  )  ),
-                'reservation' => array_merge(
-                    $_SESSION['read_notifications']['reservation'] ?? [],
-                    array_column(array_filter(getLatestNotifications($conn, 100), 'id')
-                )
-           ) ];
+            $notifications = getLatestNotifications($conn, 100);
+            foreach ($notifications as $notification) {
+                $type = $notification['type'];
+                $id = $notification['id'];
+                
+                if (!in_array($id, $_SESSION['read_notifications'][$type] ?? [])) {
+                    $_SESSION['read_notifications'][$type][] = $id;
+                }
+            }
             echo json_encode(['success' => true]);
             exit;
             
         case 'clear_all':
-            $_SESSION['cleared_notifications'] = [
-                'order' => array_merge(
-                    $_SESSION['cleared_notifications']['order'] ?? [],
-                    array_column(array_filter(getLatestNotifications($conn, 100), 'id'))
-                ),
-                'reservation' => array_merge(
-                    $_SESSION['cleared_notifications']['reservation'] ?? [],
-                    array_column(array_filter(getLatestNotifications($conn, 100), 'id')
-                )
-           ) ];
+            $notifications = getLatestNotifications($conn, 100);
+            foreach ($notifications as $notification) {
+                $type = $notification['type'];
+                $id = $notification['id'];
+                
+                if (!in_array($id, $_SESSION['cleared_notifications'][$type] ?? [])) {
+                    $_SESSION['cleared_notifications'][$type][] = $id;
+                }
+            }
             echo json_encode(['success' => true]);
             exit;
             
@@ -167,147 +171,150 @@ $unreadCount = count(array_filter($notifications, fn($n) => !$n['is_read']));
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Notifications</title>
     <style>
-        /* Notification Button */
-        #notificationButton {
-            position: relative;
-            background: none;
-            border: none;
-            font-size: 20px;
-            cursor: pointer;
-            padding: 8px;
-        }
-        
-        .notification-badge {
-            position: absolute;
-            top: 0;
-            right: 0;
-            background: red;
-            color: white;
-            border-radius: 50%;
-            width: 18px;
-            height: 18px;
-            font-size: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        
-        /* Modal */
-        .notification-modal {
-            position: fixed;
-            top: 60px;
-            right: 20px;
-            width: 400px;
-            max-height: 70vh;
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            z-index: 1000;
-            display: none;
-            flex-direction: column;
-        }
-        
-        .notification-header {
-            padding: 12px 16px;
-            border-bottom: 1px solid #eee;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .notification-actions button {
-            background: none;
-            border: none;
-            color: #1976d2;
-            cursor: pointer;
-            margin-left: 10px;
-            font-size: 12px;
-        }
-        
-        .notification-list {
-            overflow-y: auto;
-            max-height: 60vh;
-        }
-        
-        .notification-item {
-            padding: 12px 16px;
-            border-bottom: 1px solid #f0f0f0;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-        
-        .notification-item.unread {
-            background: #e3f2fd;
-        }
-        
-        .notification-item:hover {
-            background: #f5f5f5;
-        }
-        
-        .notification-message {
-            font-weight: 500;
-        }
-        
-        .notification-meta {
-            font-size: 12px;
-            color: #666;
-            margin-top: 4px;
-            display: flex;
-            justify-content: space-between;
-        }
-        
-        .notification-status {
-            display: inline-block;
-            padding: 2px 6px;
-            border-radius: 4px;
-            background: #e0e0e0;
-            font-size: 12px;
-        }
-        
-        .no-notifications {
-            padding: 20px;
-            text-align: center;
-            color: #666;
-        }
-    </style>
+    #notificationButton {
+      position: relative;
+      background: none;
+      border: none;
+      font-size: 20px;
+      cursor: pointer;
+      padding: 8px;
+    }
+
+    .notification-badge {
+      position: absolute;
+      top: 0;
+      right: 0;
+      background: red;
+      color: white;
+      border-radius: 50%;
+      width: 18px;
+      height: 18px;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .notification-modal {
+      position: fixed;
+      top: 60px;
+      right: 20px;
+      width: 90%;
+      max-width: 400px;
+      max-height: 70vh;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      z-index: 1000;
+      display: none;
+      flex-direction: column;
+    }
+
+    .notification-header {
+      padding: 12px 16px;
+      border-bottom: 1px solid #eee;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .notification-actions button {
+      background: none;
+      border: none;
+      color: #1976d2;
+      cursor: pointer;
+      margin-left: 10px;
+      font-size: 12px;
+    }
+
+    .notification-list {
+      overflow-y: auto;
+      max-height: 60vh;
+    }
+
+    .notification-item {
+      padding: 12px 16px;
+      border-bottom: 1px solid #f0f0f0;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .notification-item.unread {
+        background:#FCE7D3;
+    }
+
+    .notification-item:hover {
+      background: #f5f5f5;
+    }
+
+    .notification-message {
+      font-weight: 500;
+    }
+
+    .notification-meta {
+      font-size: 12px;
+      color: #666;
+      margin-top: 4px;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .notification-status {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: #e0e0e0;
+      font-size: 12px;
+    }
+
+    .no-notifications {
+      padding: 20px;
+      text-align: center;
+      color: #666;
+    }
+  </style>
 </head>
-<body>
+<body class="bg-light">
 
-<!-- Notification Button -->
-<button id="notificationButton">
-    🔔 <span class="notification-badge"><?= $unreadCount ?></span>
-</button>
+  <div class="container mt-4">
+    <!-- Notification Button -->
+    <div class="d-flex justify-content-end">
+      <button id="notificationButton">
+        🔔 <span class="notification-badge"><?= $unreadCount ?></span>
+      </button>
+    </div>
 
-<!-- Notification Modal -->
-<div class="notification-modal" id="notificationModal">
-    <div class="notification-header">
+    <!-- Notification Modal -->
+    <div class="notification-modal" id="notificationModal">
+      <div class="notification-header">
         <strong>Notifications</strong>
         <div class="notification-actions">
-            <button id="markAllRead">Mark all read</button>
-            <button id="clearAll">Clear all</button>
+          <button id="markAllRead">Mark all read</button>
+          <button id="clearAll">Clear all</button>
         </div>
-    </div>
-    <div class="notification-list" id="notificationList">
+      </div>
+      <div class="notification-list" id="notificationList">
         <?php if (empty($notifications)): ?>
-            <div class="no-notifications">No new notifications</div>
+          <div class="no-notifications">No new notifications</div>
         <?php else: ?>
-            <?php foreach ($notifications as $notification): ?>
-                <div class="notification-item <?= $notification['is_read'] ? '' : 'unread' ?>" 
-                     data-type="<?= $notification['type'] ?>" 
-                     data-id="<?= $notification['id'] ?>">
-                    <div class="notification-message">
-                        <?= htmlspecialchars($notification['name']) ?>
-                        <span class="notification-status"><?= htmlspecialchars($notification['status']) ?></span>
-                    </div>
-                    <div class="notification-meta">
-                        <span><?= ucfirst($notification['type']) ?> #<?= $notification['id'] ?></span>
-                        <span><?= date('M j, g:i A', strtotime($notification['time'])) ?></span>
-                    </div>
-                </div>
-            <?php endforeach; ?>
+          <?php foreach ($notifications as $notification): ?>
+            <div class="notification-item <?= $notification['is_read'] ? '' : 'unread' ?>" 
+              data-type="<?= $notification['type'] ?>" 
+              data-id="<?= $notification['id'] ?>">
+              <div class="notification-message">
+                <?= htmlspecialchars($notification['name']) ?>
+                <span class="notification-status"><?= htmlspecialchars($notification['status']) ?></span>
+              </div>
+              <div class="notification-meta">
+                <span><?= ucfirst($notification['type']) ?> #<?= $notification['id'] ?></span>
+                <span><?= date('M j, g:i A', strtotime($notification['time'])) ?></span>
+              </div>
+            </div>
+          <?php endforeach; ?>
         <?php endif; ?>
+      </div>
     </div>
-</div>
+  </div>
 
 <script>
     // Global refresh interval
@@ -364,7 +371,10 @@ $unreadCount = count(array_filter($notifications, fn($n) => !$n['is_read']));
             
             if (data.success) {
                 document.getElementById('notificationList').innerHTML = data.content;
-                document.querySelector('.notification-badge').textContent = data.unreadCount;
+                const badge = document.querySelector('.notification-badge');
+                if (badge) {
+                    badge.textContent = data.unreadCount;
+                }
                 
                 // Reattach click handlers
                 document.querySelectorAll('.notification-item').forEach(item => {
@@ -389,7 +399,9 @@ $unreadCount = count(array_filter($notifications, fn($n) => !$n['is_read']));
         
         // Update badge count
         const badge = document.querySelector('.notification-badge');
-        badge.textContent = Math.max(0, parseInt(badge.textContent) - 1);
+        if (badge) {
+            badge.textContent = Math.max(0, parseInt(badge.textContent) - 1);
+        }
         
         // Redirect
         if (type === 'reservation') {
@@ -400,24 +412,34 @@ $unreadCount = count(array_filter($notifications, fn($n) => !$n['is_read']));
     }
     
     // Mark all as read
-    document.getElementById('markAllRead').addEventListener('click', async () => {
+    document.getElementById('markAllRead').addEventListener('click', async (e) => {
+        e.stopPropagation();
         document.querySelectorAll('.notification-item').forEach(item => {
             item.classList.remove('unread');
         });
         
         // Update badge
-        document.querySelector('.notification-badge').textContent = '0';
+        const badge = document.querySelector('.notification-badge');
+        if (badge) {
+            badge.textContent = '0';
+        }
         
         // Update server
         await fetch('?action=mark_all_read');
     });
     
     // Clear all
-    document.getElementById('clearAll').addEventListener('click', async () => {
+    document.getElementById('clearAll').addEventListener('click', async (e) => {
+        e.stopPropagation();
         document.getElementById('notificationList').innerHTML = `
             <div class="no-notifications">No new notifications</div>
         `;
-        document.querySelector('.notification-badge').textContent = '0';
+        
+        // Update badge
+        const badge = document.querySelector('.notification-badge');
+        if (badge) {
+            badge.textContent = '0';
+        }
         
         // Update server
         await fetch('?action=clear_all');

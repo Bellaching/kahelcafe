@@ -347,22 +347,24 @@ ob_end_flush();
     </div>
 </div>
 
-<!-- Verification Modal -->
-<div class="modal fade" id="verificationModal" tabindex="-1" aria-labelledby="verificationModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="verificationModalLabel">Verification Required</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-
-            </div>
-            <div class="modal-body text-center">
-                <p>Please log in to add items to your cart.</p>
-                <a href="./../../user/views/login.php" class="btn btn-primary">Log In</a>
+<div class="modal fade"  id="verificationModal" tabindex="-1" aria-labelledby="loginRequiredModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"  id="verificationModal">Login Required</h5>
+                    <button type="button" class="btn-close" data-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>You need to be logged in to add items to the cart. Please log in first.</p>
+                </div>
+                <div class="modal-footer">
+                    <a href="login.php" class="btn text-light " style="background-color: #FF902B;" >Go to Login</a>
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                </div>
             </div>
         </div>
     </div>
-</div>
+
 
 
 <script>

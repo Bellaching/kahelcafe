@@ -355,13 +355,13 @@ $sql = "SELECT * FROM menu1 $whereClause ORDER BY name ASC LIMIT $offset, $items
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title" id="loginRequiredModalLabel">Login Required</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="btn-close text-light" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <p>You need to be logged in to add items to the cart. Please log in first.</p>
                 </div>
                 <div class="modal-footer">
-                    <a href="login.php" class="btn btn-primary">Go to Login</a>
+                <a href="login.php" class="btn text-light " style="background-color: #FF902B;" >Go to Login</a>
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                 </div>
             </div>
@@ -369,7 +369,7 @@ $sql = "SELECT * FROM menu1 $whereClause ORDER BY name ASC LIMIT $offset, $items
     </div>
 
       <!-- Virtual Tour and Other Sections -->
-      <div class="container text-center my-4">
+      <div class="container text-center my-4 mb-5">
       <?php 
    
         include "./../views/virt.php";

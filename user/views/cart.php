@@ -451,34 +451,37 @@ function cancelOrderAndReturnQuantities($orderId, $conn) {
         <div class="row">
             <!-- Cart Table Section -->
             <div class="col-lg-8">
-                <table class="table cart-table table-striped table-responsive">
-                    <thead class="thead">
-                        <tr>
-                            <th>Item</th>
-                            <th>Price</th>
-                            <th>Size</th>
-                            <th>Temperature</th>
-                            <th>Quantity</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                    <?php foreach ($_SESSION['cart'] as $item): ?>
-                        <tr class="cart-item" data-id="<?php echo $item['id']; ?>">
-                            <td><?php echo htmlspecialchars($item['name']); ?></td>
-                            <td>₱<?php echo number_format($item['price'], 2); ?></td>
-                            <td><?php echo isset($item['size']) ? $item['size'] : ''; ?></td>
-                            <td><?php echo isset($item['temperature']) ? $item['temperature'] : ''; ?></td>
-                            <td>
-                                <div class="input-group quantity-buttons">
-                                    <button class="btn btn-secondary btn-sm btn-decrease" data-id="<?php echo $item['id']; ?>">-</button>
-                                    <input type="text" class="form-control quantity-input text-center" value="<?php echo $item['quantity']; ?>" data-id="<?php echo $item['id']; ?>" readonly>
-                                    <button class="btn btn-secondary btn-sm btn-increase" data-id="<?php echo $item['id']; ?>">+</button>
-                                </div>
-                            </td>
-                        </tr>
-                    <?php endforeach; ?>
-                    </tbody>
-                </table>
+            <div class="table-responsive">
+  <table class="table cart-table table-striped">
+    <thead class="thead">
+      <tr>
+        <th>Item</th>
+        <th>Price</th>
+        <th>Size</th>
+        <th>Temperature</th>
+        <th>Quantity</th>
+      </tr>
+    </thead>
+    <tbody>
+      <?php foreach ($_SESSION['cart'] as $item): ?>
+        <tr class="cart-item" data-id="<?php echo $item['id']; ?>">
+          <td><?php echo htmlspecialchars($item['name']); ?></td>
+          <td>₱<?php echo number_format($item['price'], 2); ?></td>
+          <td><?php echo isset($item['size']) ? $item['size'] : ''; ?></td>
+          <td><?php echo isset($item['temperature']) ? $item['temperature'] : ''; ?></td>
+          <td>
+            <div class="input-group quantity-buttons flex-nowrap">
+              <button class="btn btn-secondary btn-sm btn-decrease border-0" style="background-color: #FF902B;  data-id="<?php echo $item['id']; ?>">-</button>
+              <input type="text" class="form-control quantity-input text-center" value="<?php echo $item['quantity']; ?>" data-id="<?php echo $item['id']; ?>" readonly>
+              <button class="btn btn-secondary btn-sm btn-increase border-0" style="background-color: #FF902B; data-id="<?php echo $item['id']; ?>">+</button>
+            </div>
+          </td>
+        </tr>
+      <?php endforeach; ?>
+    </tbody>
+  </table>
+</div>
+
 
                 <!-- Note Form Section -->
                 <div class="note-section mt-4">
@@ -488,7 +491,7 @@ function cancelOrderAndReturnQuantities($orderId, $conn) {
                 </div>
             </div>
             
-            <div class="col-lg-4">
+            <div class="col-lg-4 mt-4">
                 <div class="card">
                     <strong><h4 class="m-3 order-h4">Seat Reservation</h4></strong> 
                     <div class="card-body">
@@ -523,7 +526,7 @@ function cancelOrderAndReturnQuantities($orderId, $conn) {
                             </div>
                         </div>
 
-                        <div class="mb-4">
+                        <div class="mb-4 mt-3">
                             <h4 class="mb-3 order-h4">Available Time</h4>
                             <p id="date-picker" class="d-none"></p>
                             <div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-3 g-2" id="Available-Time-show">
@@ -555,9 +558,9 @@ function cancelOrderAndReturnQuantities($orderId, $conn) {
                         <div class="party-size d-flex align-items-center gap-2" id="party-size">
                             <strong class="fs-6 text-dark">Party Size</strong>
                             <div class="input-group scale-size ms-auto w-auto">
-                                <button class="btn btn-outline-secondary" type="button" id="button-minus">-</button>
+                                <button class="btn  text-light border-0" style="background-color: #FF902B;" type="button" id="button-minus">-</button>
                                 <input type="number" name="party_size" id="party_size" class="form-control text-center" value="1" min="1">
-                                <button class="btn btn-outline-secondary" type="button" id="button-plus">+</button>
+                                <button class="btn text-light border-0" style="background-color: #FF902B;" type="button" id="button-plus">+</button>
                             </div>
                         </div>
                         

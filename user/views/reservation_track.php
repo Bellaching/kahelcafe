@@ -9,11 +9,10 @@ use Endroid\QrCode\Encoding\Encoding;
 use Endroid\QrCode\Writer\PngWriter;
 use Endroid\QrCode\Label\Label;
 
-// Check if user is logged in
+
 if (!isset($_SESSION['user_id'])) {
     die("You must be logged in to view this page.");
 }
-
 
 $userId = $_SESSION['user_id'];
 
@@ -25,7 +24,6 @@ $stmt->execute();
 $result = $stmt->get_result();
 $client = $result->fetch_assoc();
 
-
 if (!$userId) {
     $userId = [
         'firstname' => 'Guest',
@@ -35,21 +33,17 @@ if (!$userId) {
     ];
 }
 
-
 $clientFullName = htmlspecialchars($client['firstname'] . ' ' . $client['lastname']);
 $email = htmlspecialchars($client['email']);
 $clientProfilePicture = htmlspecialchars($client['profile_picture']);
 
-
 $profileImagePath = '';
 if (!empty($clientProfilePicture)) {
- 
     $potentialPath = './../../uploads/' . $clientProfilePicture;
     if (file_exists($potentialPath)) {
         $profileImagePath = $potentialPath;
     }
 }
-
 
 $query = "SELECT * FROM reservation WHERE client_id = ? ORDER BY date_created DESC LIMIT 1";
 $stmt = $conn->prepare($query);
@@ -64,7 +58,7 @@ $result = $stmt->get_result();
 $reservation = $result->fetch_assoc();
 $stmt->close();
 
-// Check if reservation exists and is not cancel
+
 if (!$reservation || $reservation['res_status'] === 'cancel') {
     echo "<div class='container text-center mt-5'>
             <h4>No reservation found.</h4>
@@ -75,10 +69,10 @@ if (!$reservation || $reservation['res_status'] === 'cancel') {
 }
 
 $reservationId = $reservation['id'] ?? null;
-$reservationTimeValue = 'Time not specified'; // Default value
+$reservationTimeValue = 'Time not specified';
 
 if ($reservationId) {
-    // Direct query now that we know the exact table/column names
+ 
     $timeQuery = "SELECT reservation_time FROM resservation_time WHERE id = ? LIMIT 1";
     $stmt = $conn->prepare($timeQuery);
     
@@ -90,7 +84,7 @@ if ($reservationId) {
                 $timeData = $timeResult->fetch_assoc();
                 $reservationTimeValue = $timeData['reservation_time'];
                 
-                // Debug output (check your error logs)
+               
                 error_log("Reservation time found: " . $reservationTimeValue . 
                          " for reservation ID: " . $reservationId);
             } else {
@@ -111,11 +105,11 @@ ini_set('display_errors', 1);
 
 $res = $reservationTimeValue;
 
-// 3. Handle Timeout Reservation
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['timeout_reservation'], $_POST['id'])) {
     $reservationId = $_POST['id'];
 
-    // Update reservation status
+  
     $timeoutQuery = "UPDATE reservation SET 
                     res_status = 'cancel', 
                     reservation_date = NULL 
@@ -132,7 +126,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['timeout_reservation']
     $stmt->bind_param("i", $reservationId);
     $stmt->execute();
     
-    // Delete from resservation_time
+
     $deleteTimeQuery = "DELETE FROM resservation_time WHERE reservation_time_id = ?";
     $stmt2 = $conn->prepare($deleteTimeQuery);
     $stmt2->bind_param("i", $reservationId);
@@ -187,7 +181,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['cancel_reservation'],
     exit();
 }
 
-// 5. Handle Receipt Upload - FIXED SECTION
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['upload_receipt'])) {
     $reservationId = $_POST['reservation_id'] ?? null;
     if (!$reservationId) {
@@ -203,36 +197,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['upload_receipt'])) {
         $targetDir = './../../uploads/';
         $targetFile = $targetDir . $fileName;
 
-        // Create uploads directory if it doesn't exist
+   
         if (!file_exists($targetDir)) {
             mkdir($targetDir, 0755, true);
         }
 
         if (in_array($fileType, $allowedTypes)) {
             if (move_uploaded_file($_FILES['receipt']['tmp_name'], $targetFile)) {
-                // Start transaction
+            
                 $conn->begin_transaction();
                 
                 try {
-                    // Update both receipt and status to 'paid'
+             
                     $uploadQuery = "UPDATE reservation SET receipt = ?, res_status = 'paid' WHERE id = ?";
                     $stmt = $conn->prepare($uploadQuery);
 
                     if ($stmt) {
                         $stmt->bind_param("si", $fileName, $reservationId);
                         if ($stmt->execute()) {
-                            // Check if rows were affected
-                            if ($stmt->affected_rows > 0) {
-                                $conn->commit();
-                                $_SESSION['payment_success'] = true;
-                                header('Content-Type: application/json');
-                                echo json_encode([
-                                    'status' => 'success', 
-                                    'message' => 'Receipt uploaded successfully and status updated to Paid!'
-                                ]);
-                                exit();
-                            } else {
-                                $conn->rollback();
+                        
+                                if ($stmt->affected_rows > 0) {
+                                    $conn->commit();
+                                    $_SESSION['payment_success'] = true;
+                                    
+                                   
+                                    ob_clean();
+                                    header('Content-Type: application/json');
+                                    echo json_encode([
+                                        'status' => 'success'
+                                    ]);
+                                    exit();
+                                }else {
+                                                                $conn->rollback();
                                 header('Content-Type: application/json');
                                 echo json_encode([
                                     'status' => 'warning', 
@@ -579,16 +575,6 @@ $note = $reservation['note_area'] ?? 'No notes available.';
             transform: translate(-50%, -50%);
         }
 
-        /* .qr-container {
-            margin-top: 1rem;
-            text-align: center;
-        }
-
-        .qr-container img {
-            max-width: 100%;
-            height: auto;
-        } */
-
         /* Center content for confirmation status */
         .confirmation-center {
             text-align: center;
@@ -636,33 +622,42 @@ $note = $reservation['note_area'] ?? 'No notes available.';
             -ms-user-select: none;
             user-select: none;
         }
+
+        /* Blinking animation for timer */
+        @keyframes blink {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        
+        /* Timer warning styles */
+        .timer-warning {
+            animation: blink 1s infinite;
+        }
     </style>
 </head>
 <body>
-
-
     <div class="container mt-3 ">
-
-    <div class="sched-banner position-relative mb-5 mt-5" style="background-image: url('./../asset/img/sched-reservation/sched-banner.png'); background-size: cover; background-position: center; min-height: 600px;">
-    <div class="container position-absolute bottom-0 start-0 p-3 d-flex align-items-center">
-        <div class="profile-container d-flex align-items-center">
-            <!-- Profile Picture with fallback -->
-            <?php if (!empty($profileImagePath)): ?>
-                <img src="<?php echo $profileImagePath; ?>" alt="<?php echo $clientFullName; ?>" class="rounded-circle border border-3 border-white" style="width: 150px; height: 140px; object-fit: cover;">
-            <?php else: ?>
-                <div class="rounded-circle border border-3 border-white d-flex align-items-center justify-content-center bg-secondary" style="width: 130px; height: 120px;">
-                    <i class="fas fa-user fa-3x text-white"></i>
+        <div class="sched-banner position-relative mb-5 mt-5" style="background-image: url('./../asset/img/sched-reservation/sched-banner.png'); background-size: cover; background-position: center; min-height: 600px;">
+            <div class="container position-absolute bottom-0 start-0 p-3 d-flex align-items-center">
+                <div class="profile-container d-flex align-items-center">
+                    <!-- Profile Picture with fallback -->
+                    <?php if (!empty($profileImagePath)): ?>
+                        <img src="<?php echo $profileImagePath; ?>" alt="<?php echo $clientFullName; ?>" class="rounded-circle border border-3 border-white" style="width: 150px; height: 140px; object-fit: cover;">
+                    <?php else: ?>
+                        <div class="rounded-circle border border-3 border-white d-flex align-items-center justify-content-center bg-secondary" style="width: 130px; height: 120px;">
+                            <i class="fas fa-user fa-3x text-white"></i>
+                        </div>
+                    <?php endif; ?>
                 </div>
-            <?php endif; ?>
+                <div class="client-info ms-3 text-white">
+                    <!-- Client Full Name -->
+                    <h5 class="mb-1"><?php echo $clientFullName; ?></h5>
+                    <!-- Client Email -->
+                    <p class="mb-0"><?php echo $email; ?></p>
+                </div>
+            </div>
         </div>
-        <div class="client-info ms-3 text-white">
-            <!-- Client Full Name -->
-            <h5 class="mb-1"><?php echo $clientFullName; ?></h5>
-            <!-- Client Email -->
-            <p class="mb-0"><?php echo $email; ?></p>
-        </div>
-    </div>
-</div>
 
         <h3>Reservation Tracking</h3>
 
@@ -758,68 +753,64 @@ $note = $reservation['note_area'] ?? 'No notes available.';
 
             <div class="right-content col-md-4 px-5 ">
                 <?php if ($reservation['res_status'] === 'payment'): ?>
-                
-                        <div class="border rounded shadow-sm p-3">
-                            <form method="POST" enctype="multipart/form-data" class="mt-3" id="receiptForm">
-                             <input type="hidden" name="reservation_id" value="<?php echo htmlspecialchars($reservation['id']); ?>">
-                             <input type="hidden" name="upload_receipt" value="1">
-                             
-                             <!-- Timer Section -->
-                             <div class="mb-3 text-center">
+                    <div class="border rounded shadow-sm p-3">
+                        <form method="POST" enctype="multipart/form-data" class="mt-3" id="receiptForm">
+                            <input type="hidden" name="reservation_id" value="<?php echo htmlspecialchars($reservation['id']); ?>">
+                            <input type="hidden" name="upload_receipt" value="1">
+                            
+                            <!-- Timer Section -->
+                            <div class="mb-3 text-center">
                                 <h5>Time Remaining to Complete Payment</h5>
-                                <div id="payment-timer" class="fs-3 fw-bold text-danger">30:00</div>
+                                <div id="payment-timer" class="fs-3 fw-bold text-danger">20:00</div>
                                 <small class="text-muted">Please complete your payment before time runs out</small>
-                             </div>
+                            </div>
 
-                                <div class="mb-3">
-                                    <label for="receipt" class="form-label upl-p">Upload Receipt</label>
-                                    <input type="file" class="form-control" id="receipt" name="receipt" required>
-                                </div>
-                                <div class="mb-3">
-                                    <label for="receipt" class="form-label upl-p">Instructions</label>
-                                    <ul>
-                                        <li>1. Please upload receipt upon confirmation</li>
-                                        <li>2. Upon confirmation, there will be an allotted time of 30 minutes to confirm for payment.</li>
-                                        <li>3. Failure to do so will result in cancellation of reservation.</li>
-                                    </ul>
-                                </div>
-                                <button type="submit" class="btn rounded send text-light fw-bold w-100" id="sendReceiptBtn" disabled>Send Receipt</button>
-                            </form>
-                            <form method="POST" class="mt-3">
-                                <input type="hidden" name="id" value="<?php echo htmlspecialchars($reservation['id']); ?>">
-                                <button type="button" class="btn btn-danger rounded mt-3 w-100" data-bs-toggle="modal" data-bs-target="#cancelReservationModal">Cancel Reservation</button>
-                            </form>
-                        </div>
-                   
+                            <div class="mb-3">
+                                <label for="receipt" class="form-label upl-p">Upload Receipt</label>
+                                <input type="file" class="form-control" id="receipt" name="receipt" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="receipt" class="form-label upl-p">Instructions</label>
+                                <ul>
+                                    <li>1. Please upload receipt upon confirmation</li>
+                                    <li>2. Upon confirmation, there will be an allotted time of 20 seconds to confirm for payment.</li>
+                                    <li>3. Failure to do so will result in cancellation of reservation.</li>
+                                </ul>
+                            </div>
+                            <button type="submit" class="btn rounded send text-light fw-bold w-100" id="sendReceiptBtn" disabled>Send Receipt</button>
+                        </form>
+                        <form method="POST" class="mt-3">
+                            <input type="hidden" name="id" value="<?php echo htmlspecialchars($reservation['id']); ?>">
+                            <button type="button" class="btn btn-danger rounded mt-3 w-100" data-bs-toggle="modal" data-bs-target="#cancelReservationModal">Cancel Reservation</button>
+                        </form>
+                    </div>
+               
                 <?php elseif ($reservation['res_status'] === 'paid'): ?>
                     <div class="text-center p-4 rounded shadow container-fluid mb-5" style="background-color: #FF902B; color: white;">
-                    <div class="check-circle ">
+                        <div class="check-circle ">
                             <i class="fas fa-check"></i>
                         </div>
                         <h4 class="mb-2"><i class="bi bi-check-circle-fill"></i> Payment Successful!</h4>
                         <p>Your payment has been received. <strong>Kahel Cafe</strong> is currently verifying your receipt. Please wait for confirmation.</p>
                     </div>
-                   
+               
                 <?php elseif ($reservation['res_status'] === 'booked' || $reservation['res_status'] === 'rate us'): ?>
                     <form method="POST" class="mt-3">
+                        <div class="text-center mt-4">
+                            <h5>Scan to View Reservation Details</h5>
+                            <img src="<?php echo $qrFile; ?>" alt="Reservation QR Code" class="img-fluid" />
+                            <br>
+                        </div>
+                    </form>
+                    <div class="alert alert-info mt-2 text-center">
+                        <strong>Please show this QR code to the cashier.</strong>
+                    </div>
                   
-                    <div class="text-center mt-4">
-                        <h5>Scan to View Reservation Details</h5>
-                        <img src="<?php echo $qrFile; ?>" alt="Reservation QR Code" class="img-fluid" />
-                        <br>
-                        </div>
-                        </form>
-                        <div class="alert alert-info mt-2 text-center">
-                            <strong>Please show this QR code to the cashier.</strong>
-                        </div>
-                      
-                        <div class="qr container-fluid my-4 d-flex justify-content-center rounded-pill">
+                    <div class="qr container-fluid my-4 d-flex justify-content-center rounded-pill">
                         <a href="<?php echo $qrFile; ?>" download="reservation_qr_<?php echo $reservation['id']; ?>.png" class="btn p-2 w-100 rounded-pill text-light" style="background-color: #FF902B;">
                             Download QR Code
                         </a>
-                   
-                        </div>
-                   
+                    </div>
 
                     <?php if ($reservation['res_status'] === 'rate us'): ?>
                         <div class="back mt-3">
@@ -841,7 +832,7 @@ $note = $reservation['note_area'] ?? 'No notes available.';
                     <div class="modal-body">
                         <p>Your payment time has expired. Would you like to:</p>
                         <ol>
-                            <li>Continue with the payment (we'll give you another 30 minutes)</li>
+                            <li>Continue with the payment we'll give you another 30 minutes</li>
                             <li>Cancel the reservation</li>
                         </ol>
                     </div>
@@ -888,62 +879,62 @@ $note = $reservation['note_area'] ?? 'No notes available.';
             }
         });
         
-        // Handle receipt upload form submission with better error handling
-        $('#receiptForm').on('submit', function(e) {
-            e.preventDefault();
-            
-            // Show loading state
-            const submitBtn = $('#sendReceiptBtn');
-            submitBtn.prop('disabled', true);
-            submitBtn.html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Uploading...');
-            
-            // Create FormData object
-            const formData = new FormData(this);
-            
-            $.ajax({
-                url: window.location.href,
-                type: 'POST',
-                data: formData,
-                processData: false,
-                contentType: false,
-                dataType: 'json',
-                success: function(response) {
-                    if (response.status === 'success') {
-                        // Show success message and reload page
-                        alert(response.message);
-                        window.location.reload();
-                    } else {
-                        // Show error message
-                        alert(response.message || 'Error uploading receipt');
-                        submitBtn.prop('disabled', false);
-                        submitBtn.text('Send Receipt');
-                    }
-                },
-                error: function(xhr, status, error) {
-                    // Handle AJAX errors
-                    // let errorMessage = 'Error uploading receipt. Please try again.';
+      // Handle receipt upload form submission with better error handling
+$('#receiptForm').on('submit', function(e) {
+    e.preventDefault();
+    
+    // Show loading state
+    const submitBtn = $('#sendReceiptBtn');
+    submitBtn.prop('disabled', true);
+    submitBtn.html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Uploading...');
+    
+    // Create FormData object
+    const formData = new FormData(this);
+    
+    $.ajax({
+        url: window.location.href,
+        type: 'POST',
+        data: formData,
+        processData: false,
+        contentType: false,
+        dataType: 'json',
+        success: function(response) {
+            if (response.status === 'success') {
+                // Simply reload the page on success - no alert needed
+                window.location.reload();
+            } else {
+                // Only show alert if there's an actual error message
+                if (response.message && response.status !== 'success') {
                     alert(response.message);
-                    window.location.reload();
-                    try {
-                        const response = JSON.parse(xhr.responseText);
-                        if (response.message) {
-                            errorMessage = response.message;
-                        }
-                    } catch (e) {
-                        console.error('Error parsing response:', e);
-                    }
-                    
-                    alert(errorMessage);
-                    submitBtn.prop('disabled', false);
-                    submitBtn.text('Send Receipt');
                 }
-            });
-        });
+                submitBtn.prop('disabled', false);
+                submitBtn.text('Send Receipt');
+            }
+        },
+        error: function(xhr, status, error) {
+            // Check if this is actually a successful response but misclassified as error
+            try {
+                const response = JSON.parse(xhr.responseText);
+                if (response.status === 'success') {
+                    window.location.reload();
+                    return;
+                }
+            } catch (e) {
+                console.error('Error parsing response:', e);
+            }
+            
+            // Only show error if we didn't get a success response
+            alert('Error uploading receipt. Please try again.');
+            submitBtn.prop('disabled', false);
+            submitBtn.text('Send Receipt');
+        }
+    });
+});
         
-        // Timer functionality for payment status
+        // Timer functionality for payment status - changed to 30 minutes (1800 seconds)
         <?php if ($reservation['res_status'] === 'payment'): ?>
             // Calculate the exact time remaining in seconds
-            const paymentTimeLimit = 30 * 60; // 30 minutes in seconds
+            const paymentTimeLimit = 1800; // 30 minutes = 1800 seconds
             const createdTime = new Date("<?php echo $reservation['date_created']; ?>").getTime();
             const currentTime = new Date().getTime();
             const elapsedSeconds = Math.floor((currentTime - createdTime) / 1000);
@@ -952,17 +943,36 @@ $note = $reservation['note_area'] ?? 'No notes available.';
             const timerElement = document.getElementById('payment-timer');
             const timeoutModal = new bootstrap.Modal(document.getElementById('timeoutModal'));
             
+            // Function to format time as HH:MM:SS
+            function formatTime(seconds) {
+                const hours = Math.floor(seconds / 3600);
+                const minutes = Math.floor((seconds % 3600) / 60);
+                const secs = Math.floor(seconds % 60);
+                
+                return [
+                    hours.toString().padStart(2, '0'),
+                    minutes.toString().padStart(2, '0'),
+                    secs.toString().padStart(2, '0')
+                ].join(':');
+            }
+            
             // Function to update the timer display
             function updateTimer() {
-                const minutes = Math.floor(timeLeft / 60);
-                const seconds = Math.floor(timeLeft % 60);
-                timerElement.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                timerElement.textContent = formatTime(timeLeft);
+                
+                // Change color when time is running low (last 5 minutes)
+                if (timeLeft <= 300) { // 5 minutes = 300 seconds
+                    timerElement.style.color = '#ff0000';
+                    timerElement.classList.add('timer-warning');
+                } else {
+                    timerElement.style.color = '#dc3545';
+                    timerElement.classList.remove('timer-warning');
+                }
                 
                 if (timeLeft <= 0) {
                     clearInterval(timerInterval);
-                    timerElement.textContent = "00:00";
+                    timerElement.textContent = "00:00:00";
                     timeoutModal.show();
-                    handleTimeout();
                 }
             }
             
@@ -971,17 +981,27 @@ $note = $reservation['note_area'] ?? 'No notes available.';
             const timerInterval = setInterval(() => {
                 timeLeft--;
                 updateTimer();
+                
+                if (timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    timeoutModal.show();
+                }
             }, 1000);
             
             // Handle continue payment button
             $('#continuePayment').click(function() {
                 // Reset the timer for another 30 minutes
-                timeLeft = 30 * 60;
+                timeLeft = 1800;
                 updateTimer();
                 clearInterval(timerInterval);
                 timerInterval = setInterval(() => {
                     timeLeft--;
                     updateTimer();
+                    
+                    if (timeLeft <= 0) {
+                        clearInterval(timerInterval);
+                        timeoutModal.show();
+                    }
                 }, 1000);
                 timeoutModal.hide();
             });
@@ -1005,38 +1025,19 @@ $note = $reservation['note_area'] ?? 'No notes available.';
                 });
             });
             
-            // Also update the database when timer runs out
-            function handleTimeout() {
-                $.ajax({
-                    type: 'POST',
-                    url: window.location.href,
-                    data: {
-                        timeout_reservation: true,
-                        id: <?php echo $reservation['id']; ?>
-                    },
-                    success: function(response) {
-                        // Modal will handle the UI
-                    },
-                    error: function() {
-                        console.log('Error updating reservation status');
-                    }
-                });
-            }
-            
             // Check if we need to show timeout modal on page load
             <?php 
-            // Calculate if the payment time has expired
+            // Calculate if the payment time has expired (30 minutes = 1800 seconds)
             $createdTime = strtotime($reservation['date_created']);
             $currentTime = time();
             $elapsedTime = $currentTime - $createdTime;
-            if ($elapsedTime > 30 * 60) {
+            if ($elapsedTime > 1800) {
                 echo 'timeoutModal.show();';
-                echo 'handleTimeout();';
             }
             ?>
         <?php endif; ?>
         
-        // Cancel reservation handler - FIXED
+        // Cancel reservation handler
         $('#confirmCancel').on('click', function () {
             var reservationId = <?php echo json_encode($reservation['id']); ?>;
             
@@ -1120,30 +1121,28 @@ $note = $reservation['note_area'] ?? 'No notes available.';
             setTimeout(checkReservationStatus, 1000);
         <?php endif; ?>
     });
-    </script>
 
-<script>
-        // Android-friendly touch events
-        document.addEventListener('DOMContentLoaded', function() {
-            // Make buttons more responsive to touch
-            const buttons = document.querySelectorAll('button, .btn, [role="button"]');
-            buttons.forEach(button => {
-                button.addEventListener('touchstart', function() {
-                    this.classList.add('active');
-                });
-                button.addEventListener('touchend', function() {
-                    this.classList.remove('active');
-                });
+    // Android-friendly touch events
+    document.addEventListener('DOMContentLoaded', function() {
+        // Make buttons more responsive to touch
+        const buttons = document.querySelectorAll('button, .btn, [role="button"]');
+        buttons.forEach(button => {
+            button.addEventListener('touchstart', function() {
+                this.classList.add('active');
             });
-            
-            // Prevent zooming on input focus
-            const inputs = document.querySelectorAll('input, select, textarea');
-            inputs.forEach(input => {
-                input.addEventListener('focus', function() {
-                    this.style.fontSize = '16px';
-                });
+            button.addEventListener('touchend', function() {
+                this.classList.remove('active');
             });
         });
+        
+        // Prevent zooming on input focus
+        const inputs = document.querySelectorAll('input, select, textarea');
+        inputs.forEach(input => {
+            input.addEventListener('focus', function() {
+                this.style.fontSize = '16px';
+            });
+        });
+    });
     </script>
 </body>
 </html>

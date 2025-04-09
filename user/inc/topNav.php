@@ -72,12 +72,13 @@ include '../views/change_profile.php';
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Change Profile</title>
+    
+    <!-- CSS Links -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/slick-carousel/slick/slick.css"/>
     <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/slick-carousel/slick/slick-theme.css"/>
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/slick-carousel/slick/slick.min.js"></script>
 
     <style>
         .navbar-default {
@@ -108,26 +109,18 @@ include '../views/change_profile.php';
             background-color: #FF902B;
             color: white;
             border-radius: 50%;
-            padding: 3px 8px; /* Adjusted padding */
+            padding: 3px 8px;
             font-weight: bold;
-            font-size: 12px; /* Reduced font size */
+            font-size: 12px;
             animation: bounce 0.5s ease-in-out;
         }
 
-        /* Animation for cart and notification count */
         @keyframes bounce {
-            0% {
-                transform: scale(0.5);
-            }
-            50% {
-                transform: scale(1.2);
-            }
-            100% {
-                transform: scale(1);
-            }
+            0% { transform: scale(0.5); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
         }
 
-        /* Toast notification styling */
         .toast {
             position: fixed;
             top: 20px;
@@ -135,145 +128,219 @@ include '../views/change_profile.php';
             z-index: 1050;
         }
 
-         /* Style for unread notifications */
-    .unread-notification {
-        background-color: #FF902B; /* Orange background */
-        border-radius: 5px; /* Rounded corners */
-        padding: 10px; /* Add some padding */
-        color: white;
-    }
+        .unread-notification {
+            background-color: #FF902B;
+            border-radius: 5px;
+            padding: 10px;
+            color: white;
+        }
 
-    /* Hover effect for unread notifications */
-    .unread-notification:hover {
-        background-color: #e67e22; /* Darker orange on hover */
-    }
+        .unread-notification:hover {
+            background-color: #e67e22;
+        }
 
-    /* Custom scrollbar styling */
-.modal-body::-webkit-scrollbar {
-    width: 8px; /* Width of the scrollbar */
-}
+        .modal-body::-webkit-scrollbar {
+            width: 8px;
+        }
 
-.modal-body::-webkit-scrollbar-track {
-    background: #f1f1f1; /* Color of the track */
-}
+        .modal-body::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
 
-.modal-body::-webkit-scrollbar-thumb {
-    background: #888; /* Color of the scrollbar */
-    border-radius: 4px; /* Rounded corners */
-}
+        .modal-body::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
 
-.modal-body::-webkit-scrollbar-thumb:hover {
-    background: #555; /* Color of the scrollbar on hover */
-}
+        .modal-body::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
 
-/* Center nav links in mobile view */
-@media (max-width: 991.98px) {
-    .navbar-collapse {
-        display: flex;
-        flex-direction: column;
-    }
-    
-    /* Center the main nav links */
-    .navbar-nav.main-links {
-        width: 100%;
-        justify-content: center;
-        flex-direction: row;
-        flex-wrap: wrap;
-        margin-bottom: 10px;
-    }
-    
-    /* Center the right-aligned icons */
-    .navbar-nav.right-icons {
-        width: 100%;
-        justify-content: center;
-        flex-direction: row;
-        gap: 15px;
-    }
-    
-    .nav-item {
-        margin: 0 5px;
-    }
-    
-    /* Center dropdown menu */
-    .dropdown-menu {
-        text-align: center;
-    }
-}
+        @media (max-width: 991.98px) {
+            .navbar-collapse {
+                display: flex;
+                flex-direction: column;
+            }
+            
+            .navbar-nav.main-links {
+                width: 100%;
+                justify-content: center;
+                flex-direction: row;
+                flex-wrap: wrap;
+                margin-bottom: 10px;
+            }
+            
+            .navbar-nav.right-icons {
+                width: 100%;
+                justify-content: center;
+                flex-direction: row;
+                gap: 15px;
+            }
+            
+            .nav-item {
+                margin: 0 5px;
+            }
+            
+            .dropdown-menu {
+                text-align: center;
+            }
+        }
+
+        /* Fix for navbar toggler icon */
+        .navbar-toggler {
+            border: none;
+            padding: 0.25rem 0.75rem;
+        }
+        
+        .navbar-toggler:focus {
+            box-shadow: none;
+        }
     </style>
-    <title>Change Profile</title>
 </head>
 <body>
-<nav class="navbar navbar-expand-lg navbar-default p- shadow-bottom">
+<nav class="navbar navbar-expand-lg navbar-default p-0 shadow-bottom">
     <div class="container-fluid">
-        <a class="navbar-brand" href="#">
+        <a class="navbar-brand me-auto" href="#">
             <img src="./../../components/icon/kahel-cafe-logo.png" alt="MyWebsite" class="img-fluid" style="max-height: 60px;">
         </a>
-        <button class="navbar-toggler text-dark" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-            <span class="navbar-toggler-icon"></span>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="fas fa-bars"></i>
         </button>
         
         <div class="collapse navbar-collapse" id="navbarNav">
-    <div class="d-flex flex-column flex-lg-row justify-content-lg-end align-items-center w-100">
-        
-        <!-- Main navigation links -->
-        <ul class="navbar-nav main-links mb-2 mb-lg-0 me-lg-3 text-center text-lg-end">
-            <li class="nav-item">
-                <a class="nav-link" href="./../../user/views/index.php">Home</a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" href="./../../user/views/reservation.php">Reservation</a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" href="./../../user/views/order-now.php">Order-now</a>
-            </li>
-        </ul>
-
-        <!-- Right-aligned icons -->
-        <ul class="navbar-nav right-icons">
-            <?php if (isset($_SESSION['user_id'])): ?>
-                <!-- Notification Icon (only shown when logged in) -->
-                <li class="nav-item position-relative">
-
-                <?php include "./../views/noti.php" ?>
-               
-                </li>
-
-                <!-- Cart Icon (only shown when logged in) -->
-                <li class="nav-item position-relative">
-                    <a class="nav-link" href="./../../user/views/cart.php">
-                        <i class="fa-solid fa-cart-shopping"></i>
-                        <?php if ($cartCount > 0): ?>
-                            <span class="cart-count"><?= $cartCount; ?></span>
-                        <?php endif; ?>
-                    </a>
-                </li>
-            <?php endif; ?>
-
-            <!-- User Menu -->
-            <?php if ($firstName): ?>
-                <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                        <?= htmlspecialchars($firstName); ?>
-                    </a>
-                    <ul class="dropdown-menu dropdown-menu-end border-0" aria-labelledby="userDropdown">
-                        <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#changeProfileModal"><i class="fa-regular fa-user me-2"></i>Change Profile</a></li>
-                        <li><a class="dropdown-item" href="order-track.php"><i class="fa-solid fa-truck-fast me-2"></i>Track Order</a></li>
-                        <li><a class="dropdown-item" href="reservation_track.php"><i class="fa-solid fa-calendar-check me-2"></i>Track Reservation</a></li>
-                        <li><a class="dropdown-item" href="history.php"><i class="fa-solid fa-clock-rotate-left me-2"></i>History</a></li>
-                        <li><a class="dropdown-item" href="?logout"><i class="fa-solid fa-power-off me-2"></i>Logout</a></li>
-                    </ul>
-                </li>
-            <?php else: ?>
+            <!-- All navigation items grouped on the right -->
+            <ul class="navbar-nav ms-auto d-flex align-items-center">
+                <!-- Main navigation links -->
                 <li class="nav-item">
-                    <a class="nav-link" href="login.php">Login</a>
+                    <a class="nav-link" href="./../../user/views/index.php">Home</a>
                 </li>
-            <?php endif; ?>
-        </ul>
+                <li class="nav-item">
+                    <a class="nav-link" href="./../../user/views/reservation.php">Reservation</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="./../../user/views/order-now.php">Order Now</a>
+                </li>
+
+                <?php if (isset($_SESSION['user_id'])): ?>
+                    <!-- Notification Icon -->
+                    <li class="nav-item position-relative mx-2" style="top: -5px;">
+    <?php include "noti.php" ?>
+</li>
+
+
+                    <!-- Cart Icon -->
+                    <li class="nav-item position-relative mx-2">
+                        <a class="nav-link" href="./../../user/views/cart.php">
+                          <!-- Orange Shopping Cart Icon (SVG) -->
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M6 2L3 6V20C3 20.5304 3.21071 21.0391 3.58579 21.4142C3.96086 21.7893 4.46957 22 5 22H19C19.5304 22 20.0391 21.7893 20.4142 21.4142C20.7893 21.0391 21 20.5304 21 20V6L18 2H6Z" fill="#FF902B" stroke="#FF902B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M3 6H21" stroke="#FF902B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M16 10C16 11.0609 15.5786 12.0783 14.8284 12.8284C14.0783 13.5786 13.0609 14 12 14C10.9391 14 9.92172 13.5786 9.17157 12.8284C8.42143 12.0783 8 11.0609 8 10" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
+                            <?php if ($cartCount > 0): ?>
+                                <span class="cart-count"><?= $cartCount; ?></span>
+                            <?php endif; ?>
+                        </a>
+                    </li>
+                <?php endif; ?>
+
+                <!-- User Menu -->
+                <?php if ($firstName): ?>
+                    <li class="nav-item dropdown ms-2">
+                        <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <span class="me-1"><?= htmlspecialchars($firstName); ?></span>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end border-0" aria-labelledby="userDropdown">
+                            <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#changeProfileModal"><i class="fa-regular fa-user me-2"></i>Change Profile</a></li>
+                            <li><a class="dropdown-item" href="order-track.php"><i class="fa-solid fa-truck-fast me-2"></i>Track Order</a></li>
+                            <li><a class="dropdown-item" href="reservation_track.php"><i class="fa-solid fa-calendar-check me-2"></i>Track Reservation</a></li>
+                            <li><a class="dropdown-item" href="history.php"><i class="fa-solid fa-clock-rotate-left me-2"></i>History</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="?logout"><i class="fa-solid fa-power-off me-2"></i>Logout</a></li>
+                        </ul>
+                    </li>
+                <?php else: ?>
+                    <li class="nav-item ms-2">
+                        <a class="nav-link btn btn-outline px-3 py-1 text-light" style="background-color: #FF902B;" href="login.php">Login</a>
+                    </li>
+                <?php endif; ?>
+            </ul>
+        </div>
     </div>
-</div>
+</nav>
 
-</nav> 
-
+<style>
+    /* Custom styles for professional right-aligned navigation */
+    .navbar {
+        padding: 0.5rem 1rem;
+        background-color: #fff;
+    }
+    
+    .nav-link {
+        font-weight: 500;
+        padding: 0.5rem 1rem;
+        color: #333;
+        display: flex;
+        align-items: center;
+    }
+    
+    .nav-link:hover {
+        color: #000;
+    }
+    
+    .dropdown-menu {
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1);
+        min-width: 220px;
+    }
+    
+    .dropdown-item {
+        padding: 0.5rem 1.5rem;
+    }
+    
+    .cart-count {
+        position: absolute;
+        top: 0;
+        right: 0;
+        font-size: 0.7rem;
+        background-color: #dc3545;
+        color: white;
+        border-radius: 50%;
+        width: 18px;
+        height: 18px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transform: translate(25%, -25%);
+    }
+    
+    /* Mobile view adjustments */
+    @media (max-width: 991.98px) {
+        .navbar-nav {
+            width: 100%;
+            padding: 0.5rem 0;
+            align-items: flex-end !important;
+        }
+        
+        .nav-item {
+            width: auto;
+            margin: 0.25rem 0;
+        }
+        
+        .dropdown-menu {
+            position: static !important;
+            transform: none !important;
+            width: 100%;
+            border: none;
+            box-shadow: none;
+            background-color: #f8f9fa;
+        }
+        
+        .navbar-nav.ms-auto {
+            gap: 0.5rem;
+            justify-content: flex-end;
+        }
+    }
+</style>
 <!-- Modal for Changing Profile -->
 <div class="modal fade" id="changeProfileModal" tabindex="-1" aria-labelledby="changeProfileModalLabel" aria-hidden="true">
     <div class="modal-dialog">
@@ -282,9 +349,7 @@ include '../views/change_profile.php';
                 <h5 class="modal-title" id="changeProfileModalLabel">Change Your Profile</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            
             <div class="modal-body">
-                <!-- Profile Form (Can be included from change_profile.php) -->
                 <?php include '../views/change_profile.php'; ?>
             </div>
         </div>
@@ -322,35 +387,35 @@ include '../views/change_profile.php';
 </div>
 <?php endif; ?>
 
+<!-- JavaScript Libraries -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/slick-carousel/slick/slick.min.js"></script>
 
 <script>
-function reloadNav() {
-    $.ajax({
-        url: window.location.href,
-        success: function(response) {
-            var newNav = $(response).find('nav.navbar').html();  
-            $('nav.navbar').html(newNav); 
-        }
-    });
-}
-
-setInterval(reloadNav, 3000);
-
-<?php if (isset($_SESSION['user_id'])): ?>
-function checkAndPlayNotification() {
-    const notificationCount = <?= $notificationCount; ?>; 
-
-    if (notificationCount > 0) {
-        const sound = document.getElementById('notificationSound');
-        sound.play();  
-    }
-}
-
-// Check for notifications every 3 seconds
-setInterval(checkAndPlayNotification, 3000);
-
 $(document).ready(function() {
+    // Initialize all Bootstrap tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+
+    // Remove the manual collapse toggle handler as it might conflict with Bootstrap's built-in functionality
+    // Bootstrap's built-in collapse should handle this automatically
+
+    <?php if (isset($_SESSION['user_id'])): ?>
+    function checkAndPlayNotification() {
+        const notificationCount = <?= $notificationCount; ?>; 
+
+        if (notificationCount > 0) {
+            const sound = document.getElementById('notificationSound');
+            sound.play();  
+        }
+    }
+
+    // Check for notifications every 3 seconds
+    setInterval(checkAndPlayNotification, 3000);
+
     // Mark all notifications as read
     $('#markAsReadBtn').on('click', function() {
         $.ajax({
@@ -361,16 +426,14 @@ $(document).ready(function() {
                 const result = JSON.parse(response);
                 if (result.success) {
                     alert('All notifications marked as read.');
-                    location.reload(); // Reload the page to reflect changes
+                    location.reload();
                 } else {
                     alert('Failed to mark notifications as read.');
                 }
             }
         });
     });
-});
 
-$(document).ready(function() {
     function updateCartCount() {
         $.ajax({
             url: '',
@@ -388,35 +451,31 @@ $(document).ready(function() {
 
     // Update cart count every 10 seconds
     setInterval(updateCartCount, 10000);
-
-    // Initial call to update cart count
     updateCartCount();
+
+    function addToCart(productId) {
+        $.ajax({
+            url: 'add_to_cart.php',
+            type: 'POST',
+            data: { productId: productId },
+            success: function(response) {
+                updateCartCount();
+            }
+        });
+    }
+
+    function removeFromCart(cartItemId) {
+        $.ajax({
+            url: 'remove_from_cart.php',
+            type: 'POST',
+            data: { cartItemId: cartItemId },
+            success: function(response) {
+                updateCartCount();
+            }
+        });
+    }
+    <?php endif; ?>
 });
-
-function addToCart(productId) {
-    $.ajax({
-        url: 'add_to_cart.php',
-        type: 'POST',
-        data: { productId: productId },
-        success: function(response) {
-            // Handle success response
-            updateCartCount(); // Update cart count immediately
-        }
-    });
-}
-
-function removeFromCart(cartItemId) {
-    $.ajax({
-        url: 'remove_from_cart.php',
-        type: 'POST',
-        data: { cartItemId: cartItemId },
-        success: function(response) {
-            // Handle success response
-            updateCartCount(); // Update cart count immediately
-        }
-    });
-}
-<?php endif; ?>
 </script>
 
 </body>

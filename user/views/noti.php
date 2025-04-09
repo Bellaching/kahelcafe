@@ -3,6 +3,9 @@
 
 include __DIR__ . '/../../connection/connection.php';
 
+// Get the current user's ID from session
+$userId = $_SESSION['user_id'] ?? 0;
+
 // Initialize session storage if not exists
 if (!isset($_SESSION['read_notifications'])) {
     $_SESSION['read_notifications'] = [];
@@ -12,30 +15,33 @@ if (!isset($_SESSION['cleared_notifications'])) {
     $_SESSION['cleared_notifications'] = [];
 }
 
-// Function to get latest notifications (excluding cleared ones)
-function getLatestNotifications($conn, $limit = 10) {
+// Function to get latest notifications for current user (excluding cleared ones)
+function getLatestNotifications($conn, $userId, $limit = 10) {
     $notifications = [];
     $clearedIds = $_SESSION['cleared_notifications'] ?? [];
-    $allowedStatuses = ['payment', 'booked', 'rate us', 'completed'];
+    $allowedStatuses = ['payment', 'booked', 'rate us', 'completed', 'cancelled'];
     
-    // Get orders (excluding cleared)
+    // Get orders for current user (excluding cleared)
     $orderQuery = "SELECT order_id, client_full_name, status, last_updated 
                    FROM orders 
-                   WHERE status IN ('" . implode("','", $allowedStatuses) . "')";
+                   WHERE user_id = ? 
+                   AND status IN ('" . implode("','", $allowedStatuses) . "')";
                    
     if (!empty($clearedIds['order'])) {
         $orderQuery .= " AND order_id NOT IN (" . implode(',', $clearedIds['order']) . ")";
     }
     
     $orderQuery .= " ORDER BY last_updated DESC LIMIT $limit";
-    $orderResult = mysqli_query($conn, $orderQuery);
+    $orderStmt = $conn->prepare($orderQuery);
+    $orderStmt->bind_param("i", $userId);
+    $orderStmt->execute();
+    $orderResult = $orderStmt->get_result();
     
-       // Check if query succeeded
-       if ($orderResult === false) {
-        // Log or handle the error
-        error_log("Order query failed: " . mysqli_error($conn));
+    // Check if query succeeded
+    if ($orderResult === false) {
+        error_log("Order query failed: " . $conn->error);
     } else {
-        while ($row = mysqli_fetch_assoc($orderResult)) {
+        while ($row = $orderResult->fetch_assoc()) {
             $notifications[] = [
                 'type' => 'order',
                 'id' => $row['order_id'],
@@ -47,19 +53,23 @@ function getLatestNotifications($conn, $limit = 10) {
         }
     }
     
-    // Get reservations (excluding cleared)
+    // Get reservations for current user (excluding cleared)
     $reservationQuery = "SELECT id, clientFullName, res_status, date_created 
                          FROM reservation 
-                         WHERE res_status IN ('" . implode("','", $allowedStatuses) . "')";
+                         WHERE client_id = ?
+                         AND res_status IN ('" . implode("','", $allowedStatuses) . "')";
                          
     if (!empty($clearedIds['reservation'])) {
         $reservationQuery .= " AND id NOT IN (" . implode(',', $clearedIds['reservation']) . ")";
     }
     
     $reservationQuery .= " ORDER BY date_created DESC LIMIT $limit";
-    $reservationResult = mysqli_query($conn, $reservationQuery);
+    $reservationStmt = $conn->prepare($reservationQuery);
+    $reservationStmt->bind_param("i", $userId);
+    $reservationStmt->execute();
+    $reservationResult = $reservationStmt->get_result();
     
-    while ($row = mysqli_fetch_assoc($reservationResult)) {
+    while ($row = $reservationResult->fetch_assoc()) {
         $notifications[] = [
             'type' => 'reservation',
             'id' => $row['id'],
@@ -92,7 +102,7 @@ if (isset($_GET['action'])) {
             exit;
             
         case 'mark_all_read':
-            $notifications = getLatestNotifications($conn, 100);
+            $notifications = getLatestNotifications($conn, $userId, 100);
             $_SESSION['read_notifications'] = [
                 'order' => array_merge(
                     $_SESSION['read_notifications']['order'] ?? [],
@@ -107,7 +117,7 @@ if (isset($_GET['action'])) {
             exit;
             
         case 'clear_all':
-            $notifications = getLatestNotifications($conn, 100);
+            $notifications = getLatestNotifications($conn, $userId, 100);
             $_SESSION['cleared_notifications'] = [
                 'order' => array_merge(
                     $_SESSION['cleared_notifications']['order'] ?? [],
@@ -122,7 +132,7 @@ if (isset($_GET['action'])) {
             exit;
             
         case 'refresh':
-            $notifications = getLatestNotifications($conn, 10);
+            $notifications = getLatestNotifications($conn, $userId, 10);
             $unreadCount = count(array_filter($notifications, fn($n) => !$n['is_read']));
             
             ob_start();
@@ -156,7 +166,7 @@ if (isset($_GET['action'])) {
     }
 }
 
-$notifications = getLatestNotifications($conn, 10);
+$notifications = getLatestNotifications($conn, $userId, 10);
 $unreadCount = count(array_filter($notifications, fn($n) => !$n['is_read']));
 ?>
 
@@ -237,7 +247,7 @@ $unreadCount = count(array_filter($notifications, fn($n) => !$n['is_read']));
         }
         
         .notification-item.unread {
-            background: #e3f2fd;
+            background:#FCE7D3;
         }
         
         .notification-item:hover {
@@ -283,8 +293,8 @@ $unreadCount = count(array_filter($notifications, fn($n) => !$n['is_read']));
     <div class="notification-header">
         <strong>Notifications</strong>
         <div class="notification-actions">
-            <button id="markAllRead">Mark all as read</button>
-            <button id="clearAll">Clear all</button>
+            <button id="markAllRead" style="color: #FF902B;" >Mark all as read</button>
+            <button id="clearAll"  style="color: #FF902B;" >Clear all</button>
         </div>
     </div>
     <div class="notification-list" id="notificationList">

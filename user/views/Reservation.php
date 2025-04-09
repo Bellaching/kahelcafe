@@ -248,23 +248,30 @@ ob_end_flush();
             background-color: #9647FF !important;
             color: white !important;
         }
+        .timer-expired-modal .modal-content {
+            border: 2px solid #ffc107;
+        }
+        .timer-expired-icon {
+            font-size: 4rem;
+            color: #ffc107;
+        }
     </style>
 </head>
 <body class="border-0">
-    <!-- Login Required Modal -->
-    <div class="modal fade" id="loginRequiredModal" tabindex="-1" aria-hidden="true">
+     <!-- Login Required Modal -->
+     <div class="modal fade" id="loginRequiredModal" tabindex="-1" aria-labelledby="loginRequiredModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
-                <div class="modal-body text-center">
-                    <div class="confirmation-icon fs-1 text-warning mb-3">
-                        <i class="fas fa-exclamation-circle"></i>
-                    </div>
-                    <h4>Login Required</h4>
-                    <p>You need to log in first to make a reservation.</p>
-                    <div class="d-flex justify-content-center gap-3 mt-3">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <a href="login.php" class="btn btn-primary">Go to Login</a>
-                    </div>
+                <div class="modal-header">
+                    <h5 class="modal-title" id="loginRequiredModalLabel">Login Required</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>You need to be logged in to add items to the cart. Please log in first.</p>
+                </div>
+                <div class="modal-footer">
+                    <a href="login.php" class="btn text-light " style="background-color: #FF902B;" >Go to Login</a>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                 </div>
             </div>
         </div>
@@ -313,6 +320,25 @@ ob_end_flush();
                     <h4>Reservation Confirmed!</h4>
                     <p class="success-message">Your reservation has been successfully created.</p>
                     <p class="redirect-message">You will be redirected to your reservation details in <span id="countdown">3</span> seconds...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Timer Expired Modal -->
+    <div class="modal fade timer-expired-modal" id="timerExpiredModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-body text-center">
+                    <div class="timer-expired-icon mb-3">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <h4>Time's Up!</h4>
+                    <p>Your reservation time has expired. Would you like to continue with your reservation?</p>
+                    <div class="d-flex justify-content-center gap-3 mt-4">
+                        <button type="button" class="btn btn-secondary" id="cancelExpiredReservation">No, Cancel</button>
+                        <button type="button" class="btn btn-primary" id="continueReservation">Yes, Continue</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -391,9 +417,9 @@ ob_end_flush();
                         <div class="mb-4 d-flex align-items-center justify-content-between">
                             <label class="form-label mb-0">Party Size</label>
                             <div class="input-group" style="max-width: 150px;">
-                                <button class="btn btn-outline-secondary" type="button" id="button-minus">-</button>
+                                <button class="btn btn-outline-secondary text-light border-0" type="button"  style="background-color: #FF902B;" id="button-minus">-</button>
                                 <input type="number" class="form-control text-center" value="1" id="number-input" min="1" max="20">
-                                <button class="btn btn-outline-secondary" type="button" id="button-plus">+</button>
+                                <button class="btn btn-outline-secondary text-light border-0" type="button"  style="background-color: #FF902B;" id="button-plus">+</button>
                             </div>
                         </div>
 
@@ -461,6 +487,7 @@ ob_end_flush();
             const confirmationModal = new bootstrap.Modal(document.getElementById('confirmationModal'));
             const pendingReservationModal = new bootstrap.Modal(document.getElementById('pendingReservationModal'));
             const successModal = new bootstrap.Modal(document.getElementById('successModal'));
+            const timerExpiredModal = new bootstrap.Modal(document.getElementById('timerExpiredModal'));
             
             // Form elements
             const reservationForm = document.getElementById("reservation-form");
@@ -630,6 +657,18 @@ ob_end_flush();
                 });
             });
             
+            // Timer expired modal buttons
+            document.getElementById('continueReservation').addEventListener('click', function() {
+                timerExpiredModal.hide();
+                // Show confirmation modal again
+                confirmationModal.show();
+            });
+            
+            document.getElementById('cancelExpiredReservation').addEventListener('click', function() {
+                timerExpiredModal.hide();
+                // Here you can add code to cancel the reservation if needed
+            });
+            
             function fetchReservationStatus(date) {
                 if (!date) return;
                 
@@ -660,7 +699,18 @@ ob_end_flush();
                                 // Update the data attributes if needed
                                 buttons[index].dataset.timeId = res_status.time_id;
                                 buttons[index].dataset.timeValue = res_status.time;
+                                
+                                // Check if timer expired for this reservation
+                                if (res_status.timer_expired && res_status.client_id == <?php echo json_encode($user_id); ?>) {
+                                    // Show timer expired modal
+                                    timerExpiredModal.show();
+                                }
                             });
+                        }
+                        
+                        // Reload the page if any reservation status changed
+                        if (data.status_changed) {
+                            location.reload();
                         }
                     })
                     .catch(error => {
@@ -675,6 +725,13 @@ ob_end_flush();
 
             // Call it initially if you have a default date
             fetchReservationStatus(document.getElementById('date-picker').value);
+            
+            // Check reservation status periodically
+            setInterval(() => {
+                if (reservationDateInput.value) {
+                    fetchReservationStatus(reservationDateInput.value);
+                }
+            }, 30000); // Check every 30 seconds
         });
     </script>
 </body>

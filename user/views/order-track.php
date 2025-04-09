@@ -16,13 +16,11 @@ if (!isset($_SESSION['user_id'])) {
 $userId = $_SESSION['user_id']; // Fetch the user ID from the session
 
 // profile
-
 $stmt = $conn->prepare("SELECT firstname, lastname, email, profile_picture FROM client WHERE id = ?");
 $stmt->bind_param("i", $userId);
 $stmt->execute();
 $result = $stmt->get_result();
 $client = $result->fetch_assoc();
-
 
 if (!$userId) {
     $userId = [
@@ -33,24 +31,17 @@ if (!$userId) {
     ];
 }
 
-
 $clientFullName = htmlspecialchars($client['firstname'] . ' ' . $client['lastname']);
 $email = htmlspecialchars($client['email']);
 $clientProfilePicture = htmlspecialchars($client['profile_picture']);
 
-
 $profileImagePath = '';
 if (!empty($clientProfilePicture)) {
- 
     $potentialPath = './../../uploads/' . $clientProfilePicture;
     if (file_exists($potentialPath)) {
         $profileImagePath = $potentialPath;
     }
 }
-
-
-// end
-
 
 // Fetch the most recent order for the logged-in user
 $query = "SELECT * FROM Orders WHERE user_id = ? ORDER BY created_at DESC LIMIT 1";
@@ -146,53 +137,82 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['upload_receipt'])) {
     $orderId = $_POST['order_id'];
 
     if (!empty($_FILES['receipt']['name'])) {
-        $allowedTypes = ['image/jpeg', 'image/png'];
+        $allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
         $fileType = $_FILES['receipt']['type'];
-        $fileName = basename($_FILES['receipt']['name']);
-        $targetDir = './../../uploads/';
+        $fileName = uniqid() . '_' . basename($_FILES['receipt']['name']);
+        $targetDir = './../../uploads/receipts/';
+        
+        if (!file_exists($targetDir)) {
+            mkdir($targetDir, 0777, true);
+        }
+        
         $targetFile = $targetDir . $fileName;
 
         if (in_array($fileType, $allowedTypes)) {
             if (move_uploaded_file($_FILES['receipt']['tmp_name'], $targetFile)) {
-                // Save the receipt file name in the database
-                $uploadQuery = "UPDATE Order_Items SET receipt = ? WHERE order_id = ?";
-                $stmt = $conn->prepare($uploadQuery);
+                $conn->begin_transaction();
+                
+                try {
+                    // First update the order_items table
+                    $uploadQuery = "UPDATE Order_Items SET receipt = ? WHERE order_id = ?";
+                    $stmt = $conn->prepare($uploadQuery);
+                    if (!$stmt) {
+                        throw new Exception("Error preparing statement: " . $conn->error);
+                    }
+                    $stmt->bind_param("si", $fileName, $orderId);
+                    if (!$stmt->execute()) {
+                        throw new Exception("Error executing statement: " . $stmt->error);
+                    }
+                    $stmt->close();
 
-                if (!$stmt) {
-                    die("SQL Error: " . $conn->error);
+                    // Then update the Orders table
+                    $updateStatusQuery = "UPDATE Orders SET status = 'Paid' WHERE order_id = ?";
+                    $stmt = $conn->prepare($updateStatusQuery);
+                    if (!$stmt) {
+                        throw new Exception("Error preparing statement: " . $conn->error);
+                    }
+                    $stmt->bind_param("i", $orderId);
+                    if (!$stmt->execute()) {
+                        throw new Exception("Error executing statement: " . $stmt->error);
+                    }
+                    $stmt->close();
+
+                    $conn->commit();
+                    
+                    $_SESSION['upload_message'] = ['type' => 'success', 'text' => 'Receipt uploaded successfully! Your payment is being processed.'];
+                    
+                    header("Location: ".$_SERVER['PHP_SELF']);
+                    exit();
+                } catch (Exception $e) {
+                    $conn->rollback();
+                    $_SESSION['upload_message'] = ['type' => 'danger', 'text' => "Error updating records: " . $e->getMessage()];
+                    header("Location: ".$_SERVER['PHP_SELF']);
+                    exit();
                 }
-
-                $stmt->bind_param("si", $fileName, $orderId);
-                $stmt->execute();
-                $stmt->close();
-
-                // Update the order status to "paid"
-                $updateStatusQuery = "UPDATE Orders SET status = 'Paid' WHERE order_id = ?";
-                $stmt = $conn->prepare($updateStatusQuery);
-
-                if (!$stmt) {
-                    die("SQL Error: " . $conn->error);
-                }
-
-                $stmt->bind_param("i", $orderId);
-                $stmt->execute();
-                $stmt->close();
-
-                // Redirect to refresh the page and show updated status
+            } else {
+                $_SESSION['upload_message'] = ['type' => 'danger', 'text' => "Failed to upload the receipt."];
                 header("Location: ".$_SERVER['PHP_SELF']);
                 exit();
-            } else {
-                echo "<div class='alert alert-danger'>Failed to upload the receipt.</div>";
             }
         } else {
-            echo "<div class='alert alert-danger'>Only JPG and PNG files are allowed.</div>";
+            $_SESSION['upload_message'] = ['type' => 'danger', 'text' => "Only JPG, PNG, and PDF files are allowed."];
+            header("Location: ".$_SERVER['PHP_SELF']);
+            exit();
         }
     } else {
-        echo "<div class='alert alert-danger'>Please select a file to upload.</div>";
+        $_SESSION['upload_message'] = ['type' => 'danger', 'text' => "Please select a file to upload."];
+        header("Location: ".$_SERVER['PHP_SELF']);
+        exit();
     }
 }
 
-// QR Code Generation (UPDATED CODE)
+// Display upload messages if they exist
+if (isset($_SESSION['upload_message'])) {
+    echo "<div class='alert alert-".$_SESSION['upload_message']['type']."'>".$_SESSION['upload_message']['text']."</div>";
+    unset($_SESSION['upload_message']);
+}
+
+// QR Code Generation
 if ($order && $order['status'] === 'booked') {
     $reservationFee = number_format($order['reservation_fee'], 2);
     $totalPrice = number_format($order['total_price'], 2);
@@ -219,10 +239,6 @@ if ($order && $order['status'] === 'booked') {
     Created At: {$order['created_at']}
     EOD;
     
-    
-    
-
-
     $qrCode = Builder::create()
         ->writer(new PngWriter())
         ->data($qrData)
@@ -309,9 +325,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['item_id'], $_POST['ra
     echo "Rating updated successfully!";
     exit();
 }
+
 // Get note (if multiple items, get the first one)
 $note = $orderItems[0]['note'] ?? 'No notes available.';
-
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -542,6 +558,16 @@ $note = $orderItems[0]['note'] ?? 'No notes available.';
             }
         }
 
+        @keyframes blink {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .blink {
+            animation: blink 1s infinite;
+        }
+
         @media (max-width: 576px) {
             .container {
                 padding-left: 15px;
@@ -558,33 +584,27 @@ $note = $orderItems[0]['note'] ?? 'No notes available.';
                 padding-right: 10px;
             }
         }
-
     </style>
 </head>
 <body>
-    <div class=" container mt-3 mt-md-5 ">
-
-    <div class="sched-banner position-relative mb-5 mt-5" style="background-image: url('./../asset/img/sched-reservation/sched-banner.png'); background-size: cover; background-position: center; min-height: 600px;">
-    <div class="container position-absolute bottom-0 start-0 p-3 d-flex align-items-center">
-        <div class="profile-container d-flex align-items-center">
-            <!-- Profile Picture with fallback -->
-            <?php if (!empty($profileImagePath)): ?>
-                <img src="<?php echo $profileImagePath; ?>" alt="<?php echo $clientFullName; ?>" class="rounded-circle border border-3 border-white" style="width: 150px; height: 140px; object-fit: cover;">
-            <?php else: ?>
-                <div class="rounded-circle border border-3 border-white d-flex align-items-center justify-content-center bg-secondary" style="width: 130px; height: 120px;">
-                    <i class="fas fa-user fa-3x text-white"></i>
+    <div class="container mt-3 mt-md-5">
+        <div class="sched-banner position-relative mb-5 mt-5" style="background-image: url('./../asset/img/sched-reservation/sched-banner.png'); background-size: cover; background-position: center; min-height: 600px;">
+            <div class="container position-absolute bottom-0 start-0 p-3 d-flex align-items-center">
+                <div class="profile-container d-flex align-items-center">
+                    <?php if (!empty($profileImagePath)): ?>
+                        <img src="<?php echo $profileImagePath; ?>" alt="<?php echo $clientFullName; ?>" class="rounded-circle border border-3 border-white" style="width: 150px; height: 140px; object-fit: cover;">
+                    <?php else: ?>
+                        <div class="rounded-circle border border-3 border-white d-flex align-items-center justify-content-center bg-secondary" style="width: 130px; height: 120px;">
+                            <i class="fas fa-user fa-3x text-white"></i>
+                        </div>
+                    <?php endif; ?>
                 </div>
-            <?php endif; ?>
+                <div class="client-info ms-3 text-white">
+                    <h5 class="mb-1"><?php echo $clientFullName; ?></h5>
+                    <p class="mb-0"><?php echo $email; ?></p>
+                </div>
+            </div>
         </div>
-        <div class="client-info ms-3 text-white">
-            <!-- Client Full Name -->
-            <h5 class="mb-1"><?php echo $clientFullName; ?></h5>
-            <!-- Client Email -->
-            <p class="mb-0"><?php echo $email; ?></p>
-        </div>
-    </div>
-</div>
-
 
         <h3 class="text-center text-md-start">Order Tracking</h3>
 
@@ -736,28 +756,29 @@ $note = $orderItems[0]['note'] ?? 'No notes available.';
                 <?php if ($order['status'] === 'payment'): ?>
                     <form method="POST" enctype="multipart/form-data" class="mt-3" id="receiptForm">
                         <input type="hidden" name="order_id" value="<?php echo htmlspecialchars($order['order_id']); ?>">
+                        <input type="hidden" name="upload_receipt" value="1">
                         
                         <!-- Timer Section -->
                         <div class="mb-3 text-center">
                             <h5>Time Remaining to Complete Payment</h5>
-                            <div id="payment-timer" class="fs-3 fw-bold text-danger">30:00</div>
+                            <div id="payment-timer" class="fs-3 fw-bold text-danger">20:00</div>
                             <small class="text-muted">Please complete your payment before time runs out</small>
                         </div>
 
                         <div class="mb-3">
                             <label for="receipt" class="form-label upl-p">Upload Receipt</label>
-                            <input type="file" class="form-control" id="receipt" name="receipt">
+                            <input type="file" class="form-control" id="receipt" name="receipt" required>
                         </div>
 
                         <div class="mb-3">
-                            <label for="receipt" class="form-label upl-p">Instructions</label>
-                            <ul>
-                                <li>1. Please upload receipt upon confirmation</li>
-                                <li>2. Upon confirmation, there will be an allotted time of 30 minutes to confirm payment.</li>
-                                <li>3. Failure to do so will result in cancellation of order/reservation.</li>
-                            </ul>
-                        </div>
-                        <button type="submit" name="upload_receipt" class="btn rounded send text-light fw-bold w-100">Send Receipt</button>
+    <label for="receipt" class="form-label upl-p">Instructions</label>
+    <ul>
+        <li>1. Please upload receipt upon confirmation</li>
+        <li>2. Upon confirmation, there will be an allotted time of 30 minutes to confirm payment.</li>
+        <li>3. Failure to do so will result in cancellation of order/reservation.</li>
+    </ul>
+</div>
+                        <button type="submit" class="btn rounded send text-light fw-bold w-100">Send Receipt</button>
                         <form method="POST" class="mt-3">
                             <input type="hidden" name="order_id" value="<?php echo htmlspecialchars($order['order_id']); ?>">
                             <button type="button" class="btn btn-danger rounded mt-3 w-100" data-bs-toggle="modal" data-bs-target="#cancelOrderModal">Cancel Order</button>
@@ -775,12 +796,12 @@ $note = $orderItems[0]['note'] ?? 'No notes available.';
                                 <div class="modal-body">
                                     <p>Your payment time has expired. Would you like to:</p>
                                     <ol>
-                                        <li>Continue with the payment (we'll give you another 30 minutes)</li>
+                                        <li>Continue with the payment (we'll give you another 20 seconds)</li>
                                         <li>Cancel the order</li>
                                     </ol>
                                 </div>
                                 <div class="modal-footer">
-                                    <button type="button" class="btn btn-secondary" id="continuePayment">Continue Payment</button>
+                                    <button type="button" class="btn btn-primary" id="continuePayment">Continue Payment</button>
                                     <button type="button" class="btn btn-danger" id="cancelAfterTimeout">Cancel Order</button>
                                 </div>
                             </div>
@@ -797,7 +818,6 @@ $note = $orderItems[0]['note'] ?? 'No notes available.';
                     </div>
 
                 <?php elseif ($order['status'] === 'booked'): ?>
-                    
                     <form method="POST" class="mt-3">
                         <input type="hidden" name="order_id" value="<?php echo htmlspecialchars($order['order_id']); ?>">
                         <div class="text-center mt-4">
@@ -807,7 +827,7 @@ $note = $orderItems[0]['note'] ?? 'No notes available.';
                         </div>
                     </form>
 
-                    <div class="alert alert-info mt-2 ">
+                    <div class="alert alert-info mt-2">
                         <strong>Please show this QR code to the cashier.</strong>
                     </div>
 
@@ -833,18 +853,18 @@ $note = $orderItems[0]['note'] ?? 'No notes available.';
                             <p><?php echo htmlspecialchars($order['reservation_type']); ?></p>
                         </div>
                      
-                            <div class="d-flex justify-content-between w-100">
-                                <p><strong>Reservation Date:</strong></p>
-                                <p><?php echo htmlspecialchars($order['reservation_date']); ?></p>
-                            </div>
-                            <div class="d-flex justify-content-between w-100">
-                                <p><strong>Reservation Time:</strong></p>
-                                <p><?php echo htmlspecialchars($order['reservation_time']); ?></p>
-                            </div>
-                            <div class="d-flex justify-content-between w-100">
-                                <p><strong>Party Size:</strong></p>
-                                <p><?php echo htmlspecialchars($order['party_size']); ?></p>
-                            </div>
+                        <div class="d-flex justify-content-between w-100">
+                            <p><strong>Reservation Date:</strong></p>
+                            <p><?php echo htmlspecialchars($order['reservation_date']); ?></p>
+                        </div>
+                        <div class="d-flex justify-content-between w-100">
+                            <p><strong>Reservation Time:</strong></p>
+                            <p><?php echo htmlspecialchars($order['reservation_time']); ?></p>
+                        </div>
+                        <div class="d-flex justify-content-between w-100">
+                            <p><strong>Party Size:</strong></p>
+                            <p><?php echo htmlspecialchars($order['party_size']); ?></p>
+                        </div>
                   
                         <div class="d-flex justify-content-between w-100">
                             <p><strong>Reservation Fee:</strong></p>
@@ -877,18 +897,18 @@ $note = $orderItems[0]['note'] ?? 'No notes available.';
                             <p><?php echo htmlspecialchars($order['reservation_type']); ?></p>
                         </div>
                     
-                            <div class="d-flex justify-content-between w-100">
-                                <p><strong>Reservation Date:</strong></p>
-                                <p><?php echo htmlspecialchars($order['reservation_date']); ?></p>
-                            </div>
-                            <div class="d-flex justify-content-between w-100">
-                                <p><strong>Reservation Time:</strong></p>
-                                <p><?php echo htmlspecialchars($order['reservation_time']); ?></p>
-                            </div>
-                            <div class="d-flex justify-content-between w-100">
-                                <p><strong>Party Size:</strong></p>
-                                <p><?php echo htmlspecialchars($order['party_size']); ?></p>
-                            </div>
+                        <div class="d-flex justify-content-between w-100">
+                            <p><strong>Reservation Date:</strong></p>
+                            <p><?php echo htmlspecialchars($order['reservation_date']); ?></p>
+                        </div>
+                        <div class="d-flex justify-content-between w-100">
+                            <p><strong>Reservation Time:</strong></p>
+                            <p><?php echo htmlspecialchars($order['reservation_time']); ?></p>
+                        </div>
+                        <div class="d-flex justify-content-between w-100">
+                            <p><strong>Party Size:</strong></p>
+                            <p><?php echo htmlspecialchars($order['party_size']); ?></p>
+                        </div>
                      
                         <div class="d-flex justify-content-between w-100">
                             <p><strong>Subtotal:</strong></p>
@@ -949,111 +969,98 @@ $note = $orderItems[0]['note'] ?? 'No notes available.';
 
     <script>
         $(document).ready(function () {
-            // Timer functionality for payment status
             <?php if ($order['status'] === 'payment'): ?>
-                // Calculate time remaining
-                const createdTime = new Date("<?php echo $order['created_at']; ?>").getTime();
-                const currentTime = new Date().getTime();
-                const elapsedSeconds = Math.floor((currentTime - createdTime) / 1000);
-                let timeLeft = 30 * 60 - elapsedSeconds; // 30 minutes in seconds
-                
-                // If time is already expired, set to 0
-                if (timeLeft < 0) timeLeft = 0;
-                
-                const timerElement = document.getElementById('payment-timer');
-                const timeoutModal = new bootstrap.Modal(document.getElementById('timeoutModal'));
-                
-                // Function to update the timer display
-                function updateTimer() {
-                    const minutes = Math.floor(timeLeft / 60);
-                    const seconds = timeLeft % 60;
-                    timerElement.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-                     
-                    if (timeLeft <= 0) {
-                        clearInterval(timerInterval);
-                        timerElement.textContent = "00:00";
-                        timeoutModal.show();
-                        handleTimeout();
-                    }
-                }
-                
-                // Start the timer
-                updateTimer();
-                let timerInterval = setInterval(() => {
-                    timeLeft--;
-                    updateTimer();
-                }, 1000);
-                
-                // Handle continue payment button
-                $('#continuePayment').click(function() {
-                    // Reset the timer for another 30 minutes
-                    timeLeft = 30 * 60;
-                    updateTimer();
-                    timerInterval = setInterval(() => {
-                        timeLeft--;
-                        updateTimer();
-                    }, 1000);
-                    
-                    // Hide the modal
-                    timeoutModal.hide();
-                });
-                
-                // Handle cancel after timeout button
-                $('#cancelAfterTimeout').click(function() {
-                    // Cancel the order
-                    $.ajax({
-                        type: 'POST',
-                        url: window.location.href,
-                        data: {
-                            cancel_order: true,
-                            order_id: <?php echo $order['order_id']; ?>
-                        },
-                        success: function(response) {
-                            window.location.reload();
-                        },
-                        error: function() {
-                            alert('Error cancelling order');
-                        }
-                    });
-                });
-                
-                // Also update the database when timer runs out
-                function handleTimeout() {
-                    $.ajax({
-                        type: 'POST',
-                        url: window.location.href,
-                        data: {
-                            timeout_order: true,
-                            order_id: <?php echo $order['order_id']; ?>
-                        },
-                        success: function(response) {
-                            // Modal will handle the UI
-                        },
-                        error: function() {
-                            console.log('Error updating order status');
-                        }
-                    });
-                }
-                
-                // Check if we need to show timeout modal on page load
-                <?php 
-                // Calculate if the payment time has expired
-                $createdTime = strtotime($order['created_at']);
-                $currentTime = time();
-                $elapsedTime = $currentTime - $createdTime;
-                if ($elapsedTime > 30 * 60) {
-                    echo 'timeoutModal.show();';
-                    echo 'handleTimeout();';
-                }
-                ?>
-            <?php endif; ?>
-            
+    let timerInterval;
+    let timeLeft = 1800; // 1800 seconds = 30 minutes
+    const timerElement = document.getElementById('payment-timer');
+    const timeoutModal = new bootstrap.Modal(document.getElementById('timeoutModal'));
+    const receiptForm = document.getElementById('receiptForm');
+    
+    function updateTimer() {
+        const minutes = Math.floor(timeLeft / 60);
+        const seconds = timeLeft % 60;
+        timerElement.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        
+        if (timeLeft <= 300) { // 5 minutes left (300 seconds)
+            timerElement.style.color = '#ff0000';
+            timerElement.classList.add('blink');
+        }
+        
+        if (timeLeft <= 0) {
+            clearInterval(timerInterval);
+            timerElement.textContent = "00:00";
+            timeoutModal.show();
+            handleTimeout();
+        }
+    }
+    
+    updateTimer();
+    timerInterval = setInterval(() => {
+        timeLeft--;
+        updateTimer();
+    }, 1000);
+    
+    // Clean up when leaving page
+    $(window).on('beforeunload', function() {
+        clearInterval(timerInterval);
+    });
+    
+    $('#continuePayment').click(function() {
+        timeLeft = 1800; // Reset to 30 minutes
+        clearInterval(timerInterval);
+        updateTimer();
+        timerInterval = setInterval(() => {
+            timeLeft--;
+            updateTimer();
+        }, 1000);
+        timeoutModal.hide();
+    });
+    
+    $('#cancelAfterTimeout').click(function() {
+        $(this).prop('disabled', true);
+        $('#continuePayment').prop('disabled', true);
+        
+        $.ajax({
+            type: 'POST',
+            url: window.location.href,
+            data: {
+                timeout_order: true,
+                order_id: <?php echo $order['order_id']; ?>
+            },
+            success: function() {
+                window.location.reload(true);
+            },
+            error: function() {
+                alert('Error cancelling order');
+                $('#cancelAfterTimeout, #continuePayment').prop('disabled', false);
+            }
+        });
+    });
+    
+    function handleTimeout() {
+        if (receiptForm) {
+            receiptForm.querySelector('button[type="submit"]').disabled = true;
+        }
+        
+        $.ajax({
+            type: 'POST',
+            url: window.location.href,
+            data: {
+                timeout_order: true,
+                order_id: <?php echo $order['order_id']; ?>
+            },
+            error: function() {
+                console.log('Error updating order status');
+            }
+        });
+    }
+<?php endif; ?>
             // Status checking and auto-reload functionality
             let currentStatus = "<?php echo $order['status']; ?>";
             
             function checkStatus() {
                 $.ajax({
-                    url: 'check-order-status.php',
+                    url: 'checks-order-status.php',
                     type: 'GET',
                     data: { order_id: <?php echo $order['order_id']; ?> },
                     dataType: 'json',
@@ -1096,10 +1103,10 @@ $note = $orderItems[0]['note'] ?? 'No notes available.';
             $('.star-rating i').on('click', function () {
                 var rating = $(this).data('rate');
                 var itemId = $(this).closest('.star-rating').data('item-id');
-                var $ratingContainer = $(this).closest('.star-rating'); // Get the rating container
+                var $ratingContainer = $(this).closest('.star-rating');
                 var $stars = $(this).parent().find('i');
 
-                console.log("Item ID:", itemId, "Rating:", rating); // Debugging
+                console.log("Item ID:", itemId, "Rating:", rating);
 
                 // Update star display immediately
                 $stars.removeClass('fa-regular').addClass('fa-solid');
@@ -1116,7 +1123,7 @@ $note = $orderItems[0]['note'] ?? 'No notes available.';
                     url: 'order-track.php',
                     data: { item_id: itemId, rating: rating },
                     success: function(response) {
-                        console.log("Server Response:", response); // Debugging
+                        console.log("Server Response:", response);
 
                         // Show the popup
                         $('#ratingPopup').fadeIn();
@@ -1131,11 +1138,7 @@ $note = $orderItems[0]['note'] ?? 'No notes available.';
 
                             // Check if all items have been rated
                             if (ratedItems >= totalItems) {
-                                // Show thank you message in each rating container
                                 $('.thank-you-message').fadeIn();
-                                
-                                // Optional: You could also show a global thank you message
-                                // $('#globalThankYouMessage').fadeIn();
                             }
                         }, 2000);
                     },
@@ -1149,20 +1152,28 @@ $note = $orderItems[0]['note'] ?? 'No notes available.';
             $('#receiptForm').on('submit', function(e) {
                 e.preventDefault();
                 
+                // Show loading state
+                var submitBtn = $(this).find('button[type="submit"]');
+                var originalText = submitBtn.text();
+                submitBtn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Uploading...');
+                
                 var formData = new FormData(this);
                 
                 $.ajax({
-                    url: $(this).attr('action'),
+                    url: window.location.href,
                     type: 'POST',
                     data: formData,
                     processData: false,
                     contentType: false,
                     success: function(response) {
-                        // Reload the page after successful submission
                         window.location.reload();
                     },
-                    error: function() {
-                        alert('Error uploading receipt.');
+                    error: function(xhr, status, error) {
+                        // Re-enable button
+                        submitBtn.prop('disabled', false).text(originalText);
+                        
+                        // Show error message
+                        alert('Error uploading receipt: ' + error);
                     }
                 });
             });
