@@ -55,7 +55,7 @@ include './../inc/topNav.php';
             left: 0;
             width: 100%;
             height: 5px; 
-            background-color: #FC8E29;
+         
             border-radius: 3px;
         }
         .table-container {

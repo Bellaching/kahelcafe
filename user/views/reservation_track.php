@@ -1096,8 +1096,7 @@ $('#receiptForm').on('submit', function(e) {
                 console.error('Error parsing response:', e);
             }
             
-            // Only show error if we didn't get a success response
-            alert('Error uploading receipt. Please try again.');
+          
             submitBtn.prop('disabled', false);
             submitBtn.text('Send Receipt');
         }

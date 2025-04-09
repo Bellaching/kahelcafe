@@ -35,7 +35,6 @@ $errors = [
     'editProductStatus' => ''
 ];
 
-
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['addMenuItem'])) {
     // Initialize variables
     $menuImage = '';
@@ -329,12 +328,8 @@ ob_end_flush();
     <title>Menu</title>
     <link rel="stylesheet" href="menu.css">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet">
-
-<!-- DataTables CSS -->
-<link href="https://cdn.datatables.net/1.13.1/css/jquery.dataTables.min.css" rel="stylesheet">
-<!-- Font Awesome -->
-<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
-
+    <link href="https://cdn.datatables.net/1.13.1/css/jquery.dataTables.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
   
     <style>
         .add-index {
@@ -394,6 +389,20 @@ ob_end_flush();
             margin-top: 0.25rem;
             display: block;
         }
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        .out-of-stock-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: #dc3545;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+        }
     </style>
 </head>
 <body>
@@ -447,11 +456,20 @@ function renderMenuItems($result) {
             $name = htmlspecialchars($row['name'], ENT_QUOTES, 'UTF-8');
             $price = htmlspecialchars($row['price'], ENT_QUOTES, 'UTF-8');
             $image = htmlspecialchars($row['image'], ENT_QUOTES, 'UTF-8');
-            $id = intval($row['id']); 
+            $id = intval($row['id']);
+            $quantity = intval($row['quantity']);
+            $isOutOfStock = ($quantity <= 0);
 
             $output .= '
            <div class="col-12 col-sm-6 col-md-4 col-lg-3 menu-card shadow-sm">
-              <div class="card p-2 rounded-1" style="border: none;">
+              <div class="card p-2 rounded-1" style="border: none; position: relative;">';
+            
+            // Add out of stock badge if quantity is 0 (visual indicator only)
+            if ($isOutOfStock) {
+                $output .= '<span class="out-of-stock-badge">Out of Stock</span>';
+            }
+
+            $output .= '
                     <div class="img-container" style="overflow: hidden; height: 150px;">
                         <img src="' . $image . '" class="card-img-top" alt="' . $name . '" style="height: 100%; width: 100%; object-fit: cover;">
                     </div>
@@ -462,6 +480,7 @@ function renderMenuItems($result) {
                                 <strong>₱' . $price . '</strong>
                             </p>
                         </div>
+                        <!-- Buttons are now ALWAYS enabled -->
                         <button class="btn btn-edit btn-primary" style="background-color:#FF902B; border:none; border-radius:3rem; padding: 0.5rem;" onclick="openEditModal(' . $id . ', \'' . $name . '\')">
                             <i class="fa-solid fa-edit"></i> Edit
                         </button>
@@ -470,15 +489,13 @@ function renderMenuItems($result) {
                         </button>
                     </div>
                 </div>
-            </div>
-            ';
+            </div>';
         }
     } else {
         $output .= '<div class="container d-flex justify-content-center"><p class="text-center">No menu items found.</p></div>';
     }
     return $output; 
-}
-        echo renderMenuItems($result);
+}       echo renderMenuItems($result);
         ?>
     </div>
 </div>
@@ -560,7 +577,7 @@ function renderMenuItems($result) {
                                 <div class="container-fluid">
                                     <input type="checkbox" name="editMenuSize[]" value="Small" id="editSizeSmall" <?php echo (isset($_POST['editMenuSize']) && in_array('Small', $_POST['editMenuSize']) ? 'checked' : '' )?>>
                                     <label for="editSizeSmall" class="me-3">Small</label>
-                                    <input type="checkbox" name="editMenuSize[]" value="Medium" id="editSizeMedium" <?php echo (isset($_POST['editMenuSize']) && in_array('Medium', $_POST['editMenuSize']) ? 'checked' : '') ?>>
+                                    <input type="checkbox" name="editMenuSize[]" value="Medium" id="editSizeMedium" <?php echo (isset($_POST['editMenuSize']) && in_array('Medium', $_POST['editMenuSize']) ? 'checked' : '' )?>>
                                     <label for="editSizeMedium" class="me-3">Medium</label>
                                     <input type="checkbox" name="editMenuSize[]" value="Large" id="editSizeLarge" <?php echo (isset($_POST['editMenuSize']) && in_array('Large', $_POST['editMenuSize']) ? 'checked' : '') ?>>
                                     <label for="editSizeLarge">Large</label>
@@ -572,11 +589,11 @@ function renderMenuItems($result) {
                             <div class="mb-3 container-fluid" id="editMenuTemperatureContainer">
                                 <label for="editMenuTemperature" class="form-label">Temperature</label>
                                 <div class="container-fluid">
-                                    <input type="checkbox" name="editMenuTemperature[]" value="Hot" id="editTemperatureHot" <?php echo (isset($_POST['editMenuTemperature']) && in_array('Hot', $_POST['editMenuTemperature']) ? 'checked' : '') ?>>
+                                    <input type="checkbox" name="editMenuTemperature[]" value="Hot" id="editTemperatureHot" <?php echo (isset($_POST['editMenuTemperature']) && in_array('Hot', $_POST['editMenuTemperature']) ? 'checked' : '' )?>>
                                     <label for="editTemperatureHot" class="me-3">Hot</label>
                                     <input type="checkbox" name="editMenuTemperature[]" value="Warm" id="editTemperatureWarm" <?php echo (isset($_POST['editMenuTemperature']) && in_array('Warm', $_POST['editMenuTemperature']) ? 'checked' : '' )?>>
                                     <label for="editTemperatureWarm" class="me-3">Warm</label>
-                                    <input type="checkbox" name="editMenuTemperature[]" value="Cold" id="editTemperatureCold" <?php echo (isset($_POST['editMenuTemperature']) && in_array('Cold', $_POST['editMenuTemperature']) ? 'checked' : '' )?>>
+                                    <input type="checkbox" name="editMenuTemperature[]" value="Cold" id="editTemperatureCold" <?php echo (isset($_POST['editMenuTemperature']) && in_array('Cold', $_POST['editMenuTemperature']) ? 'checked' : '') ?>>
                                     <label for="editTemperatureCold">Cold</label>
                                 </div>
                                 <?php if (!empty($errors['editMenuTemperature'])): ?>
@@ -658,13 +675,13 @@ function renderMenuItems($result) {
                             </div>
                         </div>
                         <div class="col-md-6">
-                        <div class="mb-3">
-    <label for="menuName" class="form-label">Menu Name</label>
-    <input type="text" class="form-control <?php echo !empty($errors['menuName']) ? 'is-invalid' : '' ?>" id="menuName" name="menuName" value="<?php echo isset($_POST['menuName']) ? htmlspecialchars($_POST['menuName']) : '' ?>">
-    <?php if (!empty($errors['menuName'])): ?>
-        <div class="error-message"><?php echo htmlspecialchars($errors['menuName']); ?></div>
-    <?php endif; ?>
-</div>
+                            <div class="mb-3">
+                                <label for="menuName" class="form-label">Menu Name</label>
+                                <input type="text" class="form-control <?php echo !empty($errors['menuName']) ? 'is-invalid' : '' ?>" id="menuName" name="menuName" value="<?php echo isset($_POST['menuName']) ? htmlspecialchars($_POST['menuName']) : '' ?>">
+                                <?php if (!empty($errors['menuName'])): ?>
+                                    <div class="error-message"><?php echo htmlspecialchars($errors['menuName']); ?></div>
+                                <?php endif; ?>
+                            </div>
 
                             <div class="mb-3">
                                 <label for="menuCategory" class="form-label">Category</label>
@@ -687,11 +704,11 @@ function renderMenuItems($result) {
 <div class="mb-3 container-fluid" id="menuSizeContainer">
     <label for="menuSize" class="form-label">Size</label>
     <div class="container-fluid">
-        <input type="checkbox" name="menuSize[]" value="Small" id="sizeSmall" <?php echo (isset($_POST['menuSize']) && in_array('Small', $_POST['menuSize']) ? 'checked' : '' )?>>
+        <input type="checkbox" name="menuSize[]" value="Small" id="sizeSmall" <?php echo (isset($_POST['menuSize']) && in_array('Small', $_POST['menuSize']) ? 'checked' : '') ?>>
         <label for="sizeSmall" class="me-3">Small</label>
-        <input type="checkbox" name="menuSize[]" value="Medium" id="sizeMedium" <?php echo (isset($_POST['menuSize']) && in_array('Medium', $_POST['menuSize']) ? 'checked' : '' )?>>
+        <input type="checkbox" name="menuSize[]" value="Medium" id="sizeMedium" <?php echo (isset($_POST['menuSize']) && in_array('Medium', $_POST['menuSize']) ? 'checked' : '') ?>>
         <label for="sizeMedium" class="me-3">Medium</label>
-        <input type="checkbox" name="menuSize[]" value="Large" id="sizeLarge" <?php echo (isset($_POST['menuSize']) && in_array('Large', $_POST['menuSize']) ? 'checked' : '' )?>>
+        <input type="checkbox" name="menuSize[]" value="Large" id="sizeLarge" <?php echo (isset($_POST['menuSize']) && in_array('Large', $_POST['menuSize']) ? 'checked' : '') ?>>
         <label for="sizeLarge">Large</label>
     </div>
     <?php if (!empty($errors['menuSize'])): ?>
@@ -701,11 +718,11 @@ function renderMenuItems($result) {
                             <div class="mb-3 container-fluid" id="menuTemperatureContainer">
                                 <label for="menuTemperature" class="form-label">Temperature</label>
                                 <div class="container-fluid">
-                                    <input type="checkbox" name="menuTemperature[]" value="Hot" id="temperatureHot" <?php echo (isset($_POST['menuTemperature']) && in_array('Hot', $_POST['menuTemperature'])) ? 'checked' : '' ?>>
+                                    <input type="checkbox" name="menuTemperature[]" value="Hot" id="temperatureHot" <?php echo (isset($_POST['menuTemperature']) && in_array('Hot', $_POST['menuTemperature']) ? 'checked' : '') ?>>
                                     <label for="temperatureHot" class="me-3">Hot</label>
-                                    <input type="checkbox" name="menuTemperature[]" value="Warm" id="temperatureWarm" <?php echo (isset($_POST['menuTemperature']) && in_array('Warm', $_POST['menuTemperature'])) ? 'checked' : '' ?>>
+                                    <input type="checkbox" name="menuTemperature[]" value="Warm" id="temperatureWarm" <?php echo (isset($_POST['menuTemperature']) && in_array('Warm', $_POST['menuTemperature']) ? 'checked' : '' )?>>
                                     <label for="temperatureWarm" class="me-3">Warm</label>
-                                    <input type="checkbox" name="menuTemperature[]" value="Cold" id="temperatureCold" <?php echo (isset($_POST['menuTemperature']) && in_array('Cold', $_POST['menuTemperature'])) ? 'checked' : '' ?>>
+                                    <input type="checkbox" name="menuTemperature[]" value="Cold" id="temperatureCold" <?php echo (isset($_POST['menuTemperature']) && in_array('Cold', $_POST['menuTemperature']) ? 'checked' : '') ?>>
                                     <label for="temperatureCold">Cold</label>
                                 </div>
                                 <?php if (!empty($errors['menuTemperature'])): ?>
@@ -879,8 +896,6 @@ function renderMenuItems($result) {
             }
         });
     }
-
-
 
     function saveEdit() {
         const formData = new FormData(document.getElementById('editMenuForm'));
