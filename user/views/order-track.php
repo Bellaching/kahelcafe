@@ -2,7 +2,7 @@
 include './../../connection/connection.php';
 include './../inc/topNav.php';
 require './../../vendor/autoload.php'; // Ensure you have the QR library
-
+include './../../admin/user/profile_header.php';
 use Endroid\QrCode\Builder\Builder;
 use Endroid\QrCode\Encoding\Encoding;
 use Endroid\QrCode\Writer\PngWriter;
@@ -588,23 +588,7 @@ $note = $orderItems[0]['note'] ?? 'No notes available.';
 </head>
 <body>
     <div class="container mt-3 mt-md-5">
-        <div class="sched-banner position-relative mb-5 mt-5" style="background-image: url('./../asset/img/sched-reservation/sched-banner.png'); background-size: cover; background-position: center; min-height: 600px;">
-            <div class="container position-absolute bottom-0 start-0 p-3 d-flex align-items-center">
-                <div class="profile-container d-flex align-items-center">
-                    <?php if (!empty($profileImagePath)): ?>
-                        <img src="<?php echo $profileImagePath; ?>" alt="<?php echo $clientFullName; ?>" class="rounded-circle border border-3 border-white" style="width: 150px; height: 140px; object-fit: cover;">
-                    <?php else: ?>
-                        <div class="rounded-circle border border-3 border-white d-flex align-items-center justify-content-center bg-secondary" style="width: 130px; height: 120px;">
-                            <i class="fas fa-user fa-3x text-white"></i>
-                        </div>
-                    <?php endif; ?>
-                </div>
-                <div class="client-info ms-3 text-white">
-                    <h5 class="mb-1"><?php echo $clientFullName; ?></h5>
-                    <p class="mb-0"><?php echo $email; ?></p>
-                </div>
-            </div>
-        </div>
+
 
         <h3 class="text-center text-md-start">Order Tracking</h3>
 
