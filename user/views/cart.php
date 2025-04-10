@@ -31,10 +31,10 @@ if (!isset($_SESSION['cart']) && isset($_SESSION['user_id'])) {
     }
     $stmt->close();
 } 
-
+// Retrieve client details
 // Retrieve client details
 $clientFullName = 'Unknown';
-$clientId = $_SESSION['user_id'];
+$clientId = $_SESSION['user_id'] ?? 0;
 
 if ($clientId) {
     $query = "SELECT firstname, lastname FROM client WHERE id = ?";
@@ -51,47 +51,40 @@ if ($clientId) {
 
 function getAvailableTimes($conn, $user_id, $date = null) {
     $times = [];
-    $timeQuery = $conn->query("SELECT id AS time_id, time FROM res_time ORDER BY time");
-    if (!$timeQuery) {
-        die("Time query failed: " . $conn->error);
-    }
-    
+    $timeQuery = $conn->query("SELECT id, time FROM res_time ORDER BY time");
     while ($row = $timeQuery->fetch_assoc()) {
-        $times[] = $row;
+        $times[] = [
+            'id' => $row['id'],
+            'time' => $row['time'],
+            'status' => 'available',
+            'color' => '#07D090'
+        ];
     }
     
     if ($date) {
         foreach ($times as &$time) {
             $checkQuery = $conn->prepare("
-                SELECT res_status, client_id 
-                FROM reservation 
-                WHERE reservation_date = ? 
-                AND reservation_time_id = ?
+                SELECT r.id, r.res_status, r.client_id, rt.time
+                FROM reservation r
+                JOIN res_time rt ON r.reservation_time_id = rt.id
+                WHERE r.reservation_date = ? 
+                AND r.reservation_time_id = ?
+                AND r.res_status IN ('for confirmation', 'payment', 'paid', 'booked')
             ");
-            
-            if (!$checkQuery) {
-                die("Prepare failed: " . $conn->error);
-            }
-            
-            $checkQuery->bind_param("si", $date, $time['time_id']);
+            $checkQuery->bind_param("si", $date, $time['id']);
             $checkQuery->execute();
             $result = $checkQuery->get_result();
             
             if ($result->num_rows > 0) {
-                $status = $result->fetch_assoc();
-                if ($status['client_id'] == $user_id) {
+                $res_status = $result->fetch_assoc();
+                if ($res_status['client_id'] == $user_id) {
                     $time['status'] = 'your_reservation';
-                    $time['disabled'] = true;
-                } elseif ($status['res_status'] == 'booked') {
+                    $time['color'] = '#9647FF';
+                } else {
                     $time['status'] = 'booked';
-                    $time['disabled'] = true;
+                    $time['color'] = '#E60000';
                 }
-            } else {
-                $time['status'] = 'available';
-                $time['disabled'] = false;
             }
-            
-            $checkQuery->close();
         }
     }
     
@@ -185,14 +178,14 @@ if (isset($_POST['checkout'])) {
     $reservationType = $_POST['reservation_type'] ?? '';
     $transactionId = strtoupper(bin2hex(random_bytes(6)));
     $reservation_date = $_POST['reservation_date'] ?? '';
-    $reservation_time_id = $_POST['reservation_time_id'] ?? 0;
+    $reservation_id = $_POST['reservation_id'] ?? 0;
     $party_size = $_POST['party_size'] ?? 1;
 
     // Get reservation time
     $reservation_time = '';
     $timeQuery = $conn->prepare("SELECT time FROM res_time WHERE id = ?");
     if ($timeQuery) {
-        $timeQuery->bind_param("i", $reservation_time_id);
+        $timeQuery->bind_param("i", $reservation_id);
         $timeQuery->execute();
         $timeResult = $timeQuery->get_result();
         $timeRow = $timeResult->fetch_assoc();
@@ -263,7 +256,7 @@ if (isset($_POST['checkout'])) {
 
         // Insert into Orders table
         $status = "for confirmation";
-        $stmt = $conn->prepare("INSERT INTO Orders (user_id, client_full_name, total_price, transaction_id, reservation_type, status, reservation_fee, reservation_time_id, reservation_time, reservation_date, party_size) 
+        $stmt = $conn->prepare("INSERT INTO Orders (user_id, client_full_name, total_price, transaction_id, reservation_type, status, reservation_fee, reservation_id, reservation_time, reservation_date, party_size) 
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 
         if (!$stmt) {
@@ -279,7 +272,7 @@ if (isset($_POST['checkout'])) {
             $reservationType, 
             $status, 
             $reservation_fee, 
-            $reservation_time_id, 
+            $reservation_id, 
             $reservation_time, 
             $reservation_date, 
             $party_size
@@ -435,6 +428,45 @@ function cancelOrderAndReturnQuantities($orderId, $conn) {
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css" integrity="sha512-Kc323vGBEqzTmouAECnVceyQqyqdsSiqLQISBL29aUW4U/M7pSPA/gEUZQqv1cwx4OnYxTxve5UMg5GT6L4JJg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <link rel="stylesheet" href="cart.css">
+
+
+    <style>
+        .pending-slot {
+            background-color: #E60000 !important;
+            color: white !important;
+        }
+        .your-reservation {
+            background-color: #9647FF !important;
+            color: white !important;
+        }
+        .available-slot {
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .booked-slot {
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+        .available-time-btn[disabled] {
+            pointer-events: none;
+        }
+        .time-slot-btn {
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 1px solid transparent;
+        }
+        .time-slot-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        .time-slot-btn:disabled {
+            cursor: not-allowed;
+            opacity: 0.8;
+        }
+        .time-slot-btn.selected {
+            border: 2px solid #000 !important;
+        }
+    </style>
 </head>
 <body>
     
@@ -471,11 +503,11 @@ function cancelOrderAndReturnQuantities($orderId, $conn) {
           <td><?php echo isset($item['temperature']) ? $item['temperature'] : ''; ?></td>
           <td>
             <div class="input-group quantity-buttons flex-nowrap">
-              <button class="btn btn-secondary btn-sm btn-decrease border-0" style="background-color: #FF902B;  data-id="<?php echo $item['id']; ?>">-</button>
-              <input type="text" class="form-control quantity-input text-center" value="<?php echo $item['quantity']; ?>" data-id="<?php echo $item['id']; ?>" readonly>
-              <button class="btn btn-secondary btn-sm btn-increase border-0" style="background-color: #FF902B; data-id="<?php echo $item['id']; ?>">+</button>
+                <button class="btn btn-secondary btn-sm btn-decrease border-0" style="background-color: #FF902B;" data-id="<?php echo $item['id']; ?>">-</button>
+                <input type="text" class="form-control quantity-input text-center" value="<?php echo $item['quantity']; ?>" data-id="<?php echo $item['id']; ?>" readonly>
+                <button class="btn btn-secondary btn-sm btn-increase border-0" style="background-color: #FF902B;" data-id="<?php echo $item['id']; ?>">+</button>
             </div>
-          </td>
+        </td>
         </tr>
       <?php endforeach; ?>
     </tbody>
@@ -493,15 +525,11 @@ function cancelOrderAndReturnQuantities($orderId, $conn) {
             
             <div class="col-lg-4 mt-4">
                 <div class="card">
-                    <strong><h4 class="m-3 order-h4">Seat Reservation</h4></strong> 
+                    <strong><h4 class="m-3 order-h4">Date Reservation</h4></strong> 
                     <div class="card-body">
                         <div class="card-body">
                             <div class="row">
-                                <div class="col-md-6 mb-3">
-                                    <div class="p-1 text-white text-center" style="background-color: #17A1FA; border-radius: 5px;">
-                                        No Slots
-                                    </div>
-                                </div>
+                                
                                 <div class="col-md-6 mb-3">
                                     <div class="p-1 text-white text-center" style="background-color: #07D090; border-radius: 5px;">
                                         Available
@@ -527,23 +555,24 @@ function cancelOrderAndReturnQuantities($orderId, $conn) {
                         </div>
 
                         <div class="mb-4 mt-3">
-                            <h4 class="mb-3 order-h4">Available Time</h4>
-                            <p id="date-picker" class="d-none"></p>
-                            <div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-3 g-2" id="Available-Time-show">
-                                <?php foreach ($times as $i => $time): ?>
-                                    <div class="col">
-                                        <button type="button" class="available-time-btn w-100 btn btn-sm" 
-                                            id="time-btn-<?= $i ?>" 
-                                            data-time-id="<?= $time['time_id'] ?>"
-                                            data-time-value="<?= htmlspecialchars($time['time']) ?>"
-                                            style="background-color: #07D090;">
-                                            <span class="text-truncate d-block text-light border-0"><?= htmlspecialchars($time['time']) ?></span>
-                                        </button>
-                                    </div>
-                                <?php endforeach; ?>
-                            </div>
-                            <div id="time-error" class="text-danger mt-2 d-none">Please select a time slot</div>
-                        </div>
+        <h4 class="mb-3 order-h4">Available Time</h4>
+        <p id="date-picker" class="d-none"></p>
+        <div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-3 g-2" id="time-slots-container">
+            <?php foreach ($times as $time): ?>
+                <div class="col">
+                    <button type="button" 
+                            class="time-slot-btn w-100 btn btn-sm <?= $time['status'] !== 'available' ? 'disabled' : '' ?>"
+                            data-time-id="<?= $time['id'] ?>"
+                            data-status="<?= $time['status'] ?>"
+                            style="background-color: <?= $time['color'] ?>; color: white;"
+                            <?= $time['status'] !== 'available' ? 'disabled' : '' ?>>
+                        <span class="text-truncate d-block"><?= $time['time'] ?></span>
+                    </button>
+                </div>
+            <?php endforeach; ?>
+        </div>
+        <div id="time-error" class="text-danger mt-2 d-none">Please select a time slot</div>
+    </div>
 
                         <p class="card-text d-flex justify-content-between align-items-center flex-wrap">
                             <label for="reservation-type" class="form-label mb-2 mb-md-0">
@@ -591,7 +620,7 @@ function cancelOrderAndReturnQuantities($orderId, $conn) {
                                 <span class="result-sum time-result text-danger fw-bold" id="time-result">Not selected</span>
                             </div>
 
-                            <input type="hidden" name="reservation_time_id" id="reservation_time_id">
+                            <input type="hidden" name="reservation_id" id="reservation_id">
                             <input type="hidden" name="reservation_date" id="reservation_date">
 
                             <p class="card-text" id="totalAmount">
@@ -672,9 +701,26 @@ $(document).ready(function() {
             selectedTimeId = $(this).data('time-id');
             selectedTime = $(this).data('time-value');
             $('#time-result').text(selectedTime);
-            $('#reservation_time_id').val(selectedTimeId);
+            $('#reservation_id').val(selectedTimeId);
             $('#time-error').hide();
         }
+    });
+
+    // Updated time selection handling to match Reservation.php
+    $(document).on('click', '.time-slot-btn:not(:disabled)', function() {
+        // Remove selection from all buttons
+        $('.time-slot-btn').removeClass('selected');
+        
+        // Add selection to clicked button
+        $(this).addClass('selected');
+        
+        // Update form fields
+        const timeText = $(this).find('span').text();
+        const timeId = $(this).data('time-id');
+        
+        $('#time-result').text(timeText);
+        $('#reservation_id').val(timeId);
+        $('#time-error').addClass('d-none');
     });
 
     // Listen for date selection from iframe
@@ -684,14 +730,50 @@ $(document).ready(function() {
             $('#date-result').text(selectedDate);
             $('#reservation_date').val(selectedDate);
             
-            // Fetch updated times for the selected date
+            // Load time slots for selected date via AJAX
             $.ajax({
-                url: '',
-                type: 'POST',
-                data: { reservation_date: selectedDate },
-                success: function(response) {
-                    // This would need to be handled by your server-side code
-                    // to return updated time slots for the selected date
+                url: 'time_picker.php',
+                type: 'GET',
+                data: { date: selectedDate },
+                dataType: 'json',
+                success: function(times) {
+                    const container = $('#time-slots-container');
+                    container.empty();
+                    
+                    if (times.length === 0) {
+                        container.html('<div class="col-12 text-center py-3">No available time slots for this date</div>');
+                        return;
+                    }
+                    
+                    times.forEach(time => {
+                        const isDisabled = time.status !== 'available';
+                        const button = $(`
+                            <div class="col">
+                                <button type="button" 
+                                        class="time-slot-btn w-100 btn btn-sm ${isDisabled ? 'disabled' : ''}"
+                                        data-time-id="${time.id}"
+                                        data-status="${time.status}"
+                                        style="background-color: ${time.color}; color: white;">
+                                    <span class="text-truncate d-block">${time.time}</span>
+                                </button>
+                            </div>
+                        `);
+                        
+                        if (!isDisabled) {
+                            button.find('button').on('click', function() {
+                                $('.time-slot-btn').removeClass('selected');
+                                $(this).addClass('selected');
+                                $('#time-result').text(time.time);
+                                $('#reservation_id').val(time.id);
+                                $('#time-error').addClass('d-none');
+                            });
+                        }
+                        
+                        container.append(button);
+                    });
+                },
+                error: function() {
+                    $('#time-slots-container').html('<div class="col-12 text-center py-3 text-danger">Error loading time slots</div>');
                 }
             });
         }
@@ -735,7 +817,7 @@ $(document).ready(function() {
                 reservation_type: reservationType, 
                 party_size: partySize,
                 reservation_date: selectedDate, 
-                reservation_time_id: selectedTimeId
+                reservation_id: selectedTimeId
             },
             success: function(response) {
                 try {
@@ -760,8 +842,8 @@ $(document).ready(function() {
         });
     });
 
-    // Quantity adjustment buttons
-    $('.btn-decrease, .btn-increase').click(function() {
+    // Quantity adjustment buttons - using event delegation
+    $(document).on('click', '.btn-decrease, .btn-increase', function() {
         let itemId = $(this).data('id');
         let $quantityInput = $(`.quantity-input[data-id="${itemId}"]`);
         let currentQuantity = parseInt($quantityInput.val());
@@ -771,11 +853,7 @@ $(document).ready(function() {
             currentQuantity += 1;
         } else if ($(this).hasClass('btn-decrease')) {
             currentQuantity -= 1;
-        }
-
-        // Don't allow quantity to go below 0
-        if (currentQuantity < 0) {
-            currentQuantity = 0;
+            if (currentQuantity < 0) currentQuantity = 0;
         }
 
         // Update input field
@@ -790,8 +868,8 @@ $(document).ready(function() {
                 item_id: itemId, 
                 quantity: currentQuantity 
             },
-            success: function(response) {
-                const result = JSON.parse(response);
+            dataType: 'json', // Expect JSON response
+            success: function(result) {
                 if (result.success) {
                     if (currentQuantity === 0) {
                         // Show delete confirmation modal
@@ -804,6 +882,10 @@ $(document).ready(function() {
                 } else {
                     alert('Failed to update quantity. Please try again.');
                 }
+            },
+            error: function(xhr, status, error) {
+                console.error("AJAX error:", status, error);
+                alert('Error updating quantity. Please try again.');
             }
         });
     });
@@ -828,10 +910,11 @@ $(document).ready(function() {
         });
     });
 
+    // Enhanced fetchReservationStatus function using orders table
     function fetchReservationStatus(date) {
         if (!date) return;
         
-        fetch(`../user/res.php?date=${date}`)
+        fetch(`../user/res1.php?date=${date}`)
             .then(response => {
                 if (!response.ok) throw new Error('Network response was not ok');
                 return response.json();
@@ -841,23 +924,18 @@ $(document).ready(function() {
                 
                 if (data.status_reservations && data.status_reservations.length === buttons.length) {
                     data.status_reservations.forEach((res_status, index) => {
-                        let color = '#07D090'; // Available
-                        let isDisabled = false;
-                        
-                        if (res_status.client_id == <?php echo json_encode($user_id); ?>) {
-                            color = '#9647FF'; // Your reservation
-                            isDisabled = true;
-                        } else if (res_status.status === 'booked') {
-                            color = '#E60000'; // Booked
-                            isDisabled = true;
-                        }
-                        
-                        buttons[index].style.backgroundColor = color;
-                        buttons[index].disabled = isDisabled;
-                        
-                        // Update the data attributes if needed
+                        // Set button appearance based on status
+                        buttons[index].style.backgroundColor = res_status.color;
+                        buttons[index].dataset.status = res_status.status;
                         buttons[index].dataset.timeId = res_status.time_id;
                         buttons[index].dataset.timeValue = res_status.time;
+                        
+                        // Only enable if status is available (green)
+                        buttons[index].disabled = res_status.color !== '#07D090';
+                        
+                        // Add visual feedback classes
+                        buttons[index].classList.toggle('available-slot', res_status.color === '#07D090');
+                        buttons[index].classList.toggle('booked-slot', res_status.color !== '#07D090');
                     });
                 }
             })
@@ -871,6 +949,7 @@ $(document).ready(function() {
         fetchReservationStatus(this.value);
     });
 });
+
 </script>
 
 </body>

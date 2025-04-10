@@ -52,27 +52,32 @@ include './../inc/topNav.php';
         .deleteBtn {
             color: #A30D11;
         }
+
+        .account-text {
+            font-size: 2rem;
+            font-weight: bold;
+        }
 </style>
 </head>
 
-<body style="padding: 0; margin: 0; box-sizing: border-box;">
+<body >
 
 <!-- Update notification -->
 <div class="position-fixed" style="bottom: 20px; right: 20px; background-color: #4CAF50; color: white; padding: 15px; border-radius: 5px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); z-index: 1000; display: none;" id="updateNotification">
     New orders available. Updating...
 </div>
 
-<div class="container-fluid mb-3">
-    <div class="row mt-5" style="margin-left: 1.5rem;">
-        <div class="col-12 col-md-10 col-lg-8">
-            <p class="h2 font-weight-bold">
-                Order <span style="text-decoration: underline; text-decoration-color: #FF902B; text-underline-offset: 8px;">Management</span>
+<div class="d-flex justify-content-between align-items-center w-100 px-4  mt-5 ">
+    <div>
+        <p class="account-text m-0">
+            Order <span style="text-decoration: underline; text-decoration-color: #FF902B; text-underline-offset: 8px;">Management</span>
+        </p>
+    </div>
 
-                <?php include "./../../admin/views/qr_reader.php"?>
-            </p>
-
-            
-        </div>
+    <div>
+        <?php include "./../../admin/views/qr_reader.php" ?>
+    </div>
+</div>
 
        
 

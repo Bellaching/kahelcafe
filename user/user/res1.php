@@ -9,7 +9,7 @@ $user_id = isset($_SESSION['user_id']) ? $_SESSION['user_id'] : null;
 $date = isset($_GET['date']) ? $_GET['date'] : date('Y-m-d');
 
 // Statuses that make a time slot unavailable
-$occupied_statuses = [ 'payment', 'paid', 'booked', 'rate us'];
+$occupied_statuses = ['for confirmation', 'payment', 'paid', 'booked', 'rate us'];
 $cancel_status = 'cancel';
 
 // Initialize response
@@ -31,37 +31,37 @@ if ($time_result) {
         $status = 'available';
         $is_available = true;
         $is_selectable = true; // Only true for available slots
-        $res_status = null;
+        $order_status = null;
 
-        // Check for any existing reservation
-        $res_query = "SELECT client_id, res_status FROM reservation 
-                     WHERE reservation_time_id = ? 
-                     AND reservation_date = ?
-                     LIMIT 1";
-        $stmt = $conn->prepare($res_query);
+        // Check for any existing order in the orders table
+        $order_query = "SELECT user_id, status FROM orders 
+                       WHERE reservation_time_id = ? 
+                       AND reservation_date = ?
+                       LIMIT 1";
+        $stmt = $conn->prepare($order_query);
         $stmt->bind_param("is", $time_id, $date);
         $stmt->execute();
-        $res_result = $stmt->get_result();
+        $order_result = $stmt->get_result();
 
-        if ($res_result->num_rows > 0) {
-            $res = $res_result->fetch_assoc();
-            $res_status = $res['res_status'];
+        if ($order_result->num_rows > 0) {
+            $order = $order_result->fetch_assoc();
+            $order_status = $order['status'];
             
-            if (in_array($res_status, $occupied_statuses)) {
+            if (in_array($order_status, $occupied_statuses)) {
                 $status = 'booked';
                 $is_available = false;
                 $is_selectable = false;
 
-                // Check if it's the current user's reservation
-                if ($user_id && $res['client_id'] == $user_id) {
+                // Check if it's the current user's order
+                if ($user_id && $order['user_id'] == $user_id) {
                     $status = 'your_reservation';
                     $color = '#9647FF'; // Purple for user's reservation
                     $is_selectable = false; // User can't select their own reserved slot
                 } else {
                     $color = '#E60000'; // Red for others' reservations
                 }
-            } elseif ($res_status === $cancel_status) {
-                // Canceled reservations show as available
+            } elseif ($order_status === $cancel_status) {
+                // Canceled orders show as available
                 $status = 'available';
                 $is_available = true;
                 $is_selectable = true;
@@ -77,7 +77,7 @@ if ($time_result) {
             'color' => $color,
             'is_available' => $is_available,
             'is_selectable' => $is_selectable,
-            'res_status' => $res_status
+            'order_status' => $order_status
         ];
     }
 } else {

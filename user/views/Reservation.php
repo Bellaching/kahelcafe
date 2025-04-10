@@ -245,9 +245,9 @@ ob_end_flush();
             color: white !important;
         }
         .your-reservation {
-            background-color: #9647FF !important;
-            color: white !important;
-        }
+    background-color: #9647FF !important;
+    color: white !important;
+}
         .timer-expired-modal .modal-content {
             border: 2px solid #ffc107;
         }
@@ -255,6 +255,40 @@ ob_end_flush();
             font-size: 4rem;
             color: #ffc107;
         }
+
+        .available-slot {
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.booked-slot {
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+.available-time-btn[disabled] {
+    pointer-events: none;
+}
+
+.time-slot-btn {
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 1px solid transparent;
+}
+
+.time-slot-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.time-slot-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.8;
+}
+
+.time-slot-btn.selected {
+    border: 2px solid #000 !important;
+}
     </style>
 </head>
 <body class="border-0">
@@ -365,14 +399,11 @@ ob_end_flush();
                         <?php endif; ?>
 
                         <div class="card border-0">
-                            <strong><h4 class="m-3 order-h4">Seat Reservation</h4></strong> 
+                            <strong><h4 class="m-3 order-h4">Date Reservation</h4></strong> 
                             <div class="card-body">
                                 <div class="row">
-                                    <div class="col-md-6 mb-3">
-                                        <div class="p-1 text-white text-center" style="background-color: #17A1FA; border-radius: 5px;">
-                                            No Slots
-                                        </div>
-                                    </div>
+                                    
+                                   
                                     <div class="col-md-6 mb-3">
                                         <div class="p-1 text-white text-center" style="background-color: #07D090; border-radius: 5px;">
                                             Available
@@ -380,7 +411,7 @@ ob_end_flush();
                                     </div>
                                     <div class="col-md-6 mb-3">
                                         <div class="p-1 text-white text-center" style="background-color: #E60000; border-radius: 5px;">
-                                            Pending
+                                            Fully Booked
                                         </div>
                                     </div>
                                     <div class="col-md-6 mb-3">
@@ -392,27 +423,15 @@ ob_end_flush();
                             </div>
                         </div>
 
-                        <div class="mb-4">
-                            <h4 class="mb-3 order-h4">Available Time</h4>
-                            <p id="date-picker" class="d-none"></p>
-                            <div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-3 g-2" id="Available-Time-show">
-                                <?php foreach ($times as $i => $time): ?>
-                                    <div class="col">
-                                    <button type="button" class="available-time-btn w-100 btn btn-sm" 
-                                        id="time-btn-<?= $i ?>" 
-                                        data-time-id="<?= $time['id'] ?>"
-                                        data-status="<?= $time['status'] ?>"
-                                        style="background-color: <?= 
-                                            $time['status'] === 'your_reservation' ? '#9647FF' : 
-                                            ($time['status'] === 'pending' ? '#E60000' : '#07D090')
-                                        ?>;">
-                                        <span class="text-truncate d-block text-light border-0"><?= htmlspecialchars($time['time']) ?></span>
-                                    </button>
-                                    </div>
-                                <?php endforeach; ?>
-                            </div>
-                            <div id="time-error" class="text-danger mt-2 d-none">Please select a time slot</div>
-                        </div>
+                      
+<div class="mb-4">
+    <h4 class="mb-3 order-h4">Available Time</h4>
+    <p id="date-picker" class="d-none"></p>
+    <div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-3 g-2" id="time-slots-container">
+        <!-- Time slots will be loaded here via AJAX -->
+    </div>
+    <div id="time-error" class="text-danger mt-2 d-none">Please select a time slot</div>
+</div>
             
                         <div class="mb-4 d-flex align-items-center justify-content-between">
                             <label class="form-label mb-0">Party Size</label>
@@ -477,262 +496,268 @@ ob_end_flush();
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.7/dist/umd/popper.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/5.3.3/js/bootstrap.min.js"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Initialize variables
-            const today = new Date().toISOString().split('T')[0];
-            document.getElementById('date-picker').value = today;
-            
-            // Modal instances
-            const loginRequiredModal = new bootstrap.Modal(document.getElementById('loginRequiredModal'));
-            const confirmationModal = new bootstrap.Modal(document.getElementById('confirmationModal'));
-            const pendingReservationModal = new bootstrap.Modal(document.getElementById('pendingReservationModal'));
-            const successModal = new bootstrap.Modal(document.getElementById('successModal'));
-            const timerExpiredModal = new bootstrap.Modal(document.getElementById('timerExpiredModal'));
-            
-            // Form elements
-            const reservationForm = document.getElementById("reservation-form");
-            const numberInput = document.getElementById("number-input");
-            const partySizeResult = document.querySelector(".party-size-result");
-            const partySizeInput = document.getElementById("party_size_input");
-            const dateResult = document.getElementById("date-result");
-            const timeResult = document.getElementById("time-result");
-            const reservationDateInput = document.getElementById("reservation_date_input");
-            const reservationTimeInput = document.getElementById("reservation_time_input");
-            const timeError = document.getElementById("time-error");
-            const confirmOrderBtn = document.getElementById("confirm-order");
-            
-            // Set initial values
-            numberInput.value = 1;
-            partySizeResult.textContent = numberInput.value;
-            partySizeInput.value = numberInput.value;
-            
-            // Check if user is logged in
-            const isLoggedIn = <?php echo $isLoggedIn ? 'true' : 'false'; ?>;
-            
-            // Party size controls
-            document.getElementById("button-plus").addEventListener("click", function() {
-                if (parseInt(numberInput.value) < 20) {
-                    numberInput.value = parseInt(numberInput.value) + 1;
-                    updatePartySize();
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize variables
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('date-picker').value = today;
+    
+    // Modal instances
+    const loginRequiredModal = new bootstrap.Modal(document.getElementById('loginRequiredModal'));
+    const confirmationModal = new bootstrap.Modal(document.getElementById('confirmationModal'));
+    const pendingReservationModal = new bootstrap.Modal(document.getElementById('pendingReservationModal'));
+    const successModal = new bootstrap.Modal(document.getElementById('successModal'));
+    const timerExpiredModal = new bootstrap.Modal(document.getElementById('timerExpiredModal'));
+    
+    // Form elements
+    const reservationForm = document.getElementById("reservation-form");
+    const numberInput = document.getElementById("number-input");
+    const partySizeResult = document.querySelector(".party-size-result");
+    const partySizeInput = document.getElementById("party_size_input");
+    const dateResult = document.getElementById("date-result");
+    const timeResult = document.getElementById("time-result");
+    const reservationDateInput = document.getElementById("reservation_date_input");
+    const reservationTimeInput = document.getElementById("reservation_time_input");
+    const timeError = document.getElementById("time-error");
+    const confirmOrderBtn = document.getElementById("confirm-order");
+    const timeSlotsContainer = document.getElementById("time-slots-container");
+    
+    // Set initial values
+    numberInput.value = 1;
+    partySizeResult.textContent = numberInput.value;
+    partySizeInput.value = numberInput.value;
+    
+    // Check if user is logged in
+    const isLoggedIn = <?php echo $isLoggedIn ? 'true' : 'false'; ?>;
+    
+    // Party size controls
+    document.getElementById("button-plus").addEventListener("click", function() {
+        if (parseInt(numberInput.value) < 20) {
+            numberInput.value = parseInt(numberInput.value) + 1;
+            updatePartySize();
+        }
+    });
+    
+    document.getElementById("button-minus").addEventListener("click", function() {
+        if (parseInt(numberInput.value) > 1) {
+            numberInput.value = parseInt(numberInput.value) - 1;
+            updatePartySize();
+        }
+    });
+    
+    numberInput.addEventListener("change", function() {
+        let value = parseInt(this.value);
+        if (isNaN(value) || value < 1) value = 1;
+        if (value > 20) value = 20;
+        this.value = value;
+        updatePartySize();
+    });
+    
+    function updatePartySize() {
+        partySizeResult.textContent = numberInput.value;
+        partySizeInput.value = numberInput.value;
+    }
+    
+    // Load time slots for a specific date
+    function loadTimeSlots(date) {
+        if (!date) {
+            timeSlotsContainer.innerHTML = '<div class="col-12 text-center py-3">Please select a date first</div>';
+            return;
+        }
+        
+        fetch(`time_picker.php?date=${date}`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
                 }
-            });
-            
-            document.getElementById("button-minus").addEventListener("click", function() {
-                if (parseInt(numberInput.value) > 1) {
-                    numberInput.value = parseInt(numberInput.value) - 1;
-                    updatePartySize();
+                return response.json();
+            })
+            .then(times => {
+                // Clear previous content
+                timeSlotsContainer.innerHTML = '';
+                
+                // Show message if no times available
+                if (times.length === 0) {
+                    timeSlotsContainer.innerHTML = '<div class="col-12 text-center py-3">No available time slots for this date</div>';
+                    return;
                 }
-            });
-            
-            numberInput.addEventListener("change", function() {
-                let value = parseInt(this.value);
-                if (isNaN(value) || value < 1) value = 1;
-                if (value > 20) value = 20;
-                this.value = value;
-                updatePartySize();
-            });
-            
-            function updatePartySize() {
-                partySizeResult.textContent = numberInput.value;
-                partySizeInput.value = numberInput.value;
-            }
-            
-            // Time button selection
-            document.querySelectorAll('.available-time-btn').forEach(button => {
-                button.addEventListener('click', function() {
-                    // Remove selection from all buttons
-                    document.querySelectorAll('.available-time-btn').forEach(btn => {
-                        btn.classList.remove('border-dark', 'border-2');
-                    });
+                
+                times.forEach((time, index) => {
+                    let color, isDisabled;
+
+switch(time.status) {
+    case 'your_reservation':
+        color = '#9647FF';
+        isDisabled = true;
+        break;
+    case 'booked':
+        color = '#E60000';
+        isDisabled = true;
+        break;
+    default:
+        color = '#07D090';
+        isDisabled = false;
+}
                     
-                    // Add selection to clicked button
-                    this.classList.add('border-dark', 'border-2');
+                    const button = document.createElement('div');
+                    button.className = 'col';
+                    button.innerHTML = `
+                        <button type="button" 
+                                class="time-slot-btn w-100 btn btn-sm ${isDisabled ? 'disabled' : ''}"
+                                data-time-id="${time.id}"
+                                data-status="${time.status}"
+                                style="background-color: ${color}; color: white;"
+                                ${isDisabled ? 'disabled' : ''}>
+                            <span class="text-truncate d-block">${time.time}</span>
+                        </button>
+                    `;
                     
-                    // Get time data
-                    const timeId = this.getAttribute('data-time-id');
-                    const timeValue = this.textContent.trim();
-                    const timeStatus = this.getAttribute('data-status');
+                    timeSlotsContainer.appendChild(button);
                     
-                    // Update form fields
-                    timeResult.textContent = timeValue;
-                    reservationTimeInput.value = timeId;
-                    timeError.classList.add('d-none');
-                });
-            });
-            
-            // Calendar iframe communication
-            window.addEventListener('message', function(event) {
-                if (event.data && event.data.selectedDate) {
-                    const selectedDate = event.data.selectedDate;
-                    reservationDateInput.value = selectedDate;
-                    
-                    const today = new Date();
-                    const todayFormatted = today.toISOString().split('T')[0];
-                    
-                    if (selectedDate === todayFormatted) {
-                        dateResult.textContent = "Select another date";
-                        reservationDateInput.value = "";
-                    } else {
-                        dateResult.textContent = selectedDate;
-                        timeResult.textContent = 'Not selected';
-                        reservationTimeInput.value = "";
-                        
-                        // Clear time selection
-                        document.querySelectorAll('.available-time-btn').forEach(btn => {
-                            btn.classList.remove('border-dark', 'border-2');
+                    // Add click event if available
+                    if (!isDisabled) {
+                        button.querySelector('button').addEventListener('click', function() {
+                            // Remove selection from all buttons
+                            document.querySelectorAll('.time-slot-btn').forEach(btn => {
+                                btn.classList.remove('selected');
+                            });
+                            
+                            // Add selection to clicked button
+                            this.classList.add('selected');
+                            
+                            // Update form fields
+                            timeResult.textContent = time.time;
+                            reservationTimeInput.value = time.id;
+                            timeError.classList.add('d-none');
                         });
                     }
-                    
-                    fetchReservationStatus(selectedDate);
-                }
-            });
-            
-            // Form validation and submission
-            confirmOrderBtn.addEventListener('click', function() {
-                let isValid = true;
-                
-                if (!reservationDateInput.value) {
-                    alert('Please select a date');
-                    isValid = false;
-                }
-                
-                if (!reservationTimeInput.value) {
-                    timeError.classList.remove('d-none');
-                    isValid = false;
-                }
-                
-                if (isValid) {
-                    if (!isLoggedIn) {
-                        // Show login required modal
-                        loginRequiredModal.show();
-                    } else {
-                        // Check if selected time is pending
-                        const selectedButton = document.querySelector('.available-time-btn.border-dark');
-                        if (selectedButton && selectedButton.getAttribute('data-status') === 'pending') {
-                            // Show pending reservation modal
-                            pendingReservationModal.show();
-                        } else {
-                            // Show confirmation modal
-                            confirmationModal.show();
-                        }
-                    }
-                }
-            });
-            
-            // Confirm reservation button in modal
-            document.getElementById('confirmReservation').addEventListener('click', function() {
-                confirmationModal.hide();
-                
-                // Submit form via AJAX
-                const formData = new FormData(reservationForm);
-                
-                fetch('', {
-                    method: 'POST',
-                    body: formData
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.status === 'success') {
-                        // Show success modal
-                        successModal.show();
-                        
-                        // Start countdown
-                        let seconds = 3;
-                        const countdownElement = document.getElementById("countdown");
-                        const countdown = setInterval(() => {
-                            seconds--;
-                            countdownElement.textContent = seconds;
-                            if (seconds <= 0) {
-                                clearInterval(countdown);
-                                window.location.href = "reservation_track.php?reservation_id=" + data.reservation_id;
-                            }
-                        }, 1000);
-                    } else {
-                        alert('Error: ' + data.message);
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert('An error occurred while processing your reservation.');
                 });
+            })
+            .catch(error => {
+                console.error('Error loading time slots:', error);
+                timeSlotsContainer.innerHTML = '<div class="col-12 text-center py-3 text-danger">Error loading time slots</div>';
             });
+    }
+    
+    // Calendar iframe communication
+    window.addEventListener('message', function(event) {
+        if (event.data && event.data.selectedDate) {
+            const selectedDate = event.data.selectedDate;
+            reservationDateInput.value = selectedDate;
             
-            // Timer expired modal buttons
-            document.getElementById('continueReservation').addEventListener('click', function() {
-                timerExpiredModal.hide();
-                // Show confirmation modal again
-                confirmationModal.show();
-            });
+            const today = new Date();
+            const todayFormatted = today.toISOString().split('T')[0];
             
-            document.getElementById('cancelExpiredReservation').addEventListener('click', function() {
-                timerExpiredModal.hide();
-                // Here you can add code to cancel the reservation if needed
-            });
-            
-            function fetchReservationStatus(date) {
-                if (!date) return;
+            if (selectedDate === todayFormatted) {
+                dateResult.textContent = "Select another date";
+                reservationDateInput.value = "";
+                timeSlotsContainer.innerHTML = '<div class="col-12 text-center py-3">Please select a future date</div>';
+            } else {
+                dateResult.textContent = selectedDate;
+                timeResult.textContent = 'Not selected';
+                reservationTimeInput.value = "";
                 
-                fetch(`../user/res.php?date=${date}`)
-                    .then(response => {
-                        if (!response.ok) throw new Error('Network response was not ok');
-                        return response.json();
-                    })
-                    .then(data => {
-                        const buttons = document.querySelectorAll('.available-time-btn');
-                        
-                        if (data.status_reservations && data.status_reservations.length === buttons.length) {
-                            data.status_reservations.forEach((res_status, index) => {
-                                let status = 'available';
-                                let color = '#07D090';
-                                
-                                if (res_status.client_id == <?php echo json_encode($user_id); ?>) {
-                                    status = 'your_reservation';
-                                    color = '#9647FF';
-                                } else if (['for confirmation', 'payment', 'paid', 'booked'].includes(res_status.status)) {
-                                    status = 'pending';
-                                    color = '#E60000';
-                                }
-                                
-                                buttons[index].style.backgroundColor = color;
-                                buttons[index].setAttribute('data-status', status);
-                                
-                                // Update the data attributes if needed
-                                buttons[index].dataset.timeId = res_status.time_id;
-                                buttons[index].dataset.timeValue = res_status.time;
-                                
-                                // Check if timer expired for this reservation
-                                if (res_status.timer_expired && res_status.client_id == <?php echo json_encode($user_id); ?>) {
-                                    // Show timer expired modal
-                                    timerExpiredModal.show();
-                                }
-                            });
-                        }
-                        
-                        // Reload the page if any reservation status changed
-                        if (data.status_changed) {
-                            location.reload();
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error fetching reservation status:', error);
-                    });
+                // Load time slots for selected date
+                loadTimeSlots(selectedDate);
             }
-
-            // Make sure to call this when date changes
-            document.getElementById('date-picker').addEventListener('change', function() {
-                fetchReservationStatus(this.value);
-            });
-
-            // Call it initially if you have a default date
-            fetchReservationStatus(document.getElementById('date-picker').value);
-            
-            // Check reservation status periodically
-            setInterval(() => {
-                if (reservationDateInput.value) {
-                    fetchReservationStatus(reservationDateInput.value);
+        }
+    });
+    
+    // Form validation and submission
+    confirmOrderBtn.addEventListener('click', function() {
+        let isValid = true;
+        
+        if (!reservationDateInput.value) {
+            alert('Please select a date');
+            isValid = false;
+        }
+        
+        if (!reservationTimeInput.value) {
+            timeError.classList.remove('d-none');
+            isValid = false;
+        }
+        
+        if (isValid) {
+            if (!isLoggedIn) {
+                // Show login required modal
+                loginRequiredModal.show();
+            } else {
+                // Check if selected time is available (green)
+                const selectedButton = document.querySelector('.time-slot-btn.selected');
+                if (!selectedButton) {
+                    alert('Please select a time slot');
+                    return;
                 }
-            }, 30000); // Check every 30 seconds
+                
+                const isAvailable = selectedButton.style.backgroundColor === 'rgb(7, 208, 144)';
+                if (!isAvailable) {
+                    alert('Please select an available time slot (green)');
+                    return;
+                }
+                
+                // Show confirmation modal
+                confirmationModal.show();
+            }
+        }
+    });
+    
+    // Confirm reservation button in modal
+    document.getElementById('confirmReservation').addEventListener('click', function() {
+        confirmationModal.hide();
+        
+        // Submit form via AJAX
+        const formData = new FormData(reservationForm);
+        
+        fetch('', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                // Show success modal
+                successModal.show();
+                
+                // Refresh the time slots after reservation
+                const selectedDate = document.getElementById('reservation_date_input').value;
+                if (selectedDate) {
+                    loadTimeSlots(selectedDate);
+                }
+                
+                // Start countdown
+                let seconds = 3;
+                const countdownElement = document.getElementById("countdown");
+                const countdown = setInterval(() => {
+                    seconds--;
+                    countdownElement.textContent = seconds;
+                    if (seconds <= 0) {
+                        clearInterval(countdown);
+                        window.location.href = "reservation_track.php?reservation_id=" + data.reservation_id;
+                    }
+                }, 1000);
+            } else {
+                alert('Error: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred while processing your reservation.');
         });
-    </script>
+    });
+    
+    // Timer expired modal buttons
+    document.getElementById('continueReservation').addEventListener('click', function() {
+        timerExpiredModal.hide();
+        confirmationModal.show();
+    });
+    
+    document.getElementById('cancelExpiredReservation').addEventListener('click', function() {
+        timerExpiredModal.hide();
+    });
+    
+    // Initial load - show message to select a date
+    timeSlotsContainer.innerHTML = '<div class="col-12 text-center py-3">Please select a date from the calendar</div>';
+});
+</script>
 </body>
 </html>

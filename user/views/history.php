@@ -130,16 +130,16 @@ $offset = ($currentPage - 1) * $recordsPerPage;
         }
         
         /* Status badge colors */
-        .badge-confirmation { background-color: #6c757d; color: white; }
+        .badge-for-confirmation { background-color: #6c757d !important; }
         .badge-payment { background-color: #ffc107; color: #212529; }
         .badge-paid { background-color: #28a745; color: white; }
         .badge-booked { background-color: #6610f2; color: white; }
-        .badge-rateus { background-color: #fd7e14; color: white; }
-        .badge-cancelled { background-color: #dc3545; color: white; }
+        .badge-rate-us { background-color: #fd7e14; color: white; }s
+        .badge-cancel { background-color: #dc3545; color: white; }
         .badge-completed { background-color: #20c997; color: white; }
-        .badge-pending { background-color: #6c757d; color: white; }
-        .badge-confirmed { background-color: #17a2b8; color: white; }
-        .badge-expired { background-color: #343a40; color: white; }
+      
+       
+      
         
         .badge {
             padding: 0.35em 0.65em;
@@ -456,7 +456,7 @@ $offset = ($currentPage - 1) * $recordsPerPage;
                             if ($reservationsCount > 0) {
                                 $serialNumber = $offset + 1;
                                 while ($reservation = $reservationsResult->fetch_assoc()) {
-                                    $statusClass = strtolower(str_replace(' ', '', $reservation['res_status']));
+                                    $statusClass = strtolower(str_replace(' ', '-', $reservation['res_status']));
                                     echo "<tr>
                                         <td class='serial-number'>{$serialNumber}</td>
                                         <td>{$reservation['id']}</td>

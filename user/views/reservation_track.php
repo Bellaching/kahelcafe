@@ -91,11 +91,11 @@ $stmt->close();
 
 
 if (!$reservation || $reservation['res_status'] === 'cancel') {
-    echo "<div class='container text-center mt-5'>
-            <h4>No reservation found.</h4>
-            <p>We're sorry, but no current reservations are available. 😔</p>
-            <p>If you have any questions or believe this was a mistake, please contact us for assistance.</p>
-          </div>";
+    echo "<div class='container mt-5 mx-auto p-4 bg-white shadow-sm border rounded' style='max-width: 600px;'>
+    <h4>No Order Tracking History</h4>
+    <p>We're sorry, but no current orders are available. 😔</p>
+    <p>If you have any questions or believe this was a mistake, please contact us for assistance.</p>
+  </div>";
     exit();
 }
 
@@ -1096,7 +1096,8 @@ $('#receiptForm').on('submit', function(e) {
                 console.error('Error parsing response:', e);
             }
             
-          
+            // Only show error if we didn't get a success response
+           
             submitBtn.prop('disabled', false);
             submitBtn.text('Send Receipt');
         }

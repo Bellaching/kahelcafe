@@ -127,14 +127,15 @@ include './../inc/topNav.php';
 <body>
 <div class="container-fluid">
     <div class="row mt-5 ms-5">
-        <div class="col-12 col-md-10 col-lg-8">
-            <p class="account-text">
-                Reservation <span class="management-underline">Management</span>
-                <div class="qr-container d-flex justify-content-end w-100">
-                    <?php include "./../../admin/views/qr_reader.php"?>
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center w-100">
+                <p class="account-text m-0">
+                    Reservation <span class="management-underline">Management</span>
+                </p>
+                <div>
+                    <?php include "./../../admin/views/qr_reader.php" ?>
                 </div>
-
-            </p>
+            </div>
         </div>
     </div>
 </div>

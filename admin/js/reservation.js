@@ -26,14 +26,12 @@ $(document).ready(function() {
                 render: function(data) {
                     const statusMap = {
                        
-                        "for confirmation": '<span class="text-light bg-info p-2 rounded">For confirmation</span>',
-                        "payment": '<span class="text-light bg-warning p-2 rounded">Payment</span>',
-                       "paid": '<span class="text-light p-2 rounded" style="background: linear-gradient(135deg,rgb(255, 7, 222) 0%, #FF9800 100%);">Paid</span>',
-                      
- 
-                        "booked": '<span class="text-white bg-success p-2 rounded">Booked</span>',
-                        "rate us": '<span class="text-light bg-secondary p-2 rounded">Complete</span>',
-                        "cancel": '<span class="text-white bg-danger p-2 rounded">Cancelled</span>'
+                        "for confirmation": '<span style="padding: 5px 10px; border-radius: 20px; font-size: 0.8rem; font-weight: 500; background-color: #17a2b8; color: white;">For Confirmation</span>',
+                        "cancel": '<span style="padding: 5px 10px; border-radius: 20px; font-size: 0.8rem; font-weight: 500; background-color: #dc3545; color: white;">Cancelled</span>',
+                        "payment": '<span style="padding: 5px 10px; border-radius: 20px; font-size: 0.8rem; font-weight: 500; background-color: #ffc107; color: #212529;">Payment</span>',
+                        "paid": '<span style="padding: 5px 10px; border-radius: 20px; font-size: 0.8rem; font-weight: 500; background-color: #28a745; color: white;">Paid</span>',
+                        "booked": '<span style="padding: 5px 10px; border-radius: 20px; font-size: 0.8rem; font-weight: 500; background-color: #007bff; color: white;">Booked</span>',
+                        "rate us": '<span style="padding: 5px 10px; border-radius: 20px; font-size: 0.8rem; font-weight: 500; background-color: #6c757d; color: white;">Rate Us</span>',
                     };
                     return statusMap[data] || data;
                 } 

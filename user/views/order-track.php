@@ -2,7 +2,7 @@
 include './../../connection/connection.php';
 include './../inc/topNav.php';
 require './../../vendor/autoload.php'; // Ensure you have the QR library
-include './../../admin/user/profile_header.php';
+  include './../../admin/user/profile_header.php';
 use Endroid\QrCode\Builder\Builder;
 use Endroid\QrCode\Encoding\Encoding;
 use Endroid\QrCode\Writer\PngWriter;
@@ -59,11 +59,11 @@ $stmt->close();
 
 // If no order or order is cancelled, display a message and exit
 if (!$order || $order['status'] === 'cancelled') {
-    echo "<div class='container text-center mt-5'>
-            <h4>No Order Tracking History</h4>
-            <p>We're sorry, but no current orders are available. 😔</p>
-            <p>If you have any questions or believe this was a mistake, please contact us for assistance.</p>
-          </div>";
+    echo "<div class='container mt-5 mx-auto p-4 bg-white shadow-sm border rounded' style='max-width: 600px;'>
+    <h4>No Order Tracking History</h4>
+    <p>We're sorry, but no current orders are available. 😔</p>
+    <p>If you have any questions or believe this was a mistake, please contact us for assistance.</p>
+  </div>";
     exit();
 }
 
