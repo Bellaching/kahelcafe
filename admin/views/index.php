@@ -1,6 +1,7 @@
 <?php 
 include './../../connection/connection.php';
 include './../inc/topNav.php';
+
 ?> 
 
 <!DOCTYPE html>
@@ -523,7 +524,7 @@ function setupEventHandlers(table) {
                     receiptContent.empty();
                     
                     if (result.receipt && result.receipt.trim() !== '') {
-                        const receiptPath = './../../uploads/' + result.receipt;
+                        const receiptPath = './../../uploads/receipts/' + result.receipt;
                         
                         receiptContent.html(`
                             <img src="${receiptPath}" 

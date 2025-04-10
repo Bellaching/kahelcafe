@@ -32,7 +32,6 @@ if (!isset($_SESSION['cart']) && isset($_SESSION['user_id'])) {
     $stmt->close();
 } 
 // Retrieve client details
-// Retrieve client details
 $clientFullName = 'Unknown';
 $clientId = $_SESSION['user_id'] ?? 0;
 
@@ -172,14 +171,26 @@ foreach ($_SESSION['cart'] as $item) {
 
 // Calculate total price (subtotal + reservation fee)
 $totalPrice = $subtotal + $reservation_fee;
+
 // Handle checkout
-if (isset($_POST['checkout'])) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['checkout'])) {
     $userNote = $_POST['note'] ?? '';
     $reservationType = $_POST['reservation_type'] ?? '';
     $transactionId = strtoupper(bin2hex(random_bytes(6)));
     $reservation_date = $_POST['reservation_date'] ?? '';
     $reservation_id = $_POST['reservation_id'] ?? 0;
     $party_size = $_POST['party_size'] ?? 1;
+
+    // Validate required fields
+    if (empty($reservation_date)) {
+        echo json_encode(['success' => false, 'message' => "Please select a reservation date"]);
+        exit;
+    }
+    
+    if (empty($reservation_id)) {
+        echo json_encode(['success' => false, 'message' => "Please select a reservation time"]);
+        exit;
+    }
 
     // Get reservation time
     $reservation_time = '';
@@ -209,7 +220,8 @@ if (isset($_POST['checkout'])) {
         $stmt->close();
 
         if ($pendingCount > 0) {
-            die(json_encode(['success' => false, 'message' => "You already have pending orders. Please wait for them to be processed."]));
+            echo json_encode(['success' => false, 'message' => "You already have pending orders. Please wait for them to be processed."]);
+            exit;
         }
     }
 
@@ -428,7 +440,6 @@ function cancelOrderAndReturnQuantities($orderId, $conn) {
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css" integrity="sha512-Kc323vGBEqzTmouAECnVceyQqyqdsSiqLQISBL29aUW4U/M7pSPA/gEUZQqv1cwx4OnYxTxve5UMg5GT6L4JJg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <link rel="stylesheet" href="cart.css">
-
 
     <style>
         .pending-slot {
@@ -799,45 +810,52 @@ $(document).ready(function() {
         const note = $("#user-note").val();
         const reservationType = $("#reservation-type").val();
         const partySize = $("#party_size").val();
+        const reservationDate = $("#reservation_date").val();
+        const reservationId = $("#reservation_id").val();
         
         // Validate required fields
-        if (!selectedDate || !selectedTimeId) {
-            $('#time-error').show();
+        if (!reservationDate) {
+            alert('Please select a reservation date');
+            $('#checkoutModal').modal('hide');
+            return;
+        }
+        
+        if (!reservationId) {
+            $('#time-error').removeClass('d-none');
             $('#checkoutModal').modal('hide');
             return;
         }
 
+        // Show loading state
+        $(this).prop('disabled', true).html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processing...');
+
         // Send AJAX request to the server
         $.ajax({
-            url: '',
+            url: window.location.href,
             type: 'POST',
             data: { 
                 checkout: true, 
                 note: note, 
                 reservation_type: reservationType, 
                 party_size: partySize,
-                reservation_date: selectedDate, 
-                reservation_id: selectedTimeId
+                reservation_date: reservationDate, 
+                reservation_id: reservationId
             },
+            dataType: 'json',
             success: function(response) {
-                try {
-                    const result = JSON.parse(response);
-                    if (result.success) {
-                        window.location.href = result.redirect;
-                    } else {
-                        alert(result.message);
-                        $('#checkoutModal').modal('hide');
-                    }
-                } catch (e) {
-                    console.error("Error parsing response:", e, response);
-                    alert("An error occurred. Please try again.");
+                if (response.success) {
+                    window.location.href = response.redirect;
+                } else {
+                    alert(response.message);
                     $('#checkoutModal').modal('hide');
+                    $("#checkoutBtn").prop('disabled', false).text('Checkout');
                 }
             },
             error: function(xhr, status, error) {
                 console.error("AJAX error:", status, error);
                 alert("An error occurred. Please try again.");
                 $('#checkoutModal').modal('hide');
+                $("#checkoutBtn").prop('disabled', false).text('Checkout');
             }
         });
     });
@@ -898,14 +916,18 @@ $(document).ready(function() {
             url: '',
             type: 'POST',
             data: { remove_item: true, item_id: itemToDelete },
+            dataType: 'json',
             success: function(response) {
-                const result = JSON.parse(response);
-                if (result.success) {
+                if (response.success) {
                     $(`.cart-item[data-id="${itemToDelete}"]`).remove();
                     $('#alert').show().delay(3000).fadeOut();
                     $('#deleteModal').modal('hide');
                     location.reload();
                 }
+            },
+            error: function(xhr, status, error) {
+                console.error("AJAX error:", status, error);
+                alert('Error removing item. Please try again.');
             }
         });
     });
@@ -949,7 +971,6 @@ $(document).ready(function() {
         fetchReservationStatus(this.value);
     });
 });
-
 </script>
 
 </body>

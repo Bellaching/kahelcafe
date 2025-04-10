@@ -66,32 +66,32 @@ window.onload = function() {
                         btn.style.cursor = 'not-allowed';  // Optional: Change the cursor to indicate it's unclickable
                     }
     
-                    // Fetch reservation data and color buttons
                     fetch(`../user/get_reservation_count.php?date=${year}-${month + 1}-${day}`)
-                        .then(response => response.json())
-                        .then(data => {
-                            const reservations = data.reservations; // Reservation data
-                            const res_time_count = data.res_time_count; // Total rows in res_time table
-    
-                            let reservationCount = reservations.length;
-                            let isUserReserved = reservations.some(reservation => reservation.client_id == user_id);
-    
-                            // Apply color based on reservation count and max available slots (res_time_count)
-                            if (isUserReserved) {
-                                btn.style.backgroundColor = COLORS.userReserved;
-                                btn.style.color = 'white';
-                            } else if (reservationCount >= res_time_count) {
-                                btn.style.backgroundColor = COLORS.fullyBooked;
-                                btn.style.color = 'white';
-                            } else if (reservationCount > 0 && reservationCount < res_time_count) {
-                                btn.style.backgroundColor = COLORS.partiallyBooked;
-                                btn.style.color = 'white';
-                            } else {
-                                btn.style.backgroundColor = COLORS.available;
-                                btn.style.color = 'black';
-                            }
-                        })
-                        .catch(error => console.error("Error fetching reservation count:", error));
+                    .then(response => response.json())
+                    .then(data => {
+                        const reservations = data.reservations; // Reservation data
+                        const res_time_count = data.res_time_count; // Total rows in res_time table
+                        const available_slots = data.available_slots; // Add this to your PHP response
+                
+                        let reservationCount = reservations.length;
+                        let isUserReserved = reservations.some(reservation => reservation.client_id == user_id);
+                
+                        // Apply color based on reservation count and max available slots (res_time_count)
+                        if (isUserReserved) {
+                            btn.style.backgroundColor = COLORS.userReserved;
+                            btn.style.color = 'white';
+                        } else if (available_slots === 0) {  // Changed this condition
+                            btn.style.backgroundColor = COLORS.fullyBooked;
+                            btn.style.color = 'white';
+                        } else if (reservationCount > 0) {
+                            btn.style.backgroundColor = COLORS.partiallyBooked;
+                            btn.style.color = 'white';
+                        } else {
+                            btn.style.backgroundColor = COLORS.available;
+                            btn.style.color = 'black';
+                        }
+                    })
+                    .catch(error => console.error("Error fetching reservation count:", error));
     
                     // Highlight today's date
                     if (year === todayYear && month === todayMonth && day === todayDay) {

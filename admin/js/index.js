@@ -11,7 +11,7 @@ function initializeDataTable() {
             type: 'POST',
             data: {
                 action: 'read',
-                sort: 'desc'
+                sort: 'desc' // Ensure server-side sorting is descending
             },
             dataSrc: ''
         },
@@ -20,7 +20,8 @@ function initializeDataTable() {
             { data: 'client_full_name' },
             {
                 data: 'created_at',
-                render: data => new Date(data).toLocaleDateString('en-US')
+                render: data => new Date(data).toLocaleDateString('en-US'),
+                type: 'date' // Enable proper date sorting
             },
             {
                 data: 'reservation_time',
@@ -39,8 +40,7 @@ function initializeDataTable() {
                 data: null,
                 render: (data, type, row) => `
                     <div class="d-flex">
-                        <button class="editBtn btn btn-sm"  data-transaction-id="${row.transaction_id}">
-                            data-transaction-id="${row.transaction_id}" 
+                        <button class="editBtn btn btn-sm" data-transaction-id="${row.transaction_id}" 
                             data-status="${row.status}" 
                             data-client-name="${row.client_full_name}" 
                             data-reservation-type="${row.reservation_type}" 
@@ -61,7 +61,8 @@ function initializeDataTable() {
         responsive: true,
         createdRow: (row, data) => {
             $(row).attr('data-transaction-id', data.transaction_id);
-        }
+        },
+        order: [[2, 'desc']] // Sort by created_at (column index 2) in descending order by default
     });
 }
 

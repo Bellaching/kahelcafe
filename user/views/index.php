@@ -5,8 +5,8 @@ ob_start();
 include './../inc/topNav.php';
 include './../../connection/connection.php';
 
-
-$query = "SELECT * FROM menu1 ORDER BY date_created DESC LIMIT 3";  
+// Modified query to check both quantity and status
+$query = "SELECT * FROM menu1 WHERE status != 'unavailable' AND quantity > 0 ORDER BY date_created DESC LIMIT 3";  
 $result = mysqli_query($conn, $query);
 
 $menus = [];
@@ -36,14 +36,14 @@ if (isset($_SESSION['user_id'])) {
 $userVerified = isset($_SESSION['user_id']) ? 1 : 0;
 $selectedCategory = isset($_GET['category']) ? $conn->real_escape_string($_GET['category']) : '';
 
-// Build the base query
-$baseQuery = "SELECT * FROM menu1";
-$countQuery = "SELECT COUNT(*) as count FROM menu1";
+// Build the base query with both status and quantity conditions
+$baseQuery = "SELECT * FROM menu1 WHERE status != 'unavailable' AND quantity > 0";
+$countQuery = "SELECT COUNT(*) as count FROM menu1 WHERE status != 'unavailable' AND quantity > 0";
 
 // Add category filter if selected
 if (!empty($selectedCategory)) {
-    $baseQuery .= " WHERE category = '$selectedCategory'";
-    $countQuery .= " WHERE category = '$selectedCategory'";
+    $baseQuery .= " AND category = '$selectedCategory'";
+    $countQuery .= " AND category = '$selectedCategory'";
 }
 
 // Get total items count
@@ -66,8 +66,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['add_to_cart'])) {
         $temperature = isset($_POST['temperature']) ? $conn->real_escape_string($_POST['temperature']) : '';
         $price = isset($_POST['price']) ? $conn->real_escape_string($_POST['price']) : 0;
 
-        // Fetch item details from the database
-        $sql = "SELECT * FROM menu1 WHERE id = $item_id";
+        // Fetch item details from the database with both conditions
+        $sql = "SELECT * FROM menu1 WHERE id = $item_id AND status != 'unavailable' AND quantity > 0";
         $result = $conn->query($sql);
         $item = $result->fetch_assoc();
 
@@ -102,7 +102,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['add_to_cart'])) {
             // Insert into the database cart table
             $insertSql = "INSERT INTO cart (user_id, item_id, quantity, size, temperature, price) 
                           VALUES ('$user_id', '$item_id', '$quantity', '$size', '$temperature', '$price')
-                          ON DUPLICATE KEY UPDATE quantity = quantity + $quantity"; // Handle duplicates
+                          ON DUPLICATE KEY UPDATE quantity = quantity + $quantity";
 
             if ($conn->query($insertSql)) {
                 $_SESSION['cart_success'] = "Item added to cart successfully!";
@@ -117,16 +117,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['add_to_cart'])) {
     }
 }
 
-// Get total count of all items or filtered items
-$whereClause = !empty($selectedCategory) ? " WHERE category = '$selectedCategory'" : "";
+// Get total count of all items or filtered items with both conditions
+$whereClause = " WHERE status != 'unavailable' AND quantity > 0";
+if (!empty($selectedCategory)) {
+    $whereClause .= " AND category = '$selectedCategory'";
+}
 $totalItemsResult = $conn->query("SELECT COUNT(*) as count FROM menu1 $whereClause");
 $totalItems = $totalItemsResult->fetch_assoc()['count'];
 $totalPages = ceil($totalItems / $itemsPerPage);
 
-// Fetch menu items with pagination
+// Fetch menu items with pagination and both conditions
 $sql = "SELECT * FROM menu1 $whereClause ORDER BY name ASC LIMIT $offset, $itemsPerPage";
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
