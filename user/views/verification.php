@@ -1,96 +1,147 @@
 <?php
-include './../inc/header.php';
-include './../../connection/connection.php'; // Ensure this path is correct
-require 'PHPMailer/src/PHPMailer.php'; 
-require 'PHPMailer/src/SMTP.php'; 
-require 'PHPMailer/src/Exception.php'; 
-
+// Start session first
 session_start();
 
+// Error reporting for development
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
 
+// Include files
+include './../inc/header.php';
+include './../../connection/connection.php';
+require 'PHPMailer/src/PHPMailer.php'; 
+require 'PHPMailer/src/SMTP.php'; 
+require 'PHPMailer/src/Exception.php';
 
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
-$verificationSuccess = false; // Track verification status
-$verificationError = ""; // Track verification errors
-$resendSuccess = false; // Track resend status
+// Initialize variables with safe defaults
+$verificationSuccess = false;
+$verificationError = "";
+$resendSuccess = false;
+$email = $_GET['email'] ?? '';
+$expiryTime = time();
 
 // Handle verification
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['verify'])) {
-    $email = $_POST['email'];
-    $inputCode = $_POST['verification_code'];
+    $email = $_POST['email'] ?? '';
+    $inputCode = trim($_POST['verification_code'] ?? '');
 
-    // Check if the code and email match in the database
-    $stmt = $conn->prepare("SELECT * FROM client WHERE email = ? AND verification_code = ?");
-    $stmt->bind_param("ss", $email, $inputCode);
-    $stmt->execute();
-    $result = $stmt->get_result();
+    // Debug logging
+    error_log("Verification attempt - Email: $email, Code: $inputCode");
 
-    if ($result->num_rows > 0) {
-        // Email verified successfully
-        $verificationSuccess = true; // Set verification success
-        // Update the database to mark the email as verified
-        $stmt = $conn->prepare("UPDATE client SET verified = 1 WHERE email = ?");
+    if (empty($email) || empty($inputCode)) {
+        $verificationError = "Email and verification code are required.";
+    } else {
+        // Check if the code and email match in the database
+        $stmt = $conn->prepare("SELECT verification_code, code_expiry FROM client WHERE email = ?");
         $stmt->bind_param("s", $email);
         $stmt->execute();
-    } else {
-        $verificationError = "Invalid verification code.";
+        $result = $stmt->get_result();
+
+        if ($result->num_rows > 0) {
+            $row = $result->fetch_assoc();
+            $dbCode = $row['verification_code'];
+            $expiryTime = strtotime($row['code_expiry']);
+
+            // Debug logging
+            error_log("DB Code: $dbCode, Input Code: $inputCode");
+
+            if (time() > $expiryTime) {
+                $verificationError = "Verification code has expired. Please request a new one.";
+            } elseif ($inputCode === $dbCode) {
+                // Successful verification
+                $verificationSuccess = true;
+                $stmt = $conn->prepare("UPDATE client SET verified = 1, verification_code = NULL WHERE email = ?");
+                $stmt->bind_param("s", $email);
+                $stmt->execute();
+            } else {
+                $verificationError = "Invalid verification code.";
+            }
+        } else {
+            $verificationError = "No verification request found for this email.";
+        }
     }
 }
 
 // Handle resend verification code
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['resend'])) {
-    $email = $_POST['email'];
-    $verificationCode = generateVerificationCode();
-    $expiryTime = date("Y-m-d H:i:s", strtotime('+2 minutes'));
-
-    // Update the verification code and expiry time in the database
-    $stmt = $conn->prepare("UPDATE client SET verification_code = ?, code_expiry = ? WHERE email = ?");
-    $stmt->bind_param("sss", $verificationCode, $expiryTime, $email);
+    $email = $_POST['email'] ?? '';
     
-    if ($stmt->execute()) {
-        // Send the new verification code to the email
-        sendVerificationEmail($email, $verificationCode);
-        $resendSuccess = true; // Mark resend success
-    }
-}
+    if (empty($email)) {
+        $verificationError = "Email is required to resend verification code.";
+    } else {
+        $verificationCode = bin2hex(random_bytes(5)); // 10-character code
+        $expiryTime = date("Y-m-d H:i:s", strtotime('+2 minutes'));
 
-function generateVerificationCode() {
-    return bin2hex(random_bytes(5)); // Generates a random 10-character verification code
+        // Update the verification code and expiry time
+        $stmt = $conn->prepare("UPDATE client SET verification_code = ?, code_expiry = ? WHERE email = ?");
+        $stmt->bind_param("sss", $verificationCode, $expiryTime, $email);
+        
+        if ($stmt->execute()) {
+            if (sendVerificationEmail($email, $verificationCode)) {
+                $resendSuccess = true;
+                $expiryTime = strtotime($expiryTime); // Update for the countdown
+            } else {
+                $verificationError = "Error sending verification email. Please try again.";
+            }
+        } else {
+            $verificationError = "Error updating verification code. Please try again.";
+        }
+    }
 }
 
 function sendVerificationEmail($email, $verificationCode) {
-    $mail = new PHPMailer();
-    $mail->isSMTP();
-    $mail->Host = 'smtp.gmail.com';
-    $mail->SMTPAuth = true;
-    $mail->Username = 'kahelcafeweb@gmail.com'; // Replace with your email
-    $mail->Password = 'qccb avlu ejjb fkmv'; // Replace with your App Password
-    $mail->SMTPSecure = 'tls';
-    $mail->Port = 587;
-
-    $mail->setFrom('kahelcafeweb@gmail.com', 'Kahel Cafe');
-    $mail->addAddress($email);
-    $mail->isHTML(true);
-    $mail->Subject = 'Email Verification Code';
-    $mail->Body = "Your new verification code is: $verificationCode. It is valid for 2 minutes.";
-
-    // Enable debugging output
-    $mail->SMTPDebug = 0; // 1 = errors and messages, 2 = messages only
-
-    // Send the email and check for errors
-    if (!$mail->send()) {
-        // Log the error
-        error_log('Mailer Error: ' . $mail->ErrorInfo);
-        return false; // Return false if sending failed
+    $mail = new PHPMailer(true);
+    
+    try {
+        // Server settings
+        $mail->isSMTP();
+        $mail->Host = 'smtp.gmail.com';
+        $mail->SMTPAuth = true;
+        $mail->Username = 'kahelcafeweb@gmail.com';
+        $mail->Password = 'your_app_password'; // Use app password
+        $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+        $mail->Port = 587;
+        $mail->SMTPOptions = [
+            'ssl' => [
+                'verify_peer' => false,
+                'verify_peer_name' => false,
+                'allow_self_signed' => true
+            ]
+        ];
+        
+        // Recipients
+        $mail->setFrom('kahelcafeweb@gmail.com', 'Kahel Cafe');
+        $mail->addAddress($email);
+        
+        // Content
+        $mail->isHTML(true);
+        $mail->Subject = 'Email Verification Code';
+        $mail->Body = "Your verification code is: <strong>$verificationCode</strong><br>
+                      This code will expire in 2 minutes.";
+        
+        $mail->send();
+        return true;
+    } catch (Exception $e) {
+        error_log("Error sending email: " . $mail->ErrorInfo);
+        return false;
     }
-    return true; // Return true if sending succeeded
 }
 
-$expiryTime = isset($row['code_expiry']) ? strtotime($row['code_expiry']) : time(); // Get the expiry time
+// Get current expiry time if available
+if (!empty($email)) {
+    $stmt = $conn->prepare("SELECT code_expiry FROM client WHERE email = ?");
+    $stmt->bind_param("s", $email);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    if ($result->num_rows > 0) {
+        $row = $result->fetch_assoc();
+        $expiryTime = strtotime($row['code_expiry']);
+    }
+}
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -103,139 +154,108 @@ $expiryTime = isset($row['code_expiry']) ? strtotime($row['code_expiry']) : time
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh; /* Full viewport height */
-            background-color: #f8f9fa; /* Light background */
+            height: 100vh;
+            background-color: #f8f9fa;
         }
         .form-container {
             background-color: white;
             padding: 30px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1); /* Subtle shadow */
-            border-radius: 10px; /* Rounded corners */
-            width: 400px; /* Fixed width for form */
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+            width: 400px;
         }
-
-        .btn-resend{
-            background-color: none;
+        .btn-resend {
+            background: none;
             border: none;
             color: #FF8682;
+            padding: 0;
         }
-
-        .btn-verify{
+        .btn-verify {
             background-color: #FF902B;
             color: #ffffff;
+            width: 100%;
+        }
+        .text-warning {
+            color: #FF902B !important;
         }
     </style>
-    <script>
-        let timer; // Variable to hold the timer
-        let expiryTime = <?php echo $expiryTime * 1000; ?>; // Convert to milliseconds
-        const countdownDisplay = document.addEventListener("DOMContentLoaded", () => {
-            const countdownElement = document.getElementById("countdown");
-            const updateCountdown = () => {
-                const now = new Date().getTime();
-                const remainingTime = expiryTime - now;
-
-                if (remainingTime <= 0) {
-                    clearInterval(timer);
-                    countdownElement.innerHTML = "2 minutes before the code expire!";
-                } else {
-                    const seconds = Math.floor((remainingTime % (1000 * 60)) / 1000);
-                    countdownElement.innerHTML = "Time remaining: " + seconds + " seconds";
-                }
-            };
-
-            timer = setInterval(updateCountdown, 1000); // Update countdown every second
-            updateCountdown(); // Initial call to display immediately
-        });
-
-        // Restart timer on resend
-        function restartTimer(newExpiryTime) {
-            expiryTime = newExpiryTime * 1000; // Update the expiry time
-            clearInterval(timer); // Clear the previous timer
-            timer = setInterval(() => {
-                const now = new Date().getTime();
-                const remainingTime = expiryTime - now;
-
-                if (remainingTime <= 0) {
-                    clearInterval(timer);
-                    document.getElementById("countdown").innerHTML = "Code expired!";
-                } else {
-                    const seconds = Math.floor((remainingTime % (1000 * 60)) / 1000);
-                    document.getElementById("countdown").innerHTML = "Time remaining: " + seconds + " seconds";
-                }
-            }, 1000); // Start new countdown
-        }
-
-        // Add event listener to resend button to restart timer
-        document.addEventListener("DOMContentLoaded", () => {
-            const resendBtn = document.getElementById("resendBtn");
-            resendBtn.addEventListener("click", function () {
-                restartTimer(120); // 2 minutes (120 seconds)
-            });
-        });
-    </script>
 </head>
 <body>
     <div class="form-container">
         <h1>Verify code</h1>
         <small class="mt-3 mb-3">An authentication code has been sent to your email.</small>
+        
         <?php if ($verificationSuccess): ?>
-
-            <div class='alert alert-success'>Email verified successfully!</div>
-            <div class="form-group">
-                    <label for="verification_code" class="mt-3">Verification Code</label>
-                    <input type="text" class="form-control" name="verification_code" id="verification_code">
-                    <?php if ($verificationError): ?>
-                        <p class="text-danger"><?php echo $verificationError; ?></p>
-                    <?php endif; ?>
-                    <p id="countdown" class="text-warning">Loading timer...</p> <!-- Countdown display -->
-                </div>
-         
-                <div class="container">
-    <div class="row">
-        <div class="col-12 col-md-12  verify-resend">
-            <p>Didn’t receive a code? 
-                <button type="submit" name="resend" id="resendBtn" class="btn btn-resend">Resend</button>
-            </p>
-            <button type="submit" name="verify" class="btn btn-verify container-fluid">Verify</button>
-        </div>
-    </div>
-</div>
-
+            <div class='alert alert-success'>Email verified successfully! Redirecting to login page...</div>
             <script>
                 setTimeout(function() {
-                    window.location.href = 'login.php'; // Redirect to your login page
-                }, 5000); // Redirect after 5 seconds
+                    window.location.href = 'login.php';
+                }, 3000);
             </script>
         <?php else: ?>
             <form action="" method="POST">
                 <div class="form-group">
                     <label for="verification_code">Verification Code</label>
-                    <input type="text" class="form-control" name="verification_code" id="verification_code">
+                    <input type="text" class="form-control" name="verification_code" id="verification_code" >
                     <?php if ($verificationError): ?>
-                        <p class="text-danger"><?php echo $verificationError; ?></p>
+                        <div class="alert alert-danger mt-2"><?php echo $verificationError; ?></div>
                     <?php endif; ?>
-                    <p id="countdown" class="text-warning">Loading timer...</p> <!-- Countdown display -->
+                    <p id="countdown" class="text-warning mt-2">Loading timer...</p>
                 </div>
-                <input type="hidden" name="email" value="<?php echo htmlspecialchars($_GET['email']); ?>">
-                <div class="container">
-    <div class="row ">
-    <div class="col-12 col-md-12  verify-resend">
-            <p>Didn’t receive a code? 
-                <button type="submit" name="resend" id="resendBtn" class="btn btn-resend">Resend</button>
-            </p>
-            <button type="submit" name="verify" class="btn btn-verify container-fluid">Verify</button>
-                    </div>
-    </div>
-</div>
-
+                <input type="hidden" name="email" value="<?php echo htmlspecialchars($email); ?>">
+                
+                <div class="mt-4">
+                    <p>Didn't receive a code? 
+                        <button type="submit" name="resend" id="resendBtn" class="btn btn-resend">Resend</button>
+                    </p>
+                    <button type="submit" name="verify" class="btn btn-verify">Verify</button>
+                </div>
+                
                 <?php if ($resendSuccess): ?>
-                    <div class="text-center">
-                    <p class="text-success">New verification code sent successfully!</p>
-                    </div>
-                    
+                    <div class="alert alert-success mt-3">New verification code sent successfully!</div>
                 <?php endif; ?>
             </form>
         <?php endif; ?>
     </div>
+
+    <script>
+        let timer;
+        let expiryTime = <?php echo $expiryTime * 1000; ?>;
+        
+        function updateCountdown() {
+            const now = new Date().getTime();
+            const remainingTime = expiryTime - now;
+            const countdownElement = document.getElementById("countdown");
+            
+            if (remainingTime <= 0) {
+                clearInterval(timer);
+                countdownElement.innerHTML = "Verification code has expired!";
+                countdownElement.className = "text-danger";
+            } else {
+                const minutes = Math.floor((remainingTime % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((remainingTime % (1000 * 60)) / 1000);
+                countdownElement.innerHTML = `Code expires in: ${minutes}m ${seconds}s`;
+            }
+        }
+        
+        function restartTimer(newExpiryTime) {
+            expiryTime = newExpiryTime * 1000;
+            clearInterval(timer);
+            updateCountdown();
+            timer = setInterval(updateCountdown, 1000);
+        }
+        
+        document.addEventListener("DOMContentLoaded", () => {
+            updateCountdown();
+            timer = setInterval(updateCountdown, 1000);
+            
+            const resendBtn = document.getElementById("resendBtn");
+            if (resendBtn) {
+                resendBtn.addEventListener("click", function() {
+                    restartTimer(<?php echo strtotime('+2 minutes') * 1000; ?>);
+                });
+            }
+        });
+    </script>
 </body>
 </html>
