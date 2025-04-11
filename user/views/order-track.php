@@ -2,7 +2,7 @@
 include './../../connection/connection.php';
 include './../inc/topNav.php';
 require './../../vendor/autoload.php'; // Ensure you have the QR library
-  include './../../admin/user/profile_header.php';
+// include './../../admin/user/profile_header.php';
 use Endroid\QrCode\Builder\Builder;
 use Endroid\QrCode\Encoding\Encoding;
 use Endroid\QrCode\Writer\PngWriter;

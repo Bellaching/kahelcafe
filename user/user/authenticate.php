@@ -53,6 +53,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['login'])) {
     }
 }
 
+function checkVerified() {
+    if (!isset($_SESSION['user_id'])) {
+        header("Location: login.php");
+        exit();
+    }
+    if ($_SESSION['verified'] != 1) {
+        header("Location: index.php");
+        exit();
+    }
+}
+
 // Logout functionality
 if (isset($_GET['logout'])) {
     session_destroy();

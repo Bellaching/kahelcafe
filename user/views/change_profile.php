@@ -80,7 +80,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $fileType = $_FILES['profile_picture']['type'];
                     
                     if (in_array($fileType, $allowedTypes)) {
-                        $uploadDir = 'uploads/profile_pictures/';
+                        $uploadDir = './../../uploads/profile_pictures/';
                         if (!is_dir($uploadDir)) {
                             mkdir($uploadDir, 0755, true);
                         }

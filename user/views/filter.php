@@ -10,7 +10,7 @@ $totalPages = ceil($totalItems / $itemsPerPage);
         <div class="col-12">
             <select class="form-select d-md-none" id="categoryFilter" onchange="filterByCategory()">
                 <option value="" <?php echo empty($selectedCategory) ? 'selected' : ''; ?>>All Categories</option>
-                <option value="Popular Now" <?php echo $selectedCategory == 'Popular Now' ? 'selected' : ''; ?>>Popular Now</option>
+                <!-- <option value="Popular Now" <?php echo $selectedCategory == 'Popular Now' ? 'selected' : ''; ?>>Popular Now</option> -->
                 <option value="Coffee" <?php echo $selectedCategory == 'Coffee' ? 'selected' : ''; ?>>Coffee</option>
                 <option value="Non-Coffee" <?php echo $selectedCategory == 'Non-Coffee' ? 'selected' : ''; ?>>Non-Coffee</option>
                 <option value="Signature Frappe" <?php echo $selectedCategory == 'Signature Frappe' ? 'selected' : ''; ?>>Signature Frappe</option>
@@ -32,11 +32,11 @@ $totalPages = ceil($totalItems / $itemsPerPage);
                     <i class="fas fa-list me-2"></i> All
                 </a>
             </div>
-            <div class="me-3">
+            <!-- <div class="me-3">
                 <a href="?category=Popular Now" class="btn btn-light border-0 <?php echo $selectedCategory == 'Popular Now' ? 'active' : ''; ?>">
                     <i class="fas fa-star me-2"></i> Popular Now
                 </a>
-            </div>
+            </div> -->
             <div class="me-3">
                 <a href="?category=Coffee" class="btn btn-light border-0 <?php echo $selectedCategory == 'Coffee' ? 'active' : ''; ?>">
                     <i class="fas fa-coffee me-2"></i> Coffee
@@ -90,3 +90,16 @@ $totalPages = ceil($totalItems / $itemsPerPage);
         </div>
     </div>
 </div>
+
+<script>
+function filterByCategory() {
+    const categoryFilter = document.getElementById('categoryFilter');
+    const selectedCategory = categoryFilter.value;
+    
+    if (selectedCategory === '') {
+        window.location.href = 'order-now.php';
+    } else {
+        window.location.href = '?category=' + encodeURIComponent(selectedCategory);
+    }
+}
+</script>

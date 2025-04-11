@@ -7,10 +7,6 @@ require 'PHPMailer/src/Exception.php';
 
 session_start();
 
-if (!isset($_GET['email']) || empty($_GET['email'])) {
-    header("Location: login.php"); // Redirect to login page if email is missing
-    exit();
-}
 
 
 use PHPMailer\PHPMailer\PHPMailer;
@@ -220,7 +216,7 @@ $expiryTime = isset($row['code_expiry']) ? strtotime($row['code_expiry']) : time
                     <?php endif; ?>
                     <p id="countdown" class="text-warning">Loading timer...</p> <!-- Countdown display -->
                 </div>
-                <input type="hidden" name="email" value="<?php echo htmlspecialchars($_GET['email']); ?>">
+                <input type="hidden" name="email" value="<?php echo $email; ?>">
                 <div class="container">
     <div class="row ">
     <div class="col-12 col-md-12  verify-resend">

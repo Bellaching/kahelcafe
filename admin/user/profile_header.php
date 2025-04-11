@@ -1,3 +1,5 @@
+
+
 <?php
 include './../../connection/connection.php';
 $clientId = $_SESSION['user_id'] ?? 0;
@@ -27,7 +29,7 @@ $clientProfilePicture = htmlspecialchars($client['profile_picture']);
 
 $profileImagePath = '';
 if (!empty($clientProfilePicture)) {
-    $potentialPath = 'uploads/profile_pictures/' . $clientProfilePicture;
+    $potentialPath = './../../uploads/profile_pictures/' . $clientProfilePicture;
     if (file_exists($potentialPath)) {
         $profileImagePath = $potentialPath;
     }
@@ -187,7 +189,7 @@ if (!empty($clientProfilePicture)) {
                 <!-- Profile Picture -->
                 <div class="profile-img-container">
                     <?php if (!empty($profileImagePath)): ?>
-                        <img src="<?php echo $profileImagePath; ?>" alt="<?php echo $clientFullName; ?>" class="profile-img">
+                        <img src="<?php echo $profileImagePath; ?>" alt="Profile">
                     <?php else: ?>
                         <div class="profile-fallback">
                             <i class="fas fa-user text-white"></i>
@@ -211,3 +213,4 @@ if (!empty($clientProfilePicture)) {
 
 </body>
 </html>
+

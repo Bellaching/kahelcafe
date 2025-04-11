@@ -1,7 +1,8 @@
 <?php
 include './../inc/topNav.php';
 include './../../connection/connection.php';
-include '../../admin/user/profile_header.php'; 
+
+
 $clientId = $_SESSION['user_id'] ?? 0;
 $activeTab = isset($_GET['tab']) ? $_GET['tab'] : 'orders';
 
@@ -130,16 +131,15 @@ $offset = ($currentPage - 1) * $recordsPerPage;
         }
         
         /* Status badge colors */
-        .badge-for-confirmation { background-color: #6c757d !important; }
+        .badge-for-confirmation { background-color: #6c757d !important; color: white; }
+        .badge-for-confirmation { background-color: #17a2b8 !important; color: white; }
         .badge-payment { background-color: #ffc107; color: #212529; }
         .badge-paid { background-color: #28a745; color: white; }
         .badge-booked { background-color: #6610f2; color: white; }
-        .badge-rate-us { background-color: #fd7e14; color: white; }s
+        .badge-rate-us { background-color: #fd7e14; color: white; }
         .badge-cancel { background-color: #dc3545; color: white; }
+        .badge-cancelled { background-color: #dc3545; color: white; }
         .badge-completed { background-color: #20c997; color: white; }
-      
-       
-      
         
         .badge {
             padding: 0.35em 0.65em;
@@ -286,7 +286,8 @@ $offset = ($currentPage - 1) * $recordsPerPage;
                             if ($ordersCount > 0) {
                                 $serialNumber = $offset + 1;
                                 while ($order = $ordersResult->fetch_assoc()) {
-                                    $statusClass = strtolower(str_replace(' ', '', $order['status']));
+                                    $statusClass = strtolower(str_replace(' ', '-', $order['status']));
+                                    
                                     echo "<tr>
                                     <td class='serial-number'>{$serialNumber}</td>
                                     <td>{$order['order_id']}</td>
@@ -465,7 +466,10 @@ $offset = ($currentPage - 1) * $recordsPerPage;
                                         <td>{$reservation['reservation_time']}</td>
                                         <td>{$reservation['party_size']}</td>
                                         <td>{$reservation['amount']}</td>
-                                        <td><span class='badge badge-{$statusClass}'>" . ucfirst($reservation['res_status']) . "</span></td>
+                                        <td><span class='badge badge-{$statusClass}'>"
+                                         . ucfirst($reservation['res_status']) . "
+                                         </span>
+                                         </td>
                                         <td>" . date('M d, Y h:i A', strtotime($reservation['date_created'])) . "</td>
                                     </tr>";
                                     $serialNumber++;
@@ -544,3 +548,5 @@ $offset = ($currentPage - 1) * $recordsPerPage;
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/5.3.3/js/bootstrap.min.js"></script>
 </body>
 </html>
+
+
