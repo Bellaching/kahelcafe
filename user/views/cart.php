@@ -99,13 +99,20 @@ if (isset($_SESSION['user_id'])) {
     die("User not logged in.");
 }
 
-// Fetch the reservation fee from the database
-$reservation_fee = 50; // Default value
-$reservation_fee_query = "SELECT reservation_fee FROM Orders WHERE name = 'Reservation' LIMIT 1";
-$reservation_fee_result = mysqli_query($conn, $reservation_fee_query);
-if ($reservation_fee_result && mysqli_num_rows($reservation_fee_result) > 0) {
-    $row = mysqli_fetch_assoc($reservation_fee_result);
-    $reservation_fee = $row['reservation_fee'];
+// Set default value
+$reservation_fee = 50;
+
+// Try to get from database
+try {
+    $stmt = $conn->prepare("SELECT reservation_fee FROM Orders ORDER BY order_id DESC LIMIT 1");
+    $stmt->execute();
+    $result = $stmt->get_result();
+    if ($row = $result->fetch_assoc()) {
+        $reservation_fee = $row['reservation_fee'];
+    }
+} catch (Exception $e) {
+    // Use default value if query fails
+    error_log("Failed to get reservation fee: " . $e->getMessage());
 }
 
 // Handle quantity update (AJAX)
