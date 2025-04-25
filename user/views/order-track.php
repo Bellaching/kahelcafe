@@ -8,9 +8,10 @@ use Endroid\QrCode\Encoding\Encoding;
 use Endroid\QrCode\Writer\PngWriter;
 use Endroid\QrCode\Label\Label;
 
-// Ensure the user is logged in
+// Check if user is logged in
 if (!isset($_SESSION['user_id'])) {
-    die("You must be logged in to view this page.");
+    header("Location: login.php");
+    exit();
 }
 
 $userId = $_SESSION['user_id']; // Fetch the user ID from the session

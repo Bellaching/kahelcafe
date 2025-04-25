@@ -11,7 +11,6 @@ $current_page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
 $offset = ($current_page - 1) * $itemsPerPage;
 $selectedCategory = isset($_GET['category']) ? $conn->real_escape_string($_GET['category']) : '';
 
-// Initialize error array
 $errors = [
     'menuImage' => '',
     'menuName' => '',
@@ -23,7 +22,6 @@ $errors = [
     'menuPrice' => '',
     'productStatus' => '',
     'general' => [],
-    // Edit form errors
     'editMenuImage' => '',
     'editMenuName' => '',
     'editMenuDescription' => '',
@@ -36,7 +34,6 @@ $errors = [
 ];
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['addMenuItem'])) {
-    // Initialize variables
     $menuImage = '';
     $menuName = isset($_POST['menuName']) ? $conn->real_escape_string($_POST['menuName']) : '';
     $menuDescription = isset($_POST['menuDescription']) ? $conn->real_escape_string($_POST['menuDescription']) : '';
@@ -45,12 +42,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['addMenuItem'])) {
     $menuTemperature = isset($_POST['menuTemperature']) ? $_POST['menuTemperature'] : [];
     $menuQuantity = isset($_POST['menuQuantity']) ? intval($_POST['menuQuantity']) : 0;
     $menuPrice = isset($_POST['menuPrice']) ? floatval($_POST['menuPrice']) : 0;
-    $productStatus = isset($_POST['productStatus']) ? $conn->real_escape_string($_POST['productStatus']) : '';
+    $productStatus = isset($_POST['productStatus']) ? $conn->real_escape_string($_POST['productStatus']) : 'Available';
 
-    // Validation
     $hasErrors = false;
     
-    // Image validation
     if (!isset($_FILES['menuImage']) ){
         $errors['menuImage'] = "Image is required.";
         $hasErrors = true;
@@ -72,7 +67,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['addMenuItem'])) {
         }
     }
 
-    // Name validation
     if (empty(trim($menuName))) {
         $errors['menuName'] = "Menu name is required.";
         $hasErrors = true;
@@ -81,13 +75,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['addMenuItem'])) {
         $hasErrors = true;
     }
 
-    // Description validation
     if (empty(trim($menuDescription))) {
         $errors['menuDescription'] = "Description is required.";
         $hasErrors = true;
     }
 
-    // Category validation
     $validCategories = ['Coffee', 'Non-Coffee', 'Signature Frappe', 'Starters', 'Pasta', 'Sandwich', 'Rice Meal', 'All Day Breakfast'];
     if (empty($menuCategory)) {
         $errors['menuCategory'] = "Category is required.";
@@ -97,7 +89,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['addMenuItem'])) {
         $hasErrors = true;
     }
 
-    // Size validation (only for certain categories)
     if ($menuCategory === 'Coffee' || $menuCategory === 'Non-Coffee' || $menuCategory === 'Signature Frappe') {
         if (empty($menuSize)) {
             $errors['menuSize'] = "Please select at least one size.";
@@ -114,8 +105,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['addMenuItem'])) {
         }
     }
 
-     // Quantity validation
-     if ($menuQuantity <= 0) {
+    if ($menuQuantity <= 0) {
         $errors['menuQuantity'] = "Quantity must be greater than 0.";
         $hasErrors = true;
     } elseif ($menuQuantity > 100) {
@@ -123,7 +113,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['addMenuItem'])) {
         $hasErrors = true;
     }
 
-    // Price validation
     if ($menuPrice <= 0) {
         $errors['menuPrice'] = "Price must be greater than 0.";
         $hasErrors = true;
@@ -132,33 +121,38 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['addMenuItem'])) {
         $hasErrors = true;
     }
 
-     // Status validation
-     $validStatuses = ['Available', 'Unavailable'];
-     if (empty($productStatus)) {
-         $errors['productStatus'] = "Product status is required.";
-         $hasErrors = true;
-     } elseif (!in_array($productStatus, $validStatuses)) {
-         $errors['productStatus'] = "Invalid status selected.";
-         $hasErrors = true;
-     }
+    $validStatuses = ['Available', 'Unavailable'];
+    if (!empty($productStatus) && !in_array($productStatus, $validStatuses)) {
+        $errors['productStatus'] = "Invalid status selected.";
+        $hasErrors = true;
+    }
 
-     $productStatus = !empty($productStatus) ? $productStatus : 'Available';  // Set default status to 'Available'
+    if (empty(array_filter($errors))) {
+        $target_dir = "././../../uploads/";
+        $image_file = $target_dir . basename($_FILES["menuImage"]["name"]);
+        
+        if (move_uploaded_file($_FILES["menuImage"]["tmp_name"], $image_file)) {
+            $menuImage = $image_file;
+        } else {
+            $errors['menuImage'] = "Error uploading image.";
+            $hasErrors = true;
+        }
 
-     if (empty(array_filter($errors))) {
-         $sizeStr = !empty($menuSize) ? implode(',', $menuSize) : '';
-         $tempStr = !empty($menuTemperature) ? implode(',', $menuTemperature) : '';
-     
-         $sql = "INSERT INTO menu1 (image, name, description, category, size, temperature, quantity, price, status)
-                 VALUES ('$menuImage', '$menuName', '$menuDescription', '$menuCategory', '$sizeStr', '$tempStr', $menuQuantity, $menuPrice, '$productStatus')";
-     
-         if ($conn->query($sql)) {
-             header("Location: menuManagement.php");
-             exit();
-         } else {
-             $errors['general'][] = "Database error: " . $conn->error;
-         }
-     }
-     
+        if (!$hasErrors) {
+            $sizeStr = !empty($menuSize) ? implode(',', $menuSize) : '';
+            $tempStr = !empty($menuTemperature) ? implode(',', $menuTemperature) : '';
+        
+            $sql = "INSERT INTO menu1 (image, name, description, category, size, temperature, quantity, price, status)
+                    VALUES ('$menuImage', '$menuName', '$menuDescription', '$menuCategory', '$sizeStr', '$tempStr', $menuQuantity, $menuPrice, '$productStatus')";
+        
+            if ($conn->query($sql)) {
+                header("Location: menuManagement.php");
+                exit();
+            } else {
+                $errors['general'][] = "Database error: " . $conn->error;
+            }
+        }
+    }
 }
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['deleteMenuItem'])) {
@@ -216,7 +210,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['editMenuItem'])) {
     $menuPrice = isset($_POST['editMenuPrice']) ? floatval($_POST['editMenuPrice']) : 0;
     $productStatus = isset($_POST['editProductStatus']) ? $conn->real_escape_string($_POST['editProductStatus']) : '';
 
-    // Validation
     if (empty($menuName)) {
         $errors['editMenuName'] = "Menu name is required.";
     }
@@ -227,7 +220,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['editMenuItem'])) {
         $errors['editMenuCategory'] = "Category is required.";
     }
     
-    // Validate size and temperature based on category
     if ($menuCategory === 'Coffee' || $menuCategory === 'Non-Coffee' || $menuCategory === 'Signature Frappe') {
         if (empty($menuSize)) {
             $errors['editMenuSize'] = "Please select at least one size.";
@@ -247,7 +239,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['editMenuItem'])) {
         $errors['editProductStatus'] = "Product status is required.";
     }
 
-    // Handle image upload if a new image was provided
     $menuImage = '';
     if (isset($_FILES['editMenuImage']) && $_FILES['editMenuImage']['error'] == 0) {
         $target_dir = "././../../uploads/";
@@ -271,7 +262,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['editMenuItem'])) {
         }
     }
 
-    // Check if we have any edit-specific errors
     $editErrors = array_filter([
         $errors['editMenuName'],
         $errors['editMenuDescription'],

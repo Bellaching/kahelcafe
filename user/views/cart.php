@@ -93,10 +93,20 @@ function getAvailableTimes($conn, $user_id, $date = null) {
 $selectedDate = $_POST['reservation_date'] ?? '';
 $times = getAvailableTimes($conn, $clientId, $selectedDate ? date('Y-m-d', strtotime($selectedDate)) : null);
 
-if (isset($_SESSION['user_id'])) {
-    $user_id = $_SESSION['user_id'];
-} else {
-    die("User not logged in.");
+// Fetch user's verification status from database
+$userId = $_SESSION['user_id'];
+$sql = "SELECT verified FROM client WHERE id = ?";
+$stmt = $conn->prepare($sql);
+$stmt->bind_param("i", $userId);
+$stmt->execute();
+$stmt->bind_result($verified);
+$stmt->fetch();
+$stmt->close();
+
+// Check if user is verified (verified = 1)
+if ($verified != 1) {
+    header("Location: login.php");
+    exit();
 }
 
 // Set default value

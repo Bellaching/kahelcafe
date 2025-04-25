@@ -3,10 +3,29 @@
 
 ob_start(); // Start output buffering
 
+
+
 include "./../../connection/connection.php";
 include './../inc/topNav.php';
 include "./../views/banner.php";
 
+
+
+// // Fetch user's verification status from database
+// $userId = $_SESSION['user_id'];
+// $sql = "SELECT verified FROM client WHERE id = ?";
+// $stmt = $conn->prepare($sql);
+// $stmt->bind_param("i", $userId);
+// $stmt->execute();
+// $stmt->bind_result($verified);
+// $stmt->fetch();
+// $stmt->close();
+
+// // Check if user is verified (verified = 1)
+// if ($verified != 1) {
+//     header("Location: login.php");
+//     exit();
+// }
 
 $itemsPerPage = 6; 
 $current_page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
