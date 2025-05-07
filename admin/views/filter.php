@@ -3,17 +3,19 @@
 
 <div class="mb-3 me-3 mt-3">
                     <select class="form-select" id="categoryFilter" onchange="filterByCategory()">
-                        <option value="Coffe,Non-Coffe ">All</option> <!-- Added Show All option -->
-                        <option value="Coffee">Coffee</option>
+                        <option value="">All</option> <!-- Added Show All option -->
+                        <option value="Espresso">Espresso</option>
                         <option value="Non-Coffee">Non-Coffee</option>
-                        <option value="Signature Frappe">Signature Frappe</option>
+                        <option value="Signatures">Signatures</option>
+                        <option value="Frappe (espresso base)">Frappe (espresso base)</option>
+                        <option value="Frappe (cream base)">Frappe (cream base)</option>
                         <option value="Starters">Starters</option>
                         <option value="Pasta">Pasta</option>
                         <option value="Sandwich">Sandwich</option>
                         <option value="Rice Meal">Rice Meal</option>
                         <option value="All Day Breakfast">All Day Breakfast</option>
-                        <option value="Add ons">All Day Breakfast</option>
-                        <option value="Upsize">All Day Breakfast</option>
+                        <option value="Add ons">Add ons</option>
+                        <option value="Upsize">Upsize</option>
                     </select>
                 </div>
                 
@@ -22,15 +24,9 @@
             <div class="col-12 d-flex flex-wrap justify-content-center"> <!-- Center the buttons -->
                 <!-- Category Filter -->
              
-
-                <div class="me-3">
-    <a href="?category=Popular Now" class="btn btn-light border-0 <?php echo $selectedCategory == 'Popular Now' ? 'active' : ''; ?>">
-        <i class="fas fa-star me-2"></i> Popular Now
-    </a>
-</div>
 <div class="me-3">
-    <a href="?category=Coffee" class="btn btn-light border-0 <?php echo $selectedCategory == 'Coffee' ? 'active' : ''; ?>">
-        <i class="fas fa-coffee me-2"></i> Coffee
+    <a href="?category=Espresso" class="btn btn-light border-0 <?php echo $selectedCategory == 'Espresso' ? 'active' : ''; ?>">
+        <i class="fas fa-coffee me-2"></i> Espresso
     </a>
 </div>
 <div class="me-3">
@@ -39,8 +35,18 @@
     </a>
 </div>
 <div class="me-3">
-    <a href="?category=Signature Frappe" class="btn btn-light border-0 <?php echo $selectedCategory == 'Signature Frappe' ? 'active' : ''; ?>">
-        <i class="fas fa-ice-cream me-2"></i> Signature Frappe
+    <a href="?category=Signatures" class="btn btn-light border-0 <?php echo $selectedCategory == 'Signatures' ? 'active' : ''; ?>">
+        <i class="fas fa-star me-2"></i> Signatures
+    </a>
+</div>
+<div class="me-3">
+    <a href="?category=Frappe (espresso base)" class="btn btn-light border-0 <?php echo $selectedCategory == 'Frappe (espresso base)' ? 'active' : ''; ?>">
+        <i class="fas fa-ice-cream me-2"></i> Frappe (espresso)
+    </a>
+</div>
+<div class="me-3">
+    <a href="?category=Frappe (cream base)" class="btn btn-light border-0 <?php echo $selectedCategory == 'Frappe (cream base)' ? 'active' : ''; ?>">
+        <i class="fas fa-ice-cream me-2"></i> Frappe (cream)
     </a>
 </div>
 <div class="me-3">

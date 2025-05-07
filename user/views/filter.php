@@ -10,8 +10,10 @@ $totalPages = ceil($totalItems / $itemsPerPage);
         <div class="col-12">
             <select class="form-select d-md-none" id="categoryFilter" onchange="filterByCategory()">
                 <option value="" <?php echo empty($selectedCategory) ? 'selected' : ''; ?>>All Categories</option>
-                <!-- <option value="Popular Now" <?php echo $selectedCategory == 'Popular Now' ? 'selected' : ''; ?>>Popular Now</option> -->
-                <option value="Coffee" <?php echo $selectedCategory == 'Coffee' ? 'selected' : ''; ?>>Coffee</option>
+                <option value="Espresso" <?php echo $selectedCategory == 'Espresso' ? 'selected' : ''; ?>>Espresso</option>
+                <option value="Signatures" <?php echo $selectedCategory == 'Signatures' ? 'selected' : ''; ?>>Signatures</option>
+                <option value="Frappe (espresso base)" <?php echo $selectedCategory == 'Frappe (espresso base)' ? 'selected' : ''; ?>>Frappe (espresso base)</option>
+                <option value="Frappe (cream base)" <?php echo $selectedCategory == 'Frappe (cream base)' ? 'selected' : ''; ?>>Frappe (cream base)</option>
                 <option value="Non-Coffee" <?php echo $selectedCategory == 'Non-Coffee' ? 'selected' : ''; ?>>Non-Coffee</option>
                 <option value="Signature Frappe" <?php echo $selectedCategory == 'Signature Frappe' ? 'selected' : ''; ?>>Signature Frappe</option>
                 <option value="Starters" <?php echo $selectedCategory == 'Starters' ? 'selected' : ''; ?>>Starters</option>
@@ -32,14 +34,24 @@ $totalPages = ceil($totalItems / $itemsPerPage);
                     <i class="fas fa-list me-2"></i> All
                 </a>
             </div>
-            <!-- <div class="me-3">
-                <a href="?category=Popular Now" class="btn btn-light border-0 <?php echo $selectedCategory == 'Popular Now' ? 'active' : ''; ?>">
-                    <i class="fas fa-star me-2"></i> Popular Now
-                </a>
-            </div> -->
             <div class="me-3">
-                <a href="?category=Coffee" class="btn btn-light border-0 <?php echo $selectedCategory == 'Coffee' ? 'active' : ''; ?>">
-                    <i class="fas fa-coffee me-2"></i> Coffee
+                <a href="?category=Espresso" class="btn btn-light border-0 <?php echo $selectedCategory == 'Espresso' ? 'active' : ''; ?>">
+                    <i class="fas fa-coffee me-2"></i> Espresso
+                </a>
+            </div>
+            <div class="me-3">
+                <a href="?category=Signatures" class="btn btn-light border-0 <?php echo $selectedCategory == 'Signatures' ? 'active' : ''; ?>">
+                    <i class="fas fa-star me-2"></i> Signatures
+                </a>
+            </div>
+            <div class="me-3">
+                <a href="?category=Frappe (espresso base)" class="btn btn-light border-0 <?php echo $selectedCategory == 'Frappe (espresso base)' ? 'active' : ''; ?>">
+                    <i class="fas fa-ice-cream me-2"></i> Frappe (espresso)
+                </a>
+            </div>
+            <div class="me-3">
+                <a href="?category=Frappe (cream base)" class="btn btn-light border-0 <?php echo $selectedCategory == 'Frappe (cream base)' ? 'active' : ''; ?>">
+                    <i class="fas fa-ice-cream me-2"></i> Frappe (cream)
                 </a>
             </div>
             <div class="me-3">

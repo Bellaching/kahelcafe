@@ -51,15 +51,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['register'])) {
     // Validate first name
     if (empty($firstname)) {
         $errors['firstname'] = "First name is required.";
-    } elseif (!preg_match("/^[a-zA-Z]{3,}$/", $firstname)) {
-        $errors['firstname'] = "First name must be at least 3 letters and contain only alphabets.";
+    } elseif (!preg_match("/^[a-zA-Z]+(?: [a-zA-Z]+)*$/", $firstname) || strlen($firstname) < 3) {
+        $errors['firstname'] = "First name must be at least 3 letters and contain only alphabets and spaces.";
     }
 
     // Validate last name
     if (empty($lastname)) {
         $errors['lastname'] = "Last name is required.";
-    } elseif (!preg_match("/^[a-zA-Z]{3,}$/", $lastname)) {
-        $errors['lastname'] = "Last name must be at least 3 letters and contain only alphabets.";
+    } elseif (!preg_match("/^[a-zA-Z]+(?: [a-zA-Z]+)*$/", $lastname) || strlen($lastname) < 3) {
+        $errors['lastname'] = "Last name must be at least 3 letters and contain only alphabets and spaces.";
     }
 
     // Validate contact number

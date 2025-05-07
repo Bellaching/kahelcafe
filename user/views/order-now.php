@@ -1,31 +1,9 @@
-
 <?php
-
 ob_start(); // Start output buffering
-
-
 
 include "./../../connection/connection.php";
 include './../inc/topNav.php';
 include "./../views/banner.php";
-
-
-
-// // Fetch user's verification status from database
-// $userId = $_SESSION['user_id'];
-// $sql = "SELECT verified FROM client WHERE id = ?";
-// $stmt = $conn->prepare($sql);
-// $stmt->bind_param("i", $userId);
-// $stmt->execute();
-// $stmt->bind_result($verified);
-// $stmt->fetch();
-// $stmt->close();
-
-// // Check if user is verified (verified = 1)
-// if ($verified != 1) {
-//     header("Location: login.php");
-//     exit();
-// }
 
 $itemsPerPage = 6; 
 $current_page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
@@ -46,13 +24,12 @@ if (isset($_SESSION['user_id'])) {
 $userVerified = isset($_SESSION['user_id']) ? 1 : 0;
 $selectedCategory = isset($_GET['category']) ? $conn->real_escape_string($_GET['category']) : '';
 
-
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['add_to_cart'])) {
     $item_id = intval($_POST['item_id']);
     $quantity = isset($_POST['quantity']) ? intval($_POST['quantity']) : 1;
     $size = isset($_POST['size']) ? $conn->real_escape_string($_POST['size']) : '';
     $temperature = isset($_POST['temperature']) ? $conn->real_escape_string($_POST['temperature']) : '';
-    $price = isset($_POST['price']) ? $conn->real_escape_string($_POST['price']) : 0;
+    $price = isset($_POST['price']) ? floatval($_POST['price']) : 0; // Changed to floatval for price
  
     // Fetch item from the database
     $sql = "SELECT * FROM menu1 WHERE id = $item_id";
@@ -71,7 +48,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['add_to_cart'])) {
             $existingItem = $checkResult->fetch_assoc();
             $newQuantity = $existingItem['quantity'] + $quantity;
 
-            $updateSql = "UPDATE cart SET quantity = '$newQuantity' WHERE id = " . $existingItem['id'];
+            $updateSql = "UPDATE cart SET quantity = '$newQuantity', price = '$price' WHERE id = " . $existingItem['id'];
             if ($conn->query($updateSql) === TRUE) {
                 $_SESSION['cart_success'] = "Item quantity updated in cart successfully!";
             } else {
@@ -94,6 +71,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['add_to_cart'])) {
             foreach ($_SESSION['cart'] as &$cartItem) {
                 if ($cartItem['id'] == $item['id'] && $cartItem['size'] == $size && $cartItem['temperature'] == $temperature) {
                     $cartItem['quantity'] += $quantity;
+                    $cartItem['price'] = $price;
                     $itemFound = true;
                     break;
                 }
@@ -102,7 +80,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['add_to_cart'])) {
                 $_SESSION['cart'][] = [
                     'id' => $item['id'],
                     'name' => $item['name'],
-                    'price' => $item['price'],
+                    'price' => $price,
                     'quantity' => $quantity,
                     'size' => $size,
                     'temperature' => $temperature
@@ -113,7 +91,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['add_to_cart'])) {
                 [
                     'id' => $item['id'],
                     'name' => $item['name'],
-                    'price' => $item['price'],
+                    'price' => $price,
                     'quantity' => $quantity,
                     'size' => $size,
                     'temperature' => $temperature
@@ -138,21 +116,17 @@ $sql = "SELECT * FROM menu1 WHERE status = 'Available'" . ($selectedCategory ? "
 $result = $conn->query($sql);
 
 ob_end_flush();
- 
 ?>
-
 <!DOCTYPE html> 
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Menu</title>
-   
     <link rel="stylesheet" href="style.css">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
-
     <style>
         .add-index {
             background-color: #FF902A;
@@ -186,17 +160,19 @@ ob_end_flush();
             height: 80%;
             border: none;
         }
-        /* Hide the modal backdrop */
         .modal-backdrop {
             display: none !important;
         }
+        .price-display {
+            font-weight: bold;
+            color: green;
+            font-size: 1.2rem;
+        }
     </style>
-   
 </head>
 <body>
-
 <div class="container-fluid mb-5">
-     <div class="row mt-5 align-items-center">
+    <div class="row mt-5 align-items-center">
         <div class="col-12 col-md-8">
             <p class="account-text">Our <span class="management-underline">Menu</span></p>
         </div>
@@ -207,184 +183,165 @@ ob_end_flush();
         </div>
     </div>
     <div class="container-fluid">
-    <?php include "filter.php";?>
+        <?php include "filter.php";?>
         <div class="row g-4">
-        <?php while ($item = $result->fetch_assoc()) {
-    if ($item['status'] !== 'Available') continue;
-?>
-
+            <?php while ($item = $result->fetch_assoc()): ?>
+                <?php if ($item['status'] !== 'Available') continue; ?>
                 <div class="col-12 col-sm-6 col-md-4 col-lg-2 menu-card shadow-sm">
-    <div class="card p-2 rounded-1 border-0 position-relative">
-        
-        <!-- Image container with rating -->
-        <div class="img-container position-relative" style="overflow: hidden; height: 150px;">
-            <img src="<?php echo $item['image']; ?>" class="card-img-top" alt="<?php echo $item['name']; ?>" style="max-height: 100%; max-width: 100%; object-fit: contain;">
-            
-            <!-- Rating badge -->
-            <div class="position-absolute top-0 start-0 m-2 px-2 py-1 d-flex align-items-center"
-                 style="background-color: white; border-radius: 10px;">
-                <span class="text-dark fw-bold me-1"><?php echo number_format($item['rating'], 1); ?></span>
-                <i class="fas fa-star text-warning"></i>
-            </div>
-        </div>
+                    <div class="card p-2 rounded-1 border-0 position-relative">
+                        <div class="img-container position-relative" style="overflow: hidden; height: 150px;">
+                            <img src="<?php echo $item['image']; ?>" class="card-img-top" alt="<?php echo $item['name']; ?>" style="max-height: 100%; max-width: 100%; object-fit: contain;">
+                            <div class="position-absolute top-0 start-0 m-2 px-2 py-1 d-flex align-items-center"
+                                style="background-color: white; border-radius: 10px;">
+                                <span class="text-dark fw-bold me-1"><?php echo number_format($item['rating'], 1); ?></span>
+                                <i class="fas fa-star text-warning"></i>
+                            </div>
+                        </div>
+                        <div class="card-body text-center p-3">
+                            <div class="menu-item-container d-flex flex-row gap-3 flex-nowrap align-items-center justify-content-between">
+                                <div class="category-title text-truncate">
+                                    <h5 class="mb-0"><?php echo $item['name']; ?></h5>
+                                </div>
+                                <div class="price-info text-success">
+    <p class="mb-0">
+        <strong> P
+            <?php
+            // Extract just the numeric price (first price if multiple)
+            $prices = explode(',', $item['price']);
+            $priceParts = explode(':', $prices[0]);
+            $cleanPrice = rtrim(trim($priceParts[1]), '}'); // Trim whitespace and remove any trailing }
+            echo $cleanPrice;
+            ?>
+        </strong>
+    </p>
+</div>
+                            </div>
+                            <button 
+                                class="btn btn-sm btn-primary p-2 mt-2 border-0 w-100" 
+                                onclick="checkVerification(<?php echo $userVerified; ?>, '<?php echo $item['id']; ?>')">
+                                <i class="fa-solid fa-cart-shopping"></i> Add to cart
+                            </button>
+                        </div>
+                    </div>
+                </div>
 
-        <div class="card-body text-center p-3">
-            <div class="menu-item-container d-flex flex-row gap-3 flex-nowrap align-items-center justify-content-between">
-                <div class="category-title text-truncate">
-                    <h5 class="mb-0"><?php echo $item['name']; ?></h5>
+                <div class="modal fade" id="itemModal<?php echo $item['id']; ?>" tabindex="-1" aria-labelledby="itemModalLabel" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered modal-lg">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title text-light" id="itemModalLabel"><?php echo $item['name']; ?></h5>
+                                <button type="button" class="btn-close" data-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <form method="post" action="<?php echo $_SERVER['REQUEST_URI']; ?>" class="h-100">
+                                    <div class="row">
+                                        <div class="col-md-6 mb-4">
+                                            <div style="height: 200px; overflow: hidden;" class="mb-3">
+                                                <img src="<?php echo $item['image']; ?>" 
+                                                    class="img-fluid h-100 w-100 object-fit-cover" 
+                                                    alt="<?php echo $item['name']; ?>">
+                                            </div>
+                                            <p class="text-muted mb-0"><?php echo $item['description']; ?></p>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <input type="hidden" name="item_id" value="<?php echo $item['id']; ?>">
+
+                                            <?php if (in_array($item['category'], ['Espresso', 'Signatures', 'Frappe (espresso base)', 'Frappe (cream base)', 'Non-Coffee'])): ?>
+                                                <div class="mb-3">
+                                                    <label for="size" class="form-label">Size</label>
+                                                    <select class="form-select" name="size" id="size<?php echo $item['id']; ?>" onchange="updatePrice(<?php echo $item['id']; ?>)">
+                                                        <?php
+                                                        $sizes = explode(',', $item['size']);
+                                                        $prices = explode(',', $item['price']);
+                                                        foreach ($sizes as $index => $size) {
+                                                            $price = isset($prices[$index]) ? $prices[$index] : $prices[0];
+                                                            echo "<option value='" . trim($size) . "' data-price='" . trim($price) . "'>" . trim($size) . "</option>";
+                                                        }
+                                                        ?>
+                                                    </select>
+                                                </div>
+
+                                                <div class="mb-3">
+                                                    <label for="temperature" class="form-label">Temperature</label>
+                                                    <select class="form-select" name="temperature" id="temperature">
+                                                        <?php
+                                                        $temperatures = explode(',', $item['temperature']);
+                                                        foreach ($temperatures as $temp) {
+                                                            echo "<option value='" . trim($temp) . "'>" . trim($temp) . "</option>";
+                                                        }
+                                                        ?>
+                                                    </select>
+                                                </div>
+                                            <?php endif; ?>
+
+                                            <strong><label for="quantity<?php echo $item['id']; ?>">Quantity</label></strong> <br>
+                                            <div class="mb-3 d-flex align-items-center">
+                                                <span 
+                                                    id="quantityLabel<?php echo $item['id']; ?>" 
+                                                    class="mx-2 border rounded-circle d-inline-flex align-items-center text-light justify-content-center" 
+                                                    style="width: 50px; height: 50px; background-color: #FF902A; font-weight: bold;">
+                                                    1
+                                                </span>
+                                                <input 
+                                                    type="range" 
+                                                    class="form-range flex-grow-1" 
+                                                    min="1" 
+                                                    max="<?php echo $item['quantity']; ?>" 
+                                                    value="1" 
+                                                    id="quantity<?php echo $item['id']; ?>" 
+                                                    name="quantity">
+                                            </div>
+                                            <div class="mb-3">
+    <span class="price-display" id="priceDisplay<?php echo $item['id']; ?>">P
+        <?php 
+        // Display the first price by default (just the number)
+        $prices = explode(',', $item['price']);
+        $priceParts = explode(':', $prices[0]);
+        $cleanPrice = rtrim(trim($priceParts[1]), '}'); // Trim whitespace and remove any trailing }
+        echo $cleanPrice;
+        ?>
+    </span>
+    <input type="hidden" name="price" id="priceInput<?php echo $item['id']; ?>" value="<?php 
+        echo $cleanPrice; 
+    ?>">
+</div>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-6">
+                                            <button type="button" class="close-add container-fluid" data-dismiss="modal">Close</button>
+                                        </div>
+                                        <div class="col-6">
+                                            <button type="submit" name="add_to_cart" class="btn-add-item text-light container-fluid">Add to Cart</button>
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="price-info text-success">
-                    <p class="mb-0"><strong><?php echo $item['price']; ?></strong></p>
-                </div>
-            </div>
-            <button 
-                class="btn btn-sm btn-primary p-2 mt-2 border-0 w-100" 
-                onclick="checkVerification(<?php echo $userVerified; ?>, '<?php echo $item['id']; ?>')">
-                <i class="fa-solid fa-cart-shopping"></i> Add to cart
-            </button>
+            <?php endwhile; ?>
         </div>
     </div>
 </div>
 
-                <div class="modal fade" id="itemModal<?php echo $item['id']; ?>" tabindex="-1" aria-labelledby="itemModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
+<div class="modal fade" id="verificationModal" tabindex="-1" aria-labelledby="loginRequiredModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title text-light" id="itemModalLabel"><?php echo $item['name']; ?></h5>
+                <h5 class="modal-title" id="verificationModal">Login Required</h5>
                 <button type="button" class="btn-close" data-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-            <form method="post" action="<?php echo $_SERVER['REQUEST_URI']; ?>" class="h-100">
-                <div class="row">
-
-
-                <div class="col-md-6 mb-4">
-    <div style="height: 200px; overflow: hidden;" class="mb-3">
-        <img src="<?php echo $item['image']; ?>" 
-             class="img-fluid h-100 w-100 object-fit-cover" 
-             alt="<?php echo $item['name']; ?>">
-    </div>
-    <p class="text-muted mb-0" style="..."><?php echo $item['description']; ?></p>
-</div>
-
-                    
-
-                    
-                    <div class="col-md-6">
-                    
-                        
-                            
-                            <input type="hidden" name="item_id" value="<?php echo $item['id']; ?>">
-
-                            <?php if (in_array($item['category'], ['Coffee', 'Non-Coffee'])): ?>
-                                <div class="mb-3">
-                                    <label for="size" class="form-label">Size</label>
-                                    <select class="form-select" name="size" id="size">
-                                        <?php
-                                        $sizes = explode(',', $item['size']);
-                                        foreach ($sizes as $size) {
-                                            echo "<option value='" . trim($size) . "'>" . trim($size) . "</option>";
-                                        }
-                                        ?>
-                                    </select>
-                                </div>
-
-                                <div class="mb-3">
-                                    <label for="temperature" class="form-label">Temperature</label>
-                                    <select class="form-select" name="temperature" id="temperature">
-                                        <?php
-                                        $temperatures = explode(',', $item['temperature']);
-                                        foreach ($temperatures as $temp) {
-                                            echo "<option value='" . trim($temp) . "'>" . trim($temp) . "</option>";
-                                        }
-                                        ?>
-                                    </select>
-                                </div>
-                            <?php endif; ?>
-
-                            <strong><label for="quantity<?php echo $item['id']; ?>">Quantity</label></strong> <br>
-                            <div class="mb-3 d-flex align-items-center">
-                                <span 
-                                    id="quantityLabel<?php echo $item['id']; ?>" 
-                                    class="mx-2 border  rounded-circle d-inline-flex align-items-center text-light justify-content-center" 
-                                    style="width: 50px; height: 50px; background-color: #FF902A; font-weight: bold;">
-                                    1
-                                </span>
-
-                                <input 
-                                    type="range" 
-                                    class="form-range flex-grow-1" 
-                                    min="1" 
-                                    max="<?php echo $item['quantity']; ?>" 
-                                    value="1" 
-                                    id="quantity<?php echo $item['id']; ?>" 
-                                    name="quantity">
-                            </div>
-
-                            <div class="mb-3">
-                                <span style="color: green; font-weight: bold; margin-right: 5px;">Price:</span>
-                                <span id="price" style="color: green; font-weight: bold;"><?php echo $item['price']; ?></span>
-                            </div>
-
-                            
-
-                            <!-- Footer Buttons -->
-                           
-</div>
-<div class="modal-body d-flex flex-column" style="height: 100%;">
-    <!-- Your modal content goes here -->
-
-    <!-- Buttons at the bottom -->
-    <div class="row">
-        <!-- Close button - dismisses the modal -->
-        <div class="col-6">
-            <button type="button" class="close-add container-fluid" data-dismiss="modal">Close</button>
-        </div>
-
-        <div class="col-6">
-            <!-- Add to Cart button - submits the form -->
-            <button type="submit" name="add_to_cart" class="btn-add-item text-light container-fluid">Add to Cart</button>
-        </div>
-    </div>
-
-                        </form>
-                    </div>
-                </div>
+                <p>You need to be logged in to add items to the cart. Please log in first.</p>
+            </div>
+            <div class="modal-footer">
+                <a href="login.php" class="btn text-light" style="background-color: #FF902B;">Go to Login</a>
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
             </div>
         </div>
     </div>
 </div>
-
-
-
-
-
-
-
-            <?php } ?>
-        </div>
-    </div>
-</div>
-
-<div class="modal fade"  id="verificationModal" tabindex="-1" aria-labelledby="loginRequiredModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title"  id="verificationModal">Login Required</h5>
-                    <button type="button" class="btn-close" data-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <p>You need to be logged in to add items to the cart. Please log in first.</p>
-                </div>
-                <div class="modal-footer">
-                    <a href="login.php" class="btn text-light " style="background-color: #FF902B;" >Go to Login</a>
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-
 
 <script>
     <?php if (isset($_SESSION['cart_success'])): ?>
@@ -442,25 +399,35 @@ function checkVerification(isLoggedIn, itemId) {
     }
 }
 
+function updatePrice(itemId) {
+    const sizeSelect = document.getElementById(`size${itemId}`);
+    const selectedOption = sizeSelect.options[sizeSelect.selectedIndex];
+    const priceWithLabel = selectedOption.getAttribute('data-price');
+    const priceOnly = priceWithLabel.split(':')[1].trim(); // Get the number part
+    const cleanPrice = priceOnly.replace(/}$/, ''); // Remove any trailing }
+    
+    document.getElementById(`priceDisplay${itemId}`).textContent = cleanPrice;
+    document.getElementById(`priceInput${itemId}`).value = cleanPrice;
+}
 document.querySelectorAll('.form-range').forEach(range => {
     range.addEventListener('input', (e) => {
         const quantityLabel = document.getElementById('quantityLabel' + e.target.id.replace('quantity', ''));
         quantityLabel.textContent = e.target.value;
         const hiddenQuantityInput = document.getElementById('quantityInput' + e.target.id.replace('quantity', ''));
-        hiddenQuantityInput.value = e.target.value;
+        if (hiddenQuantityInput) {
+            hiddenQuantityInput.value = e.target.value;
+        }
     });
-
 });
 
 $(document).ready(function () {
-        $('#search').on('keyup', function () {
-            var value = $(this).val().toLowerCase();
-            $('.menu-card').filter(function () {
-                $(this).toggle($(this).find('.card-title').text().toLowerCase().indexOf(value) > -1)
-            });
+    $('#search').on('keyup', function () {
+        var value = $(this).val().toLowerCase();
+        $('.menu-card').filter(function () {
+            $(this).toggle($(this).find('.card-title').text().toLowerCase().indexOf(value) > -1)
         });
     });
+});
 </script>
-
 </body>
 </html>

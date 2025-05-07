@@ -19,7 +19,9 @@ $errors = [
     'menuSize' => '',
     'menuTemperature' => '',
     'menuQuantity' => '',
-    'menuPrice' => '',
+    'menuPriceSmall' => '',
+    'menuPriceMedium' => '',
+    'menuPriceLarge' => '',
     'productStatus' => '',
     'general' => [],
     'editMenuImage' => '',
@@ -29,7 +31,9 @@ $errors = [
     'editMenuSize' => '',
     'editMenuTemperature' => '',
     'editMenuQuantity' => '',
-    'editMenuPrice' => '',
+    'editMenuPriceSmall' => '',
+    'editMenuPriceMedium' => '',
+    'editMenuPriceLarge' => '',
     'editProductStatus' => ''
 ];
 
@@ -41,7 +45,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['addMenuItem'])) {
     $menuSize = isset($_POST['menuSize']) ? $_POST['menuSize'] : [];
     $menuTemperature = isset($_POST['menuTemperature']) ? $_POST['menuTemperature'] : [];
     $menuQuantity = isset($_POST['menuQuantity']) ? intval($_POST['menuQuantity']) : 0;
-    $menuPrice = isset($_POST['menuPrice']) ? floatval($_POST['menuPrice']) : 0;
+    $menuPriceSmall = isset($_POST['menuPriceSmall']) ? floatval($_POST['menuPriceSmall']) : 0;
+    $menuPriceMedium = isset($_POST['menuPriceMedium']) ? floatval($_POST['menuPriceMedium']) : 0;
+    $menuPriceLarge = isset($_POST['menuPriceLarge']) ? floatval($_POST['menuPriceLarge']) : 0;
     $productStatus = isset($_POST['productStatus']) ? $conn->real_escape_string($_POST['productStatus']) : 'Available';
 
     $hasErrors = false;
@@ -80,7 +86,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['addMenuItem'])) {
         $hasErrors = true;
     }
 
-    $validCategories = ['Coffee', 'Non-Coffee', 'Signature Frappe', 'Starters', 'Pasta', 'Sandwich', 'Rice Meal', 'All Day Breakfast'];
+    $validCategories = ['Espresso', 'Non-Coffee', 'Signatures', 'Frappe (espresso base)', 'Frappe (cream base)', 'Starters', 'Pasta', 'Sandwich', 'Rice Meal', 'All Day Breakfast'];
     if (empty($menuCategory)) {
         $errors['menuCategory'] = "Category is required.";
         $hasErrors = true;
@@ -89,7 +95,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['addMenuItem'])) {
         $hasErrors = true;
     }
 
-    if ($menuCategory === 'Coffee' || $menuCategory === 'Non-Coffee' || $menuCategory === 'Signature Frappe') {
+    if ($menuCategory === 'Espresso' || $menuCategory === 'Non-Coffee' || $menuCategory === 'Signatures' || $menuCategory === 'Frappe (espresso base)' || $menuCategory === 'Frappe (cream base)') {
         if (empty($menuSize)) {
             $errors['menuSize'] = "Please select at least one size.";
             $hasErrors = true;
@@ -102,6 +108,20 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['addMenuItem'])) {
                     break;
                 }
             }
+            
+            // Validate prices for selected sizes
+            if (in_array('Small', $menuSize) && $menuPriceSmall <= 0) {
+                $errors['menuPriceSmall'] = "Price for Small must be greater than 0.";
+                $hasErrors = true;
+            }
+            if (in_array('Medium', $menuSize) && $menuPriceMedium <= 0) {
+                $errors['menuPriceMedium'] = "Price for Medium must be greater than 0.";
+                $hasErrors = true;
+            }
+            if (in_array('Large', $menuSize) && $menuPriceLarge <= 0) {
+                $errors['menuPriceLarge'] = "Price for Large must be greater than 0.";
+                $hasErrors = true;
+            }
         }
     }
 
@@ -110,14 +130,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['addMenuItem'])) {
         $hasErrors = true;
     } elseif ($menuQuantity > 100) {
         $errors['menuQuantity'] = "Quantity cannot exceed 100.";
-        $hasErrors = true;
-    }
-
-    if ($menuPrice <= 0) {
-        $errors['menuPrice'] = "Price must be greater than 0.";
-        $hasErrors = true;
-    } elseif ($menuPrice > 1000) {
-        $errors['menuPrice'] = "Price cannot exceed ₱1000.";
         $hasErrors = true;
     }
 
@@ -141,9 +153,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['addMenuItem'])) {
         if (!$hasErrors) {
             $sizeStr = !empty($menuSize) ? implode(',', $menuSize) : '';
             $tempStr = !empty($menuTemperature) ? implode(',', $menuTemperature) : '';
+            $priceData = [];
+            if (in_array('Small', $menuSize)) $priceData['Small'] = $menuPriceSmall;
+            if (in_array('Medium', $menuSize)) $priceData['Medium'] = $menuPriceMedium;
+            if (in_array('Large', $menuSize)) $priceData['Large'] = $menuPriceLarge;
+            $priceStr = json_encode($priceData);
         
             $sql = "INSERT INTO menu1 (image, name, description, category, size, temperature, quantity, price, status)
-                    VALUES ('$menuImage', '$menuName', '$menuDescription', '$menuCategory', '$sizeStr', '$tempStr', $menuQuantity, $menuPrice, '$productStatus')";
+                    VALUES ('$menuImage', '$menuName', '$menuDescription', '$menuCategory', '$sizeStr', '$tempStr', $menuQuantity, '$priceStr', '$productStatus')";
         
             if ($conn->query($sql)) {
                 header("Location: menuManagement.php");
@@ -179,7 +196,9 @@ if (isset($_GET['id'])) {
         $row = $result->fetch_assoc();
         ob_clean();
         header('Content-Type: application/json');
-        echo json_encode([
+        
+        // Prepare the response data
+        $response = [
             'id' => $row['id'],
             'name' => $row['name'],
             'description' => $row['description'],
@@ -190,13 +209,16 @@ if (isset($_GET['id'])) {
             'price' => $row['price'],
             'status' => $row['status'],
             'image' => $row['image']
-        ]);
+        ];
+        
+        echo json_encode($response);
+        exit();
     } else {
         ob_clean();
         header('Content-Type: application/json');
-        echo json_encode([]);
+        echo json_encode(['error' => 'Item not found']);
+        exit();
     }
-    exit();
 }
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['editMenuItem'])) {
@@ -207,7 +229,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['editMenuItem'])) {
     $menuSize = isset($_POST['editMenuSize']) ? $_POST['editMenuSize'] : [];
     $menuTemperature = isset($_POST['editMenuTemperature']) ? $_POST['editMenuTemperature'] : [];
     $menuQuantity = isset($_POST['editMenuQuantity']) ? intval($_POST['editMenuQuantity']) : 0;
-    $menuPrice = isset($_POST['editMenuPrice']) ? floatval($_POST['editMenuPrice']) : 0;
+    $menuPriceSmall = isset($_POST['editMenuPriceSmall']) ? floatval($_POST['editMenuPriceSmall']) : 0;
+    $menuPriceMedium = isset($_POST['editMenuPriceMedium']) ? floatval($_POST['editMenuPriceMedium']) : 0;
+    $menuPriceLarge = isset($_POST['editMenuPriceLarge']) ? floatval($_POST['editMenuPriceLarge']) : 0;
     $productStatus = isset($_POST['editProductStatus']) ? $conn->real_escape_string($_POST['editProductStatus']) : '';
 
     if (empty($menuName)) {
@@ -220,20 +244,28 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['editMenuItem'])) {
         $errors['editMenuCategory'] = "Category is required.";
     }
     
-    if ($menuCategory === 'Coffee' || $menuCategory === 'Non-Coffee' || $menuCategory === 'Signature Frappe') {
+    if ($menuCategory === 'Espresso' || $menuCategory === 'Non-Coffee' || $menuCategory === 'Signatures' || $menuCategory === 'Frappe (espresso base)' || $menuCategory === 'Frappe (cream base)') {
         if (empty($menuSize)) {
             $errors['editMenuSize'] = "Please select at least one size.";
         }
         if (empty($menuTemperature)) {
             $errors['editMenuTemperature'] = "Please select at least one temperature.";
         }
+        
+        // Validate prices for selected sizes
+        if (in_array('Small', $menuSize) && $menuPriceSmall <= 0) {
+            $errors['editMenuPriceSmall'] = "Price for Small must be greater than 0.";
+        }
+        if (in_array('Medium', $menuSize) && $menuPriceMedium <= 0) {
+            $errors['editMenuPriceMedium'] = "Price for Medium must be greater than 0.";
+        }
+        if (in_array('Large', $menuSize) && $menuPriceLarge <= 0) {
+            $errors['editMenuPriceLarge'] = "Price for Large must be greater than 0.";
+        }
     }
     
     if ($menuQuantity <= 0) {
         $errors['editMenuQuantity'] = "Quantity must be greater than 0.";
-    }
-    if ($menuPrice <= 0) {
-        $errors['editMenuPrice'] = "Price must be greater than 0.";
     }
     if (empty($productStatus)) {
         $errors['editProductStatus'] = "Product status is required.";
@@ -269,7 +301,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['editMenuItem'])) {
         $errors['editMenuSize'],
         $errors['editMenuTemperature'],
         $errors['editMenuQuantity'],
-        $errors['editMenuPrice'],
+        $errors['editMenuPriceSmall'],
+        $errors['editMenuPriceMedium'],
+        $errors['editMenuPriceLarge'],
         $errors['editProductStatus'],
         $errors['editMenuImage']
     ]);
@@ -277,6 +311,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['editMenuItem'])) {
     if (empty($editErrors)) {
         $sizeStr = !empty($menuSize) ? implode(',', $menuSize) : '';
         $tempStr = !empty($menuTemperature) ? implode(',', $menuTemperature) : '';
+        $priceData = [];
+        if (in_array('Small', $menuSize)) $priceData['Small'] = $menuPriceSmall;
+        if (in_array('Medium', $menuSize)) $priceData['Medium'] = $menuPriceMedium;
+        if (in_array('Large', $menuSize)) $priceData['Large'] = $menuPriceLarge;
+        $priceStr = json_encode($priceData);
         
         $sql = "UPDATE menu1 SET 
                 name = '$menuName', 
@@ -285,7 +324,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['editMenuItem'])) {
                 size = '$sizeStr', 
                 temperature = '$tempStr', 
                 quantity = $menuQuantity, 
-                price = $menuPrice, 
+                price = '$priceStr', 
                 status = '$productStatus'";
 
         if (!empty($menuImage)) {
@@ -393,6 +432,18 @@ ob_end_flush();
             border-radius: 4px;
             font-size: 0.8rem;
         }
+        .price-input-container {
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+        }
+        .price-input-container label {
+            font-weight: bold;
+        }
+        .price-input {
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -444,7 +495,15 @@ function renderMenuItems($result) {
     if ($result->num_rows > 0) {
         while ($row = $result->fetch_assoc()) {
             $name = htmlspecialchars($row['name'], ENT_QUOTES, 'UTF-8');
-            $price = htmlspecialchars($row['price'], ENT_QUOTES, 'UTF-8');
+            $priceData = json_decode($row['price'], true);
+            $priceStr = '';
+            if ($priceData) {
+                $prices = [];
+                if (isset($priceData['Small'])) $prices[] = 'Small: ₱' . number_format($priceData['Small'], 2);
+                if (isset($priceData['Medium'])) $prices[] = 'Medium: ₱' . number_format($priceData['Medium'], 2);
+                if (isset($priceData['Large'])) $prices[] = 'Large: ₱' . number_format($priceData['Large'], 2);
+                $priceStr = implode(' | ', $prices);
+            }
             $image = htmlspecialchars($row['image'], ENT_QUOTES, 'UTF-8');
             $id = intval($row['id']);
             $quantity = intval($row['quantity']);
@@ -454,7 +513,6 @@ function renderMenuItems($result) {
            <div class="col-12 col-sm-6 col-md-4 col-lg-3 menu-card shadow-sm">
               <div class="card p-2 rounded-1" style="border: none; position: relative;">';
             
-            // Add out of stock badge if quantity is 0 (visual indicator only)
             if ($isOutOfStock) {
                 $output .= '<span class="out-of-stock-badge">Out of Stock</span>';
             }
@@ -464,14 +522,13 @@ function renderMenuItems($result) {
                         <img src="' . $image . '" class="card-img-top" alt="' . $name . '" style="height: 100%; width: 100%; object-fit: cover;">
                     </div>
                     <div class="card-body text-center p-1">
-                        <div class="card-title" style="font-size: 1rem; display: flex; justify-content: space-between; align-items: center;">
+                        <div class="card-title" style="font-size: 1rem; display: flex; flex-direction: column; align-items: flex-start;">
                             <strong><h5 style="margin: 0;">' . $name . '</h5></strong>
-                            <p class="card-text text-success" style="font-size: 0.9rem; margin: 0;">
-                                <strong>₱' . $price . '</strong>
+                            <p class="card-text text-success" style="font-size: 0.9rem; margin: 0; text-align: left;">
+                                <strong>' . $priceStr . '</strong>
                             </p>
                         </div>
-                        <!-- Buttons are now ALWAYS enabled -->
-                        <button class="btn btn-edit btn-primary" style="background-color:#FF902B; border:none; border-radius:3rem; padding: 0.5rem;" onclick="openEditModal(' . $id . ', \'' . $name . '\')">
+                        <button class="btn btn-edit btn-primary" style="background-color:#FF902B; border:none; border-radius:3rem; padding: 0.5rem;" onclick="openEditModal(' . $id . ')">
                             <i class="fa-solid fa-edit"></i> Edit
                         </button>
                         <button class="btn btn-delete btn-danger" onclick="confirmDelete(' . $id . ')">
@@ -485,8 +542,9 @@ function renderMenuItems($result) {
         $output .= '<div class="container d-flex justify-content-center"><p class="text-center">No menu items found.</p></div>';
     }
     return $output; 
-}       echo renderMenuItems($result);
-        ?>
+}
+echo renderMenuItems($result);
+?>
     </div>
 </div>
 
@@ -549,9 +607,11 @@ function renderMenuItems($result) {
                             <div class="mb-3">
                                 <label for="editMenuCategory" class="form-label">Category</label>
                                 <select class="form-select <?php echo !empty($errors['editMenuCategory']) ? 'is-invalid' : '' ?>" id="editMenuCategory" name="editMenuCategory">
-                                    <option value="Coffee" <?php echo (isset($_POST['editMenuCategory']) && $_POST['editMenuCategory'] == 'Coffee') ? 'selected' : '' ?>>Coffee</option>
+                                    <option value="Espresso" <?php echo (isset($_POST['editMenuCategory']) && $_POST['editMenuCategory'] == 'Espresso') ? 'selected' : '' ?>>Espresso</option>
                                     <option value="Non-Coffee" <?php echo (isset($_POST['editMenuCategory']) && $_POST['editMenuCategory'] == 'Non-Coffee') ? 'selected' : '' ?>>Non-Coffee</option>
-                                    <option value="Signature Frappe" <?php echo (isset($_POST['editMenuCategory']) && $_POST['editMenuCategory'] == 'Signature Frappe') ? 'selected' : '' ?>>Signature Frappe</option>
+                                    <option value="Signatures" <?php echo (isset($_POST['editMenuCategory']) && $_POST['editMenuCategory'] == 'Signatures') ? 'selected' : '' ?>>Signatures</option>
+                                    <option value="Frappe (espresso base)" <?php echo (isset($_POST['editMenuCategory']) && $_POST['editMenuCategory'] == 'Frappe (espresso base)') ? 'selected' : '' ?>>Frappe (espresso base)</option>
+                                    <option value="Frappe (cream base)" <?php echo (isset($_POST['editMenuCategory']) && $_POST['editMenuCategory'] == 'Frappe (cream base)') ? 'selected' : '' ?>>Frappe (cream base)</option>
                                     <option value="Starters" <?php echo (isset($_POST['editMenuCategory']) && $_POST['editMenuCategory'] == 'Starters') ? 'selected' : '' ?>>Starters</option>
                                     <option value="Pasta" <?php echo (isset($_POST['editMenuCategory']) && $_POST['editMenuCategory'] == 'Pasta') ? 'selected' : '' ?>>Pasta</option>
                                     <option value="Sandwich" <?php echo (isset($_POST['editMenuCategory']) && $_POST['editMenuCategory'] == 'Sandwich') ? 'selected' : '' ?>>Sandwich</option>
@@ -569,7 +629,7 @@ function renderMenuItems($result) {
                                     <label for="editSizeSmall" class="me-3">Small</label>
                                     <input type="checkbox" name="editMenuSize[]" value="Medium" id="editSizeMedium" <?php echo (isset($_POST['editMenuSize']) && in_array('Medium', $_POST['editMenuSize']) ? 'checked' : '' )?>>
                                     <label for="editSizeMedium" class="me-3">Medium</label>
-                                    <input type="checkbox" name="editMenuSize[]" value="Large" id="editSizeLarge" <?php echo (isset($_POST['editMenuSize']) && in_array('Large', $_POST['editMenuSize']) ? 'checked' : '') ?>>
+                                    <input type="checkbox" name="editMenuSize[]" value="Large" id="editSizeLarge" <?php echo (isset($_POST['editMenuSize']) && in_array('Large', $_POST['editMenuSize']) ? 'checked' : '' )?>>
                                     <label for="editSizeLarge">Large</label>
                                 </div>
                                 <?php if (!empty($errors['editMenuSize'])): ?>
@@ -583,31 +643,42 @@ function renderMenuItems($result) {
                                     <label for="editTemperatureHot" class="me-3">Hot</label>
                                     <input type="checkbox" name="editMenuTemperature[]" value="Warm" id="editTemperatureWarm" <?php echo (isset($_POST['editMenuTemperature']) && in_array('Warm', $_POST['editMenuTemperature']) ? 'checked' : '' )?>>
                                     <label for="editTemperatureWarm" class="me-3">Warm</label>
-                                    <input type="checkbox" name="editMenuTemperature[]" value="Cold" id="editTemperatureCold" <?php echo (isset($_POST['editMenuTemperature']) && in_array('Cold', $_POST['editMenuTemperature']) ? 'checked' : '') ?>>
+                                    <input type="checkbox" name="editMenuTemperature[]" value="Cold" id="editTemperatureCold" <?php echo (isset($_POST['editMenuTemperature']) && in_array('Cold', $_POST['editMenuTemperature']) ? 'checked' : '' )?>>
                                     <label for="editTemperatureCold">Cold</label>
                                 </div>
                                 <?php if (!empty($errors['editMenuTemperature'])): ?>
                                     <div class="checkbox-error"><?php echo htmlspecialchars($errors['editMenuTemperature']); ?></div>
                                 <?php endif; ?>
                             </div>
-                            <div class="mb-3">
-                                <label for="editMenuQuantity" class="form-label">Quantity</label>
-                                <div class="d-flex align-items-center">
-                                    <div class="me-2" id="editQuantityValue"><?php echo isset($_POST['editMenuQuantity']) ? htmlspecialchars($_POST['editMenuQuantity']) : '1' ?></div>
-                                    <input type="range" class="form-range <?php echo !empty($errors['editMenuQuantity']) ? 'is-invalid' : '' ?>" id="editMenuQuantity" name="editMenuQuantity" min="1" max="100" value="<?php echo isset($_POST['editMenuQuantity']) ? htmlspecialchars($_POST['editMenuQuantity']) : '1' ?>">
+                            <div class="mb-3 price-input-container" id="editPriceInputContainer">
+                                <label class="form-label">Price</label>
+                                <div class="mb-2 price-input" id="editPriceSmallContainer">
+                                    <label for="editMenuPriceSmall" class="form-label">Small</label>
+                                    <input type="number" class="form-control <?php echo !empty($errors['editMenuPriceSmall']) ? 'is-invalid' : '' ?>" id="editMenuPriceSmall" name="editMenuPriceSmall" min="0" step="0.01" value="<?php echo isset($_POST['editMenuPriceSmall']) ? htmlspecialchars($_POST['editMenuPriceSmall']) : '0' ?>">
+                                    <?php if (!empty($errors['editMenuPriceSmall'])): ?>
+                                        <div class="error-message"><?php echo htmlspecialchars($errors['editMenuPriceSmall']); ?></div>
+                                    <?php endif; ?>
                                 </div>
-                                <?php if (!empty($errors['editMenuQuantity'])): ?>
-                                    <div class="error-message"><?php echo htmlspecialchars($errors['editMenuQuantity']); ?></div>
-                                <?php endif; ?>
+                                <div class="mb-2 price-input" id="editPriceMediumContainer">
+                                    <label for="editMenuPriceMedium" class="form-label">Medium</label>
+                                    <input type="number" class="form-control <?php echo !empty($errors['editMenuPriceMedium']) ? 'is-invalid' : '' ?>" id="editMenuPriceMedium" name="editMenuPriceMedium" min="0" step="0.01" value="<?php echo isset($_POST['editMenuPriceMedium']) ? htmlspecialchars($_POST['editMenuPriceMedium']) : '0' ?>">
+                                    <?php if (!empty($errors['editMenuPriceMedium'])): ?>
+                                        <div class="error-message"><?php echo htmlspecialchars($errors['editMenuPriceMedium']); ?></div>
+                                    <?php endif; ?>
+                                </div>
+                                <div class="price-input" id="editPriceLargeContainer">
+                                    <label for="editMenuPriceLarge" class="form-label">Large</label>
+                                    <input type="number" class="form-control <?php echo !empty($errors['editMenuPriceLarge']) ? 'is-invalid' : '' ?>" id="editMenuPriceLarge" name="editMenuPriceLarge" min="0" step="0.01" value="<?php echo isset($_POST['editMenuPriceLarge']) ? htmlspecialchars($_POST['editMenuPriceLarge']) : '0' ?>">
+                                    <?php if (!empty($errors['editMenuPriceLarge'])): ?>
+                                        <div class="error-message"><?php echo htmlspecialchars($errors['editMenuPriceLarge']); ?></div>
+                                    <?php endif; ?>
+                                </div>
                             </div>
                             <div class="mb-3">
-                                <label for="editMenuPrice" class="form-label">Price</label>
-                                <div class="d-flex align-items-center">
-                                    <div class="me-2" id="editPriceValue"><?php echo isset($_POST['editMenuPrice']) ? number_format($_POST['editMenuPrice'], 2) : '0.00' ?></div>
-                                    <input type="range" class="form-range <?php echo !empty($errors['editMenuPrice']) ? 'is-invalid' : '' ?>" id="editMenuPrice" name="editMenuPrice" min="0" max="1000" value="<?php echo isset($_POST['editMenuPrice']) ? htmlspecialchars($_POST['editMenuPrice']) : '0' ?>" step="0.01">
-                                </div>
-                                <?php if (!empty($errors['editMenuPrice'])): ?>
-                                    <div class="error-message"><?php echo htmlspecialchars($errors['editMenuPrice']); ?></div>
+                                <label for="editMenuQuantity" class="form-label">Quantity</label>
+                                <input type="number" class="form-control <?php echo !empty($errors['editMenuQuantity']) ? 'is-invalid' : '' ?>" id="editMenuQuantity" name="editMenuQuantity" min="1" max="100" value="<?php echo isset($_POST['editMenuQuantity']) ? htmlspecialchars($_POST['editMenuQuantity']) : '1' ?>">
+                                <?php if (!empty($errors['editMenuQuantity'])): ?>
+                                    <div class="error-message"><?php echo htmlspecialchars($errors['editMenuQuantity']); ?></div>
                                 <?php endif; ?>
                             </div>
                             <div class="mb-3">
@@ -627,7 +698,7 @@ function renderMenuItems($result) {
             </div>
             <div class="row m-2 mb-3">
                 <div class="col-6">
-                    <button type="button" class="container-fluid close-add" data-dismiss="modal" aria-label="Close">Close</button>
+                    <button type="button" class="container-fluid close-add" data-bs-dismiss="modal" aria-label="Close">Close</button>
                 </div>
                 <div class="col-6">
                     <button type="button" class="btn-add-item container-fluid text-light" onclick="saveEdit()">Save Changes</button>
@@ -676,9 +747,11 @@ function renderMenuItems($result) {
                             <div class="mb-3">
                                 <label for="menuCategory" class="form-label">Category</label>
                                 <select class="form-select <?php echo !empty($errors['menuCategory']) ? 'is-invalid' : '' ?>" id="menuCategory" name="menuCategory">
-                                    <option value="Coffee" <?php echo (isset($_POST['menuCategory']) && $_POST['menuCategory'] == 'Coffee') ? 'selected' : '' ?>>Coffee</option>
+                                    <option value="Espresso" <?php echo (isset($_POST['menuCategory']) && $_POST['menuCategory'] == 'Espresso') ? 'selected' : '' ?>>Espresso</option>
                                     <option value="Non-Coffee" <?php echo (isset($_POST['menuCategory']) && $_POST['menuCategory'] == 'Non-Coffee') ? 'selected' : '' ?>>Non-Coffee</option>
-                                    <option value="Signature Frappe" <?php echo (isset($_POST['menuCategory']) && $_POST['menuCategory'] == 'Signature Frappe') ? 'selected' : '' ?>>Signature Frappe</option>
+                                    <option value="Signatures" <?php echo (isset($_POST['menuCategory']) && $_POST['menuCategory'] == 'Signatures') ? 'selected' : '' ?>>Signatures</option>
+                                    <option value="Frappe (espresso base)" <?php echo (isset($_POST['menuCategory']) && $_POST['menuCategory'] == 'Frappe (espresso base)') ? 'selected' : '' ?>>Frappe (espresso base)</option>
+                                    <option value="Frappe (cream base)" <?php echo (isset($_POST['menuCategory']) && $_POST['menuCategory'] == 'Frappe (cream base)') ? 'selected' : '' ?>>Frappe (cream base)</option>
                                     <option value="Starters" <?php echo (isset($_POST['menuCategory']) && $_POST['menuCategory'] == 'Starters') ? 'selected' : '' ?>>Starters</option>
                                     <option value="Pasta" <?php echo (isset($_POST['menuCategory']) && $_POST['menuCategory'] == 'Pasta') ? 'selected' : '' ?>>Pasta</option>
                                     <option value="Sandwich" <?php echo (isset($_POST['menuCategory']) && $_POST['menuCategory'] == 'Sandwich') ? 'selected' : '' ?>>Sandwich</option>
@@ -696,9 +769,9 @@ function renderMenuItems($result) {
     <div class="container-fluid">
         <input type="checkbox" name="menuSize[]" value="Small" id="sizeSmall" <?php echo (isset($_POST['menuSize']) && in_array('Small', $_POST['menuSize']) ? 'checked' : '') ?>>
         <label for="sizeSmall" class="me-3">Small</label>
-        <input type="checkbox" name="menuSize[]" value="Medium" id="sizeMedium" <?php echo (isset($_POST['menuSize']) && in_array('Medium', $_POST['menuSize']) ? 'checked' : '') ?>>
+        <input type="checkbox" name="menuSize[]" value="Medium" id="sizeMedium" <?php echo (isset($_POST['menuSize']) && in_array('Medium', $_POST['menuSize']) ? 'checked' : '' )?>>
         <label for="sizeMedium" class="me-3">Medium</label>
-        <input type="checkbox" name="menuSize[]" value="Large" id="sizeLarge" <?php echo (isset($_POST['menuSize']) && in_array('Large', $_POST['menuSize']) ? 'checked' : '') ?>>
+        <input type="checkbox" name="menuSize[]" value="Large" id="sizeLarge" <?php echo (isset($_POST['menuSize']) && in_array('Large', $_POST['menuSize']) ? 'checked' : '' )?>>
         <label for="sizeLarge">Large</label>
     </div>
     <?php if (!empty($errors['menuSize'])): ?>
@@ -708,35 +781,46 @@ function renderMenuItems($result) {
                             <div class="mb-3 container-fluid" id="menuTemperatureContainer">
                                 <label for="menuTemperature" class="form-label">Temperature</label>
                                 <div class="container-fluid">
-                                    <input type="checkbox" name="menuTemperature[]" value="Hot" id="temperatureHot" <?php echo (isset($_POST['menuTemperature']) && in_array('Hot', $_POST['menuTemperature']) ? 'checked' : '') ?>>
+                                    <input type="checkbox" name="menuTemperature[]" value="Hot" id="temperatureHot" <?php echo (isset($_POST['menuTemperature']) && in_array('Hot', $_POST['menuTemperature']) ? 'checked' : '' )?>>
                                     <label for="temperatureHot" class="me-3">Hot</label>
                                     <input type="checkbox" name="menuTemperature[]" value="Warm" id="temperatureWarm" <?php echo (isset($_POST['menuTemperature']) && in_array('Warm', $_POST['menuTemperature']) ? 'checked' : '' )?>>
                                     <label for="temperatureWarm" class="me-3">Warm</label>
-                                    <input type="checkbox" name="menuTemperature[]" value="Cold" id="temperatureCold" <?php echo (isset($_POST['menuTemperature']) && in_array('Cold', $_POST['menuTemperature']) ? 'checked' : '') ?>>
+                                    <input type="checkbox" name="menuTemperature[]" value="Cold" id="temperatureCold" <?php echo (isset($_POST['menuTemperature']) && in_array('Cold', $_POST['menuTemperature']) ? 'checked' : '' )?>>
                                     <label for="temperatureCold">Cold</label>
                                 </div>
                                 <?php if (!empty($errors['menuTemperature'])): ?>
                                     <div class="checkbox-error"><?php echo htmlspecialchars($errors['menuTemperature']); ?></div>
                                 <?php endif; ?>
                             </div>
-                            <div class="mb-3">
-                                <label for="menuQuantity" class="form-label">Quantity</label>
-                                <div class="d-flex align-items-center">
-                                    <div class="me-2" id="quantityValue"><?php echo isset($_POST['menuQuantity']) ? htmlspecialchars($_POST['menuQuantity']) : '1' ?></div>
-                                    <input type="range" class="form-range <?php echo !empty($errors['menuQuantity']) ? 'is-invalid' : '' ?>" id="menuQuantity" name="menuQuantity" min="1" max="100" value="<?php echo isset($_POST['menuQuantity']) ? htmlspecialchars($_POST['menuQuantity']) : '1' ?>">
+                            <div class="mb-3 price-input-container" id="priceInputContainer">
+                                <label class="form-label">Price</label>
+                                <div class="mb-2 price-input" id="priceSmallContainer">
+                                    <label for="menuPriceSmall" class="form-label">Small</label>
+                                    <input type="number" class="form-control <?php echo !empty($errors['menuPriceSmall']) ? 'is-invalid' : '' ?>" id="menuPriceSmall" name="menuPriceSmall" min="0" step="0.01" value="<?php echo isset($_POST['menuPriceSmall']) ? htmlspecialchars($_POST['menuPriceSmall']) : '0' ?>">
+                                    <?php if (!empty($errors['menuPriceSmall'])): ?>
+                                        <div class="error-message"><?php echo htmlspecialchars($errors['menuPriceSmall']); ?></div>
+                                    <?php endif; ?>
                                 </div>
-                                <?php if (!empty($errors['menuQuantity'])): ?>
-                                    <div class="error-message"><?php echo htmlspecialchars($errors['menuQuantity']); ?></div>
-                                <?php endif; ?>
+                                <div class="mb-2 price-input" id="priceMediumContainer">
+                                    <label for="menuPriceMedium" class="form-label">Medium</label>
+                                    <input type="number" class="form-control <?php echo !empty($errors['menuPriceMedium']) ? 'is-invalid' : '' ?>" id="menuPriceMedium" name="menuPriceMedium" min="0" step="0.01" value="<?php echo isset($_POST['menuPriceMedium']) ? htmlspecialchars($_POST['menuPriceMedium']) : '0' ?>">
+                                    <?php if (!empty($errors['menuPriceMedium'])): ?>
+                                        <div class="error-message"><?php echo htmlspecialchars($errors['menuPriceMedium']); ?></div>
+                                    <?php endif; ?>
+                                </div>
+                                <div class="price-input" id="priceLargeContainer">
+                                    <label for="menuPriceLarge" class="form-label">Large</label>
+                                    <input type="number" class="form-control <?php echo !empty($errors['menuPriceLarge']) ? 'is-invalid' : '' ?>" id="menuPriceLarge" name="menuPriceLarge" min="0" step="0.01" value="<?php echo isset($_POST['menuPriceLarge']) ? htmlspecialchars($_POST['menuPriceLarge']) : '0' ?>">
+                                    <?php if (!empty($errors['menuPriceLarge'])): ?>
+                                        <div class="error-message"><?php echo htmlspecialchars($errors['menuPriceLarge']); ?></div>
+                                    <?php endif; ?>
+                                </div>
                             </div>
                             <div class="mb-3">
-                                <label for="menuPrice" class="form-label">Price</label>
-                                <div class="d-flex align-items-center">
-                                    <div class="me-2" id="priceValue"><?php echo isset($_POST['menuPrice']) ? number_format($_POST['menuPrice'], 2) : '0.00' ?></div>
-                                    <input type="range" class="form-range <?php echo !empty($errors['menuPrice']) ? 'is-invalid' : '' ?>" id="menuPrice" name="menuPrice" min="0" max="1000" value="<?php echo isset($_POST['menuPrice']) ? htmlspecialchars($_POST['menuPrice']) : '0' ?>" step="0.01">
-                                </div>
-                                <?php if (!empty($errors['menuPrice'])): ?>
-                                    <div class="error-message"><?php echo htmlspecialchars($errors['menuPrice']); ?></div>
+                                <label for="menuQuantity" class="form-label">Quantity</label>
+                                <input type="number" class="form-control <?php echo !empty($errors['menuQuantity']) ? 'is-invalid' : '' ?>" id="menuQuantity" name="menuQuantity" min="1" max="100" value="<?php echo isset($_POST['menuQuantity']) ? htmlspecialchars($_POST['menuQuantity']) : '1' ?>">
+                                <?php if (!empty($errors['menuQuantity'])): ?>
+                                    <div class="error-message"><?php echo htmlspecialchars($errors['menuQuantity']); ?></div>
                                 <?php endif; ?>
                             </div>
                             <div class="mb-3">
@@ -798,95 +882,215 @@ function renderMenuItems($result) {
     <!-- jQuery, DataTable, and Bootstrap JS -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.1/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function () {
-        const categorySelect = document.getElementById('menuCategory');
-        const sizeContainer = document.getElementById('menuSizeContainer');
-        const temperatureContainer = document.getElementById('menuTemperatureContainer');
+        // For Add Form
+        const addCategorySelect = document.getElementById('menuCategory');
+        const addSizeContainer = document.getElementById('menuSizeContainer');
+        const addTemperatureContainer = document.getElementById('menuTemperatureContainer');
+        const addPriceContainer = document.getElementById('priceInputContainer');
+        
+        // For Edit Form
+        const editCategorySelect = document.getElementById('editMenuCategory');
+        const editSizeContainer = document.getElementById('editMenuSizeContainer');
+        const editTemperatureContainer = document.getElementById('editMenuTemperatureContainer');
+        const editPriceContainer = document.getElementById('editPriceInputContainer');
 
-        function toggleFields() {
-            const selectedCategory = categorySelect.value;
-            if (selectedCategory !== 'Coffee' && selectedCategory !== 'Non-Coffee' && selectedCategory !== 'Signature Frappe')  {
+        function toggleFields(selectElement, sizeContainer, tempContainer, priceContainer) {
+            const selectedCategory = selectElement.value;
+            if (selectedCategory !== 'Espresso' && selectedCategory !== 'Non-Coffee' && selectedCategory !== 'Signatures' && selectedCategory !== 'Frappe (espresso base)' && selectedCategory !== 'Frappe (cream base)')  {
                 sizeContainer.style.display = 'none';
-                temperatureContainer.style.display = 'none';
+                tempContainer.style.display = 'none';
+                priceContainer.style.display = 'none';
             } else {
                 sizeContainer.style.display = 'block';
-                temperatureContainer.style.display = 'block';
+                tempContainer.style.display = 'block';
+                priceContainer.style.display = 'block';
             }
         }
 
-        // Run on page load to set initial state
-        toggleFields();
+        // Initialize both forms
+        toggleFields(addCategorySelect, addSizeContainer, addTemperatureContainer, addPriceContainer);
+        toggleFields(editCategorySelect, editSizeContainer, editTemperatureContainer, editPriceContainer);
         
-        // Add event listener for changes
-        categorySelect.addEventListener('change', toggleFields);
+        // Add event listeners for both forms
+        addCategorySelect.addEventListener('change', function() {
+            toggleFields(addCategorySelect, addSizeContainer, addTemperatureContainer, addPriceContainer);
+        });
+        
+        editCategorySelect.addEventListener('change', function() {
+            toggleFields(editCategorySelect, editSizeContainer, editTemperatureContainer, editPriceContainer);
+        });
+
+        function handleSizeCheckboxChanges(prefix = '') {
+            const smallCheckbox = document.getElementById(prefix + 'sizeSmall');
+            const mediumCheckbox = document.getElementById(prefix + 'sizeMedium');
+            const largeCheckbox = document.getElementById(prefix + 'sizeLarge');
+            
+            const smallPriceContainer = document.getElementById(prefix + 'priceSmallContainer');
+            const mediumPriceContainer = document.getElementById(prefix + 'priceMediumContainer');
+            const largePriceContainer = document.getElementById(prefix + 'priceLargeContainer');
+            
+            function updatePriceVisibility() {
+                smallPriceContainer.style.display = smallCheckbox.checked ? 'block' : 'none';
+                mediumPriceContainer.style.display = mediumCheckbox.checked ? 'block' : 'none';
+                largePriceContainer.style.display = largeCheckbox.checked ? 'block' : 'none';
+                
+                // Clear price value when unchecked
+                if (!smallCheckbox.checked) {
+                    document.getElementById(prefix + 'menuPriceSmall').value = '';
+                }
+                if (!mediumCheckbox.checked) {
+                    document.getElementById(prefix + 'menuPriceMedium').value = '';
+                }
+                if (!largeCheckbox.checked) {
+                    document.getElementById(prefix + 'menuPriceLarge').value = '';
+                }
+            }
+            
+            // Set initial state
+            updatePriceVisibility();
+            
+            // Add event listeners
+            smallCheckbox.addEventListener('change', updatePriceVisibility);
+            mediumCheckbox.addEventListener('change', updatePriceVisibility);
+            largeCheckbox.addEventListener('change', updatePriceVisibility);
+        }
+
+        // Initialize for both forms
+        handleSizeCheckboxChanges(); // Add form
+        handleSizeCheckboxChanges('edit'); // Edit form
     });
 
     function openEditModal(id) {
-        $.ajax({
-            url: 'menuManagement.php?id=' + id,
-            method: 'GET',
-            success: function(response) {
-                try {
-                    const data = response;
-
-                    // Populate form fields
-                    document.getElementById('editMenuName').value = data.name;
-                    document.getElementById('editMenuDescription').value = data.description;
-                    document.getElementById('editMenuCategory').value = data.category;
-                    document.getElementById('editMenuQuantity').value = data.quantity;
-                    document.getElementById('editQuantityValue').innerText = data.quantity;
-                    document.getElementById('editMenuPrice').value = data.price;
-                    document.getElementById('editPriceValue').innerText = parseFloat(data.price).toFixed(2);
-                    document.getElementById('editProductStatus').value = data.status;
-                    document.getElementById('editMenuId').value = data.id;
-
-                    // Handle checkboxes for size
-                    const sizeCheckboxes = document.querySelectorAll('input[name="editMenuSize[]"]');
-                    if (data.size) {
-                        const sizes = data.size.split(',');
-                        sizeCheckboxes.forEach(checkbox => {
-                            checkbox.checked = sizes.includes(checkbox.value);
-                        });
-                    }
-
-                    // Handle checkboxes for temperature
-                    const temperatureCheckboxes = document.querySelectorAll('input[name="editMenuTemperature[]"]');
-                    if (data.temperature) {
-                        const temps = data.temperature.split(',');
-                        temperatureCheckboxes.forEach(checkbox => {
-                            checkbox.checked = temps.includes(checkbox.value);
-                        });
-                    }
-
-                    // Show or hide size and temperature containers based on category
-                    const selectedCategory = data.category;
-                    const editSizeContainer = document.getElementById('editMenuSizeContainer');
-                    const editTemperatureContainer = document.getElementById('editMenuTemperatureContainer');
-
-                    if (selectedCategory === 'Signature Frappe' || selectedCategory === 'Non-Coffee' || selectedCategory === 'Coffee') {
-                        editSizeContainer.style.display = 'block';
-                        editTemperatureContainer.style.display = 'block';
-                    } else {
-                        editSizeContainer.style.display = 'none';
-                        editTemperatureContainer.style.display = 'none';
-                    }
-
-                    // Show the modal
-                    var editModal = new bootstrap.Modal(document.getElementById('editMenuModal'));
-                    editModal.show();
-                } catch (error) {
-                    console.error('Error processing response:', error);
-                    alert('Error fetching item details. Please try again.');
-                }
-            },
-            error: function(xhr, status, error) {
-                console.error('AJAX error:', error);
-                alert('Error fetching item details: ' + error);
+    $.ajax({
+        url: 'menuManagement.php?id=' + id,
+        method: 'GET',
+        dataType: 'json',
+        success: function(data) {
+            if (data.error) {
+                alert(data.error);
+                return;
             }
-        });
-    }
 
+            // Populate basic form fields
+            document.getElementById('editMenuName').value = data.name;
+            document.getElementById('editMenuDescription').value = data.description;
+            document.getElementById('editMenuCategory').value = data.category;
+            document.getElementById('editMenuQuantity').value = data.quantity;
+            document.getElementById('editProductStatus').value = data.status;
+            document.getElementById('editMenuId').value = data.id;
+
+            // Parse the price JSON from the database
+            let priceData = {};
+            try {
+                priceData = JSON.parse(data.price);
+            } catch (e) {
+                console.error('Error parsing price data:', e);
+            }
+
+            // Handle size checkboxes and their corresponding price fields
+            const sizes = data.size ? data.size.split(',') : [];
+            
+            // Small size
+            const editSizeSmall = document.getElementById('editSizeSmall');
+            const editPriceSmallContainer = document.getElementById('editPriceSmallContainer');
+            if (sizes.includes('Small')) {
+                editSizeSmall.checked = true;
+                editPriceSmallContainer.style.display = 'block';
+                document.getElementById('editMenuPriceSmall').value = priceData.Small || '';
+            } else {
+                editSizeSmall.checked = false;
+                editPriceSmallContainer.style.display = 'none';
+                document.getElementById('editMenuPriceSmall').value = '';
+            }
+
+            // Medium size
+            const editSizeMedium = document.getElementById('editSizeMedium');
+            const editPriceMediumContainer = document.getElementById('editPriceMediumContainer');
+            if (sizes.includes('Medium')) {
+                editSizeMedium.checked = true;
+                editPriceMediumContainer.style.display = 'block';
+                document.getElementById('editMenuPriceMedium').value = priceData.Medium || '';
+            } else {
+                editSizeMedium.checked = false;
+                editPriceMediumContainer.style.display = 'none';
+                document.getElementById('editMenuPriceMedium').value = '';
+            }
+
+            // Large size
+            const editSizeLarge = document.getElementById('editSizeLarge');
+            const editPriceLargeContainer = document.getElementById('editPriceLargeContainer');
+            if (sizes.includes('Large')) {
+                editSizeLarge.checked = true;
+                editPriceLargeContainer.style.display = 'block';
+                document.getElementById('editMenuPriceLarge').value = priceData.Large || '';
+            } else {
+                editSizeLarge.checked = false;
+                editPriceLargeContainer.style.display = 'none';
+                document.getElementById('editMenuPriceLarge').value = '';
+            }
+
+            // Handle temperature checkboxes
+            const temperatureCheckboxes = document.querySelectorAll('input[name="editMenuTemperature[]"]');
+            if (data.temperature) {
+                const temps = data.temperature.split(',');
+                temperatureCheckboxes.forEach(checkbox => {
+                    checkbox.checked = temps.includes(checkbox.value);
+                });
+            }
+
+            // Show/hide size and temperature sections based on category
+            const selectedCategory = data.category;
+            const editSizeContainer = document.getElementById('editMenuSizeContainer');
+            const editTemperatureContainer = document.getElementById('editMenuTemperatureContainer');
+            const editPriceContainer = document.getElementById('editPriceInputContainer');
+
+            if (selectedCategory === 'Espresso' || selectedCategory === 'Non-Coffee' || 
+                selectedCategory === 'Signatures' || selectedCategory === 'Frappe (espresso base)' || 
+                selectedCategory === 'Frappe (cream base)') {
+                editSizeContainer.style.display = 'block';
+                editTemperatureContainer.style.display = 'block';
+                editPriceContainer.style.display = 'block';
+            } else {
+                editSizeContainer.style.display = 'none';
+                editTemperatureContainer.style.display = 'none';
+                editPriceContainer.style.display = 'none';
+            }
+
+            // Add event listeners for size checkboxes to show/hide price fields
+            editSizeSmall.addEventListener('change', function() {
+                editPriceSmallContainer.style.display = this.checked ? 'block' : 'none';
+                if (!this.checked) {
+                    document.getElementById('editMenuPriceSmall').value = '';
+                }
+            });
+
+            editSizeMedium.addEventListener('change', function() {
+                editPriceMediumContainer.style.display = this.checked ? 'block' : 'none';
+                if (!this.checked) {
+                    document.getElementById('editMenuPriceMedium').value = '';
+                }
+            });
+
+            editSizeLarge.addEventListener('change', function() {
+                editPriceLargeContainer.style.display = this.checked ? 'block' : 'none';
+                if (!this.checked) {
+                    document.getElementById('editMenuPriceLarge').value = '';
+                }
+            });
+
+            // Show the modal
+            var editModal = new bootstrap.Modal(document.getElementById('editMenuModal'));
+            editModal.show();
+        },
+        error: function(xhr, status, error) {
+            console.error('AJAX error:', error);
+            alert('Error fetching item details. Please try again.');
+        }
+    });
+}
     function saveEdit() {
         const formData = new FormData(document.getElementById('editMenuForm'));
         formData.append('editMenuItem', true);
@@ -905,9 +1109,7 @@ function renderMenuItems($result) {
             }
         });
     }
-</script>
 
-<script>
     $(document).ready(function () {
         $('#search').on('keyup', function () {
             var value = $(this).val().toLowerCase();
@@ -949,41 +1151,6 @@ function renderMenuItems($result) {
     function filterByCategory() {
         var selectedCategory = document.getElementById('categoryFilter').value;
         window.location.href = '?category=' + selectedCategory;
-    }
-</script>
-<script>
-    // Quantity and price slider value display
-    const quantitySlider = document.getElementById('menuQuantity');
-    const quantityValue = document.getElementById('quantityValue');
-    if (quantitySlider && quantityValue) {
-        quantitySlider.oninput = function() {
-            quantityValue.innerText = this.value;
-        };
-    }
-
-    const priceSlider = document.getElementById('menuPrice');
-    const priceValue = document.getElementById('priceValue');
-    if (priceSlider && priceValue) {
-        priceSlider.oninput = function() {
-            priceValue.innerText = parseFloat(this.value).toFixed(2);
-        };
-    }
-
-    // Edit form sliders
-    const editQuantitySlider = document.getElementById('editMenuQuantity');
-    const editQuantityValue = document.getElementById('editQuantityValue');
-    if (editQuantitySlider && editQuantityValue) {
-        editQuantitySlider.oninput = function() {
-            editQuantityValue.innerText = this.value;
-        };
-    }
-
-    const editPriceSlider = document.getElementById('editMenuPrice');
-    const editPriceValue = document.getElementById('editPriceValue');
-    if (editPriceSlider && editPriceValue) {
-        editPriceSlider.oninput = function() {
-            editPriceValue.innerText = parseFloat(this.value).toFixed(2);
-        };
     }
 </script>
 <script>

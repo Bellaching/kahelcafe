@@ -64,7 +64,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['add_to_cart'])) {
         $quantity = isset($_POST['quantity']) ? intval($_POST['quantity']) : 1;
         $size = isset($_POST['size']) ? $conn->real_escape_string($_POST['size']) : '';
         $temperature = isset($_POST['temperature']) ? $conn->real_escape_string($_POST['temperature']) : '';
-        $price = isset($_POST['price']) ? $conn->real_escape_string($_POST['price']) : 0;
+        $price = isset($_POST['price']) ? floatval($_POST['price']) : 0; // Changed to floatval for price
 
         // Fetch item details from the database with both conditions
         $sql = "SELECT * FROM menu1 WHERE id = $item_id AND status != 'unavailable' AND quantity > 0";
@@ -81,6 +81,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['add_to_cart'])) {
                     if ($cartItem['id'] == $item_id && $cartItem['size'] == $size && $cartItem['temperature'] == $temperature) {
                         // Update quantity if the item already exists
                         $cartItem['quantity'] += $quantity;
+                        $cartItem['price'] = $price;
                         $itemExists = true;
                         break;
                     }
@@ -92,7 +93,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['add_to_cart'])) {
                 $_SESSION['cart'][] = [
                     'id' => $item['id'],
                     'name' => $item['name'],
-                    'price' => $item['price'],
+                    'price' => $price,
                     'quantity' => $quantity,
                     'size' => $size,
                     'temperature' => $temperature
@@ -102,7 +103,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['add_to_cart'])) {
             // Insert into the database cart table
             $insertSql = "INSERT INTO cart (user_id, item_id, quantity, size, temperature, price) 
                           VALUES ('$user_id', '$item_id', '$quantity', '$size', '$temperature', '$price')
-                          ON DUPLICATE KEY UPDATE quantity = quantity + $quantity";
+                          ON DUPLICATE KEY UPDATE quantity = quantity + $quantity, price = '$price'";
 
             if ($conn->query($insertSql)) {
                 $_SESSION['cart_success'] = "Item added to cart successfully!";
@@ -175,6 +176,11 @@ $sql = "SELECT * FROM menu1 $whereClause ORDER BY name ASC LIMIT $offset, $items
         .modal-backdrop {
             display: none !important;
         }
+        .price-display {
+            font-weight: bold;
+            color: green;
+            font-size: 1.2rem;
+        }
     </style>
 </head>
 <body>
@@ -232,7 +238,13 @@ $sql = "SELECT * FROM menu1 $whereClause ORDER BY name ASC LIMIT $offset, $items
         <div class="card-body d-flex flex-column">
             <div class="d-flex justify-content-between">
                 <h5 class="card-title text-dark"><?php echo $menu['name']; ?></h5>
-                <p class="card-text text-success fw-bold">P<?php echo number_format($menu['price'], 2); ?></p>
+                <p class="card-text text-success fw-bold">P<?php 
+                    // Extract just the numeric price (first price if multiple)
+                    $prices = explode(',', $menu['price']);
+                    $priceParts = explode(':', $prices[0]);
+                    $cleanPrice = rtrim(trim($priceParts[1]), '}'); // Trim whitespace and remove any trailing }
+                    echo $cleanPrice;
+                ?></p>
             </div>
             <button class="btn mt-auto rounded-pill add-to-cart-btn" 
                     style="background-color: #E48700; color: white;" 
@@ -245,8 +257,7 @@ $sql = "SELECT * FROM menu1 $whereClause ORDER BY name ASC LIMIT $offset, $items
 </div>
 
 
-                            <!-- Add to Cart Modal for Each Item -->
-                            <div class="modal fade" id="itemModal<?php echo $menu['id']; ?>" tabindex="-1" aria-labelledby="itemModalLabel<?php echo $menu['id']; ?>" aria-hidden="true">
+<div class="modal fade" id="itemModal<?php echo $menu['id']; ?>" tabindex="-1" aria-labelledby="itemModalLabel<?php echo $menu['id']; ?>" aria-hidden="true">
                                 <div class="modal-dialog modal-dialog-centered modal-lg">
                                     <div class="modal-content">
                                         <div class="modal-header">
@@ -273,20 +284,25 @@ $sql = "SELECT * FROM menu1 $whereClause ORDER BY name ASC LIMIT $offset, $items
                                                     <!-- Form for Adding to Cart -->
                                                     <form method="post" action="<?php echo $_SERVER['REQUEST_URI']; ?>">
                                                         <input type="hidden" name="item_id" value="<?php echo $menu['id']; ?>">
-                                                        <input type="hidden" name="price" value="<?php echo $menu['price']; ?>">
+                                                        <input type="hidden" name="price" id="priceInput<?php echo $menu['id']; ?>" value="<?php 
+                                                            // Set initial price value
+                                                            $prices = explode(',', $menu['price']);
+                                                            $priceParts = explode(':', $prices[0]);
+                                                            $cleanPrice = rtrim(trim($priceParts[1]), '}');
+                                                            echo $cleanPrice;
+                                                        ?>">
                                                         <div>
 
-                                                      
-
-                                                        <?php if (in_array($menu['category'], ['Coffee', 'Non-Coffee'])): ?>
+                                                        <?php if (in_array($menu['category'], ['Espresso', 'Signatures','Frappe (espresso base)','Frappe (cream base)','Signature Frappe', 'Non-Coffee'])): ?>
                                                             <div class="mb-3">
-                                                            
                                                                 <label for="size" class="form-label">Size</label>
-                                                                <select class="form-select" name="size" id="size<?php echo $menu['id']; ?>">
+                                                                <select class="form-select" name="size" id="size<?php echo $menu['id']; ?>" onchange="updatePrice(<?php echo $menu['id']; ?>)">
                                                                     <?php
-                                                                    $sizes = explode(',', $menu['size']); // Assuming sizes are stored as a comma-separated string in DB
-                                                                    foreach ($sizes as $size) {
-                                                                        echo "<option value='" . trim($size) . "'>" . trim($size) . "</option>";
+                                                                    $sizes = explode(',', $menu['size']);
+                                                                    $prices = explode(',', $menu['price']);
+                                                                    foreach ($sizes as $index => $size) {
+                                                                        $price = isset($prices[$index]) ? $prices[$index] : $prices[0];
+                                                                        echo "<option value='" . trim($size) . "' data-price='" . trim($price) . "'>" . trim($size) . "</option>";
                                                                     }
                                                                     ?>
                                                                 </select>
@@ -296,7 +312,7 @@ $sql = "SELECT * FROM menu1 $whereClause ORDER BY name ASC LIMIT $offset, $items
                                                                 <label for="temperature" class="form-label">Temperature</label>
                                                                 <select class="form-select" name="temperature" id="temperature<?php echo $menu['id']; ?>">
                                                                     <?php
-                                                                    $temperatures = explode(',', $menu['temperature']); // Assuming temperatures are stored as a comma-separated string in DB
+                                                                    $temperatures = explode(',', $menu['temperature']);
                                                                     foreach ($temperatures as $temp) {
                                                                         echo "<option value='" . trim($temp) . "'>" . trim($temp) . "</option>";
                                                                     }
@@ -323,6 +339,19 @@ $sql = "SELECT * FROM menu1 $whereClause ORDER BY name ASC LIMIT $offset, $items
                                                                 value="1" 
                                                                 id="quantity<?php echo $menu['id']; ?>" 
                                                                 name="quantity">
+                                                        </div>
+                                                        
+                                                        <!-- Price Display -->
+                                                        <div class="mb-3">
+                                                            <span class="price-display" id="priceDisplay<?php echo $menu['id']; ?>">P
+                                                                <?php 
+                                                                // Display the first price by default (just the number)
+                                                                $prices = explode(',', $menu['price']);
+                                                                $priceParts = explode(':', $prices[0]);
+                                                                $cleanPrice = rtrim(trim($priceParts[1]), '}');
+                                                                echo $cleanPrice;
+                                                                ?>
+                                                            </span>
                                                         </div>
                                                         
                                                         </div>
@@ -442,7 +471,7 @@ $sql = "SELECT * FROM menu1 $whereClause ORDER BY name ASC LIMIT $offset, $items
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.7/dist/umd/popper.min.js"></script>
 <script src="https://stackpath.bootstrapcdn.com/bootstrap/5.3.3/js/bootstrap.min.js"></script>
-    <script>
+<script>
         document.addEventListener('DOMContentLoaded', function() {
             // Update quantity label when slider changes
             document.querySelectorAll('.form-range').forEach(range => {
@@ -452,6 +481,17 @@ $sql = "SELECT * FROM menu1 $whereClause ORDER BY name ASC LIMIT $offset, $items
                 });
             });
         });
+
+        function updatePrice(itemId) {
+            const sizeSelect = document.getElementById(`size${itemId}`);
+            const selectedOption = sizeSelect.options[sizeSelect.selectedIndex];
+            const priceWithLabel = selectedOption.getAttribute('data-price');
+            const priceOnly = priceWithLabel.split(':')[1].trim(); // Get the number part
+            const cleanPrice = priceOnly.replace(/}$/, ''); // Remove any trailing }
+            
+            document.getElementById(`priceDisplay${itemId}`).textContent = cleanPrice;
+            document.getElementById(`priceInput${itemId}`).value = cleanPrice;
+        }
     </script>
 </body>
 </html>
