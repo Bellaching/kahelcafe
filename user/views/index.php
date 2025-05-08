@@ -140,6 +140,10 @@ $sql = "SELECT * FROM menu1 $whereClause ORDER BY name ASC LIMIT $offset, $items
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
     <style>
+        body{
+            display: flex;
+            flex-direction: column;
+        }
         .add-index {
             background-color: #FF902A;
             border-radius: 7rem;
@@ -184,9 +188,7 @@ $sql = "SELECT * FROM menu1 $whereClause ORDER BY name ASC LIMIT $offset, $items
     </style>
 </head>
 <body>
-    <header>
-        <!-- Include your banner.php here -->
-    </header>
+
 
     <div class="sched-banner position-relative mb-5 " style="background-image: url('./../asset/img/sched-reservation/sched-banner.png'); background-size: cover; background-position: center; min-height: 600px;">
     <div class="text-container" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; color: orange;">
@@ -489,6 +491,7 @@ $sql = "SELECT * FROM menu1 $whereClause ORDER BY name ASC LIMIT $offset, $items
             const priceOnly = priceWithLabel.split(':')[1].trim(); // Get the number part
             const cleanPrice = priceOnly.replace(/}$/, ''); // Remove any trailing }
             
+
             document.getElementById(`priceDisplay${itemId}`).textContent = cleanPrice;
             document.getElementById(`priceInput${itemId}`).value = cleanPrice;
         }

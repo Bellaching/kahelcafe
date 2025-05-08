@@ -431,6 +431,10 @@ $conn->close();
     <script src="https://kit.fontawesome.com/a076d05399.js"></script>
     <style>
         body {
+         
+            display: flex;
+            flex-direction: column;
+        
             font-family: 'Poppins', sans-serif;
         }
         .chart-container {
@@ -472,7 +476,7 @@ $conn->close();
 
 
 <body>
-<div class="container-fluid d-flex flex-column">
+<div class="container-fluid d-flex flex-column p-5">
 <h2 class="m-4" style="color: black;">
     Performance <span style="border-bottom: 3px solid #FF902B;" >Report</span>
 </h2>

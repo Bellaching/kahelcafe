@@ -20,6 +20,10 @@ include './../inc/topNav.php';
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
     
     <style>
+        body{
+            display: flex;
+            flex-direction: column;
+        }
         * {
             padding: 0;
             margin: 0;
@@ -125,8 +129,8 @@ include './../inc/topNav.php';
 </head>
 
 <body>
-<div class="container-fluid">
-    <div class="row mt-5 ms-5">
+<div class="container-fluid px-5">
+    <div class="row  ms-5">
         <div class="col-12">
             <div class="d-flex justify-content-between align-items-center w-100">
                 <p class="account-text m-0">
@@ -143,8 +147,8 @@ include './../inc/topNav.php';
     <div class="container-fluid px-3 px-md-5">
         <div class="row justify-content-center">
             <div class="col-12">
-                <div class="table-container shadow p-3 bg-body-tertiary rounded">
-                    <table id="userTable" class="display table table-striped w-100">
+                <div class="table-container shadow p-3 bg-body-tertiary rounded mx-5 mb-4">
+                    <table id="userTable" class="display table table-striped w-100 ">
                         <thead>
                             <tr>
                                 <th>Transaction Code</th>

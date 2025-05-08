@@ -10,10 +10,11 @@ include './../inc/topNav.php';
   <title>Virtual Tour Upload</title>
   <style>
     body {
-      margin: 0;
-      padding: 0;
+      
       font-family: 'Segoe UI', sans-serif;
       background-color: #f0f2f5;
+      display: flex;
+      flex-direction: column;
     }
 
     .wrapper {
@@ -41,7 +42,7 @@ include './../inc/topNav.php';
     .divider {
       height: 2px;
       background-color: #ecf0f1;
-      margin: 20px 0;
+   
       border-radius: 2px;
     }
   </style>

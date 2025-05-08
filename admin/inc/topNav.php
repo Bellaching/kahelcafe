@@ -165,6 +165,92 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) ){
             overflow-x: hidden;
             margin: 0;
             padding: 0;
+            display: flex;
+            min-height: 100vh;
+        }
+        
+        .sidebar {
+            width: 60px;
+            min-height: 100vh;
+            background-color: #343a40;
+            transition: all 0.3s;
+            position: fixed;
+            z-index: 1000;
+            overflow-y: auto;
+        }
+        
+        .sidebar:hover {
+            width: 250px;
+        }
+        
+        .sidebar:hover .nav-link-text {
+            display: inline;
+        }
+        
+        .sidebar-nav {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .sidebar-item {
+            position: relative;
+        }
+        
+        .sidebar-link {
+            display: flex;
+            align-items: center;
+            padding: 12px 15px;
+            color: rgba(255, 255, 255, 0.8);
+            text-decoration: none;
+            transition: all 0.3s;
+        }
+        
+        .sidebar-link:hover {
+            color: #fff;
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+        
+        .sidebar-icon {
+            font-size: 1.2rem;
+            margin-right: 15px;
+            width: 20px;
+            text-align: center;
+        }
+        
+        .nav-link-text {
+            display: none;
+            white-space: nowrap;
+        }
+        
+        .sidebar-dropdown {
+            list-style: none;
+            padding-left: 0;
+            background-color: rgba(0, 0, 0, 0.1);
+            display: none;
+        }
+        
+        .sidebar-dropdown.show {
+            display: block;
+        }
+        
+        .sidebar-dropdown .sidebar-link {
+            padding-left: 45px;
+        }
+        
+        .sidebar .dropdown-toggle::after {
+            display: inline-block;
+            margin-left: auto;
+            transition: transform 0.3s;
+        }
+        
+        .sidebar .dropdown-toggle[aria-expanded="true"]::after {
+            transform: rotate(90deg);
+        }
+        
+      
+        .sidebar:hover ~ .main-content {
+            margin-left: 250px;
         }
         
         .navbar-default {
@@ -313,40 +399,112 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) ){
     <title>Navigation</title>
 </head>
 <body>
-<nav class="navbar navbar-expand-lg navbar-default shadow-bottom">
-    <div class="container-fluid navbar-container">
-        <!-- Brand/logo on the left -->
-        <a class="navbar-brand me-auto" href="#">
-            <img src="./../../components/icon/kahel-cafe-logo.png" alt="MyWebsite" class="img-fluid" style="max-height: 60px;">
-        </a>
-        
-        <!-- Mobile toggle button -->
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-            <i class="fas fa-bars text-dark"></i>
-        </button>
-        
-        <!-- Navigation items - all pushed to the right -->
-        <div class="collapse navbar-collapse" id="navbarNav">
-            <div class="d-flex align-items-center ms-auto">
-                <!-- Owner Side -->
-                <?php if ($role === 'owner'): ?>
-                    <div class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle text-black" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">Admin side</a>
-                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
-                            <li><a class="dropdown-item" href="./../views/accountManagement.php">Account Management</a></li>
-                            <li><a class="dropdown-item" href="./../views/client.php">Client Management</a></li>
-                            <li><a class="dropdown-item" href="./../views/index.php">Order Management</a></li>
-                            <li><a class="dropdown-item" href="./../views/reservation.php">Reservation Management</a></li>
-                            <li><a class="dropdown-item" href="./../views/report.php">Performance Report</a></li>
-                            <li><a class="dropdown-item" href="../views/menuManagement.php">Menu Management</a></li>
-                            <li><a class="dropdown-item" href="../views/content.php">Virtual Management</a></li>
-                        </ul>
-                    </div>
+<!-- Sidebar -->
+<nav class="sidebar">
+    <ul class="sidebar-nav">
+        <?php if ($role === 'owner'): ?>
+            <li class="sidebar-item">
+                <a href="#" class="sidebar-link dropdown-toggle" data-bs-toggle="collapse" data-bs-target="#adminDropdown" aria-expanded="false">
+                    <i class="sidebar-icon fas fa-user-shield"></i>
+                    <span class="nav-link-text">Admin Side</span>
+                </a>
+                <ul id="adminDropdown" class="sidebar-dropdown collapse">
+                    <li class="sidebar-item">
+                        <a href="./../views/accountManagement.php" class="sidebar-link">
+                            <i class="sidebar-icon fas fa-users-cog"></i>
+                            <span class="nav-link-text">Account Management</span>
+                        </a>
+                    </li>
+                    <li class="sidebar-item">
+                        <a href="./../views/client.php" class="sidebar-link">
+                            <i class="sidebar-icon fas fa-users"></i>
+                            <span class="nav-link-text">Client Management</span>
+                        </a>
+                    </li>
+                    <li class="sidebar-item">
+                        <a href="./../views/index.php" class="sidebar-link">
+                            <i class="sidebar-icon fas fa-shopping-cart"></i>
+                            <span class="nav-link-text">Order Management</span>
+                        </a>
+                    </li>
+                    <li class="sidebar-item">
+                        <a href="./../views/reservation.php" class="sidebar-link">
+                            <i class="sidebar-icon fas fa-calendar-alt"></i>
+                            <span class="nav-link-text">Reservation Management</span>
+                        </a>
+                    </li>
+                    <li class="sidebar-item">
+                        <a href="./../views/report.php" class="sidebar-link">
+                            <i class="sidebar-icon fas fa-chart-line"></i>
+                            <span class="nav-link-text">Performance Report</span>
+                        </a>
+                    </li>
+                    <li class="sidebar-item">
+                        <a href="../views/menuManagement.php" class="sidebar-link">
+                            <i class="sidebar-icon fas fa-utensils"></i>
+                            <span class="nav-link-text">Menu Management</span>
+                        </a>
+                    </li>
+                    <li class="sidebar-item">
+                        <a href="../views/content.php" class="sidebar-link">
+                            <i class="sidebar-icon fas fa-desktop"></i>
+                            <span class="nav-link-text">Virtual Management</span>
+                        </a>
+                    </li>
+                </ul>
+            </li>
+        <?php elseif ($role === 'staff'): ?>
+            <li class="sidebar-item">
+                <a href="#" class="sidebar-link dropdown-toggle" data-bs-toggle="collapse" data-bs-target="#staffDropdown" aria-expanded="false">
+                    <i class="sidebar-icon fas fa-user-shield"></i>
+                    <span class="nav-link-text">Admin Side</span>
+                </a>
+                <ul id="staffDropdown" class="sidebar-dropdown collapse">
+                    <li class="sidebar-item">
+                        <a href="./../views/accountManagement.php" class="sidebar-link">
+                            <i class="sidebar-icon fas fa-shopping-cart"></i>
+                            <span class="nav-link-text">Order Management</span>
+                        </a>
+                    </li>
+                    <li class="sidebar-item">
+                        <a href="./../views/reservation.php" class="sidebar-link">
+                            <i class="sidebar-icon fas fa-calendar-alt"></i>
+                            <span class="nav-link-text">Reservation Management</span>
+                        </a>
+                    </li>
+                    <li class="sidebar-item">
+                        <a href="../views/menuManagement.php" class="sidebar-link">
+                            <i class="sidebar-icon fas fa-utensils"></i>
+                            <span class="nav-link-text">Menu Management</span>
+                        </a>
+                    </li>
+                </ul>
+            </li>
+        <?php endif; ?>
+    </ul>
+</nav>
 
+<!-- Main Content -->
+<div class="main-content">
+    <nav class="navbar navbar-expand-lg navbar-default shadow-bottom">
+        <div class="container-fluid navbar-container">
+            <!-- Brand/logo on the left -->
+            <!-- <a class="navbar-brand me-auto" href="#">
+                <img src="./../../components/icon/kahel-cafe-logo.png" alt="MyWebsite" class="img-fluid" style="max-height: 60px;">
+            </a>
+             -->
+            <!-- Mobile toggle button -->
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <i class="fas fa-bars text-dark"></i>
+            </button>
+            
+            <!-- Navigation items - all pushed to the right -->
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <div class="d-flex align-items-center ms-auto">
                     <!-- Notification Icon - properly aligned -->
                     <li class="nav-item position-relative mx-2" style="top: -15px;">
                         <?php include "noti.php" ?>
-                    </div>
+                    </li>
 
                     <div class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle text-black" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
@@ -357,343 +515,330 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) ){
                             <li><a class="dropdown-item" href="./../views/login.php"><i class="fa-solid fa-power-off me-2"></i>Logout</a></li>
                         </ul>
                     </div>
-                <?php endif; ?>
-
-                <!-- Staff Side -->
-                <?php if ($role === 'staff'): ?>
-                    <div class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle text-black" href="#" id="adminDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">Admin Side</a>
-                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="adminDropdown">
-                            <li><a class="dropdown-item" href="./../views/accountManagement.php">Order Management</a></li>
-                            <li><a class="dropdown-item" href="./../views/reservation.php">Reservation Management</a></li>
-                            <li><a class="dropdown-item" href="../views/menuManagement.php">Menu Management</a></li>
-                        </ul>
-                    </div>
-
-                    <div class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle text-black" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                            <?php echo htmlspecialchars($username); ?>(<?php echo htmlspecialchars($role); ?>)
-                        </a>
-                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
-                            <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#changeProfileModal"><i class="fa-regular fa-user me-2"></i>Change Profile</a></li>
-                            <li><a class="dropdown-item" href="./../views/login.php"><i class="fa-solid fa-power-off me-2"></i>Logout</a></li>
-                        </ul>
-                    </div>
-                <?php endif; ?>
+                </div>
             </div>
         </div>
-    </div>
-</nav>
+    </nav>
 
-<style>
-    /* Additional CSS to ensure perfect alignment */
-    .navbar-nav, .d-flex.align-items-center {
-        gap: 0.5rem;
-    }
-    
-    .nav-item {
-        display: flex;
-        align-items: center;
-    }
-    
-    /* Ensure notification icon aligns perfectly */
-    #notificationDropdown {
-        padding: 0.5rem 1rem;
-    }
-    
-    /* Mobile view adjustments */
-    @media (max-width: 991.98px) {
-        .d-flex.align-items-center {
-            flex-direction: column;
-            align-items: flex-end !important;
-            width: 100%;
-            padding: 0.5rem 0;
+    <style>
+        /* Additional CSS to ensure perfect alignment */
+        .navbar-nav, .d-flex.align-items-center {
+            gap: 0.5rem;
         }
         
         .nav-item {
-            width: 100%;
-            justify-content: flex-end;
-            padding: 0.25rem 0;
+            display: flex;
+            align-items: center;
         }
         
-        .dropdown-menu {
-            position: static !important;
-            transform: none !important;
-            width: 100%;
-            border: none;
-            box-shadow: none;
+        /* Ensure notification icon aligns perfectly */
+        #notificationDropdown {
+            padding: 0.5rem 1rem;
         }
-    }
-</style>
-<!-- Change Profile Modal -->
-<div class="modal fade" id="changeProfileModal" tabindex="-1" aria-labelledby="changeProfileModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="changeProfileModalLabel">Change Profile</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        
+        /* Mobile view adjustments */
+        @media (max-width: 991.98px) {
+            .d-flex.align-items-center {
+                flex-direction: column;
+                align-items: flex-end !important;
+                width: 100%;
+                padding: 0.5rem 0;
+            }
+            
+            .nav-item {
+                width: 100%;
+                justify-content: flex-end;
+                padding: 0.25rem 0;
+            }
+            
+            .dropdown-menu {
+                position: static !important;
+                transform: none !important;
+                width: 100%;
+                border: none;
+                box-shadow: none;
+            }
+            
+            .sidebar {
+                width: 0;
+                overflow: hidden;
+            }
+            
+            .main-content {
+                margin-left: 0;
+            }
+        }
+    </style>
+    <!-- Change Profile Modal -->
+    <div class="modal fade" id="changeProfileModal" tabindex="-1" aria-labelledby="changeProfileModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="changeProfileModalLabel">Change Profile</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <?php if ($successMessage): ?>
+                        <div class="alert alert-success" role="alert" id="successMessage">
+                            <?= htmlspecialchars($successMessage); ?>
+                        </div>
+                    <?php endif; ?>
+
+                    <?php if (!empty($errorMessages) && isset($_POST['action']) && $_POST['action'] === 'updateProfile'): ?>
+                        <div class="alert alert-danger" role="alert">
+                            <?php foreach ($errorMessages as $error): ?>
+                                <div><?= htmlspecialchars($error); ?></div>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
+
+                    <form method="POST" id="profileForm" action="<?php echo htmlspecialchars($_SERVER['PHP_SELF']); ?>">
+                        <input type="hidden" name="action" value="updateProfile">
+                        
+                        <div class="text-center mb-4">
+                            <div class="profile-picture-container" data-bs-toggle="modal" data-bs-target="#profilePictureModal">
+                                <?php if (!empty($profile_picture)): ?>
+                                    <img src="<?= htmlspecialchars($profile_picture) ?>" alt="Profile Picture" class="profile-picture">
+                                <?php else: ?>
+                                    <div class="profile-picture-placeholder">
+                                        <i class="fas fa-user"></i>
+                                    </div>
+                                <?php endif; ?>
+                                <div class="edit-profile-picture">
+                                    <i class="fas fa-pencil-alt"></i>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="username" class="form-label">Username</label>
+                            <input type="text" class="form-control" name="username" id="username" value="<?= htmlspecialchars($username); ?>" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Email</label>
+                            <input type="email" class="form-control" name="email" id="email" value="<?= htmlspecialchars($email); ?>" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Role</label>
+                            <input type="text" class="form-control" value="<?= htmlspecialchars($role); ?>" readonly>
+                        </div>
+
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="changePasswordCheckbox">
+                            <label class="form-check-label" for="changePasswordCheckbox">Change Password</label>
+                        </div>
+
+                        <div class="password-fields" id="passwordFields">
+                            <div class="mb-3">
+                                <label for="newPassword" class="form-label">New Password</label>
+                                <input type="password" class="form-control" name="newPassword" id="newPassword">
+                                <div id="password-strength" class="password-strength"></div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="confirmPassword" class="form-label">Confirm Password</label>
+                                <input type="password" class="form-control" name="confirmPassword" id="confirmPassword">
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <button type="submit" class="btn w-100 text-white rounded-pill" style="background-color: #FF902B;">Update Profile</button>
+                        </div>
+                    </form>
+                </div>
             </div>
-            <div class="modal-body">
-                <?php if ($successMessage): ?>
-                    <div class="alert alert-success" role="alert" id="successMessage">
-                        <?= htmlspecialchars($successMessage); ?>
-                    </div>
-                <?php endif; ?>
+        </div>
+    </div>
 
-                <?php if (!empty($errorMessages) && isset($_POST['action']) && $_POST['action'] === 'updateProfile'): ?>
-                    <div class="alert alert-danger" role="alert">
-                        <?php foreach ($errorMessages as $error): ?>
-                            <div><?= htmlspecialchars($error); ?></div>
-                        <?php endforeach; ?>
-                    </div>
-                <?php endif; ?>
-
-                <form method="POST" id="profileForm" action="<?php echo htmlspecialchars($_SERVER['PHP_SELF']); ?>">
-                    <input type="hidden" name="action" value="updateProfile">
+    <!-- Profile Picture Modal -->
+    <div class="modal fade" id="profilePictureModal" tabindex="-1" aria-labelledby="profilePictureModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="profilePictureModalLabel">Change Profile Picture</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <?php if (!empty($errorMessages) && isset($_POST['action']) && $_POST['action'] === 'uploadProfilePicture'): ?>
+                        <div class="alert alert-danger" role="alert">
+                            <?php foreach ($errorMessages as $error): ?>
+                                <div><?= htmlspecialchars($error) ?></div>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
                     
-                    <div class="text-center mb-4">
-                        <div class="profile-picture-container" data-bs-toggle="modal" data-bs-target="#profilePictureModal">
+                    <form method="POST" enctype="multipart/form-data" id="profilePictureForm">
+                        <input type="hidden" name="action" value="uploadProfilePicture">
+                        <div class="mb-3 text-center">
                             <?php if (!empty($profile_picture)): ?>
-                                <img src="<?= htmlspecialchars($profile_picture) ?>" alt="Profile Picture" class="profile-picture">
+                                <img src="<?= htmlspecialchars($profile_picture) ?>" alt="Current Profile Picture" class="profile-picture mb-3" style="width: 200px; height: 200px;">
                             <?php else: ?>
-                                <div class="profile-picture-placeholder">
+                                <div class="profile-picture-placeholder mb-3 mx-auto" style="width: 200px; height: 200px;">
                                     <i class="fas fa-user"></i>
                                 </div>
                             <?php endif; ?>
-                            <div class="edit-profile-picture">
-                                <i class="fas fa-pencil-alt"></i>
-                            </div>
+                            
+                            <input type="file" class="form-control" name="profile_picture" id="profile_picture" accept="image/jpeg,image/png,image/gif">
+                            <small class="text-muted">Max size: 2MB. Formats: JPG, PNG, GIF</small>
                         </div>
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="username" class="form-label">Username</label>
-                        <input type="text" class="form-control" name="username" id="username" value="<?= htmlspecialchars($username); ?>" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="email" class="form-label">Email</label>
-                        <input type="email" class="form-control" name="email" id="email" value="<?= htmlspecialchars($email); ?>" required>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Role</label>
-                        <input type="text" class="form-control" value="<?= htmlspecialchars($role); ?>" readonly>
-                    </div>
-
-                    <div class="mb-3 form-check">
-                        <input type="checkbox" class="form-check-input" id="changePasswordCheckbox">
-                        <label class="form-check-label" for="changePasswordCheckbox">Change Password</label>
-                    </div>
-
-                    <div class="password-fields" id="passwordFields">
-                        <div class="mb-3">
-                            <label for="newPassword" class="form-label">New Password</label>
-                            <input type="password" class="form-control" name="newPassword" id="newPassword">
-                            <div id="password-strength" class="password-strength"></div>
-                        </div>
-                        <div class="mb-3">
-                            <label for="confirmPassword" class="form-label">Confirm Password</label>
-                            <input type="password" class="form-control" name="confirmPassword" id="confirmPassword">
-                        </div>
-                    </div>
-
-                    <div class="mb-3">
-                        <button type="submit" class="btn w-100 text-white rounded-pill" style="background-color: #FF902B;">Update Profile</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Profile Picture Modal -->
-<div class="modal fade" id="profilePictureModal" tabindex="-1" aria-labelledby="profilePictureModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="profilePictureModalLabel">Change Profile Picture</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <?php if (!empty($errorMessages) && isset($_POST['action']) && $_POST['action'] === 'uploadProfilePicture'): ?>
-                    <div class="alert alert-danger" role="alert">
-                        <?php foreach ($errorMessages as $error): ?>
-                            <div><?= htmlspecialchars($error) ?></div>
-                        <?php endforeach; ?>
-                    </div>
-                <?php endif; ?>
-                
-                <form method="POST" enctype="multipart/form-data" id="profilePictureForm">
-                    <input type="hidden" name="action" value="uploadProfilePicture">
-                    <div class="mb-3 text-center">
-                        <?php if (!empty($profile_picture)): ?>
-                            <img src="<?= htmlspecialchars($profile_picture) ?>" alt="Current Profile Picture" class="profile-picture mb-3" style="width: 200px; height: 200px;">
-                        <?php else: ?>
-                            <div class="profile-picture-placeholder mb-3 mx-auto" style="width: 200px; height: 200px;">
-                                <i class="fas fa-user"></i>
-                            </div>
-                        <?php endif; ?>
                         
-                        <input type="file" class="form-control" name="profile_picture" id="profile_picture" accept="image/jpeg,image/png,image/gif">
-                        <small class="text-muted">Max size: 2MB. Formats: JPG, PNG, GIF</small>
-                    </div>
-                    
-                    <div class="d-flex justify-content-between">
-                        <?php if (!empty($profile_picture)): ?>
-                            <button type="submit" name="action" value="deleteProfilePicture" class="btn btn-danger rounded-pill">
-                                <i class="fas fa-trash-alt"></i> Delete Picture
+                        <div class="d-flex justify-content-between">
+                            <?php if (!empty($profile_picture)): ?>
+                                <button type="submit" name="action" value="deleteProfilePicture" class="btn btn-danger rounded-pill">
+                                    <i class="fas fa-trash-alt"></i> Delete Picture
+                                </button>
+                            <?php endif; ?>
+                            
+                            <button type="submit" class="btn text-white rounded-pill ms-auto" style="background-color: #FF902B;">
+                                <i class="fas fa-save"></i> Save Changes
                             </button>
-                        <?php endif; ?>
-                        
-                        <button type="submit" class="btn text-white rounded-pill ms-auto" style="background-color: #FF902B;">
-                            <i class="fas fa-save"></i> Save Changes
-                        </button>
-                    </div>
-                </form>
+                        </div>
+                    </form>
+                </div>
             </div>
         </div>
     </div>
-</div>
 
-<!-- Toast Notification -->
-<div class="toast-container">
-    <div id="errorToast" class="toast align-items-center text-white bg-danger border-0" role="alert" aria-live="assertive" aria-atomic="true">
-        <div class="d-flex">
-            <div class="toast-body" id="toastMessage"></div>
-            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+    <!-- Toast Notification -->
+    <div class="toast-container">
+        <div id="errorToast" class="toast align-items-center text-white bg-danger border-0" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body" id="toastMessage"></div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
         </div>
     </div>
-</div>
 
-<script>
-$(document).ready(function() {
-    // Toggle password fields visibility
-    $('#changePasswordCheckbox').change(function() {
-        if (this.checked) {
-            $('#passwordFields').show();
-        } else {
-            $('#passwordFields').hide();
-            $('#newPassword').val('');
-            $('#confirmPassword').val('');
-            $('#password-strength').text('');
-        }
-    });
+    <script>
+    $(document).ready(function() {
+        // Toggle password fields visibility
+        $('#changePasswordCheckbox').change(function() {
+            if (this.checked) {
+                $('#passwordFields').show();
+            } else {
+                $('#passwordFields').hide();
+                $('#newPassword').val('');
+                $('#confirmPassword').val('');
+                $('#password-strength').text('');
+            }
+        });
 
-    // Password strength detection
-    $('#newPassword').on('input', function() {
-        const password = $(this).val();
-        const strengthElement = $('#password-strength');
-        
-        if (password.length === 0) {
-            strengthElement.text('');
-            return;
-        }
-        
-        if (password.length < 8) {
-            strengthElement.text('Strength: Weak').removeClass().addClass('password-strength weak');
-        } else if (/[A-Za-z]/.test(password) && /\d/.test(password)) {
-            strengthElement.text('Strength: Medium').removeClass().addClass('password-strength medium');
-        } else {
-            strengthElement.text('Strength: Strong').removeClass().addClass('password-strength strong');
-        }
-    });
+        // Password strength detection
+        $('#newPassword').on('input', function() {
+            const password = $(this).val();
+            const strengthElement = $('#password-strength');
+            
+            if (password.length === 0) {
+                strengthElement.text('');
+                return;
+            }
+            
+            if (password.length < 8) {
+                strengthElement.text('Strength: Weak').removeClass().addClass('password-strength weak');
+            } else if (/[A-Za-z]/.test(password) && /\d/.test(password)) {
+                strengthElement.text('Strength: Medium').removeClass().addClass('password-strength medium');
+            } else {
+                strengthElement.text('Strength: Strong').removeClass().addClass('password-strength strong');
+            }
+        });
 
-    // Profile form submission
-    $('#profileForm').on('submit', function(e) {
-        e.preventDefault();
-        
-        const formData = $(this).serialize();
-        
-        $.ajax({
-            url: '',
-            type: 'POST',
-            data: formData,
-            dataType: 'json',
-            success: function(response) {
-                if (response.success) {
-                    // Show success message
-                    $('#changeProfileModal .alert-danger').remove();
-                    $('#changeProfileModal .modal-body').prepend(
-                        '<div class="alert alert-success">Profile updated successfully!</div>'
-                    );
-                    
-                    // Reload page after 1.5 seconds
-                    setTimeout(function() {
-                        location.reload();
-                    }, 1500);
-                } else {
-                    // Handle validation errors
-                    let errorHtml = '';
-                    if (response.errors) {
-                        errorHtml = response.errors.map(error => `<div>${error}</div>`).join('');
+        // Profile form submission
+        $('#profileForm').on('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = $(this).serialize();
+            
+            $.ajax({
+                url: '',
+                type: 'POST',
+                data: formData,
+                dataType: 'json',
+                success: function(response) {
+                    if (response.success) {
+                        // Show success message
+                        $('#changeProfileModal .alert-danger').remove();
+                        $('#changeProfileModal .modal-body').prepend(
+                            '<div class="alert alert-success">Profile updated successfully!</div>'
+                        );
+                        
+                        // Reload page after 1.5 seconds
+                        setTimeout(function() {
+                            location.reload();
+                        }, 1500);
                     } else {
-                        errorHtml = `<div>${response.message}</div>`;
+                        // Handle validation errors
+                        let errorHtml = '';
+                        if (response.errors) {
+                            errorHtml = response.errors.map(error => `<div>${error}</div>`).join('');
+                        } else {
+                            errorHtml = `<div>${response.message}</div>`;
+                        }
+                        
+                        $('#changeProfileModal .alert-danger').remove();
+                        $('#changeProfileModal .modal-body').prepend(
+                            `<div class="alert alert-danger" role="alert">${errorHtml}</div>`
+                        );
                     }
-                    
-                    $('#changeProfileModal .alert-danger').remove();
-                    $('#changeProfileModal .modal-body').prepend(
-                        `<div class="alert alert-danger" role="alert">${errorHtml}</div>`
-                    );
+                },
+                error: function(xhr, status, error) {
+                    showToast('Error updating profile: ' + error);
                 }
-            },
-            error: function(xhr, status, error) {
-                showToast('Error updating profile: ' + error);
+            });
+        });
+
+        // Profile picture form submission
+        $('#profilePictureForm').on('submit', function(e) {
+            e.preventDefault();
+            
+            var formData = new FormData(this);
+            
+            $.ajax({
+                url: '',
+                type: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                success: function(response) {
+                    // Reload the page to see changes
+                    location.reload();
+                },
+                error: function(xhr, status, error) {
+                    showToast('Error updating profile picture: ' + error);
+                }
+            });
+        });
+
+        // Automatically hide the success message after 5 seconds
+        setTimeout(function() {
+            $('#successMessage').fadeOut();
+        }, 5000);
+
+        // Preview profile picture before upload
+        $('#profile_picture').change(function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const preview = $('#profilePictureModal .profile-picture');
+                    if (preview.length) {
+                        preview.attr('src', event.target.result);
+                    } else {
+                        const placeholder = $('#profilePictureModal .profile-picture-placeholder');
+                        if (placeholder.length) {
+                            placeholder.html(`<img src="${event.target.result}" alt="Preview" class="profile-picture" style="width: 100%; height: 100%;">`);
+                        }
+                    }
+                };
+                reader.readAsDataURL(file);
             }
         });
     });
 
-    // Profile picture form submission
-    $('#profilePictureForm').on('submit', function(e) {
-        e.preventDefault();
-        
-        var formData = new FormData(this);
-        
-        $.ajax({
-            url: '',
-            type: 'POST',
-            data: formData,
-            processData: false,
-            contentType: false,
-            success: function(response) {
-                // Reload the page to see changes
-                location.reload();
-            },
-            error: function(xhr, status, error) {
-                showToast('Error updating profile picture: ' + error);
-            }
-        });
-    });
-
-    // Automatically hide the success message after 5 seconds
-    setTimeout(function() {
-        $('#successMessage').fadeOut();
-    }, 5000);
-
-    // Preview profile picture before upload
-    $('#profile_picture').change(function(e) {
-        const file = e.target.files[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = function(event) {
-                const preview = $('#profilePictureModal .profile-picture');
-                if (preview.length) {
-                    preview.attr('src', event.target.result);
-                } else {
-                    const placeholder = $('#profilePictureModal .profile-picture-placeholder');
-                    if (placeholder.length) {
-                        placeholder.html(`<img src="${event.target.result}" alt="Preview" class="profile-picture" style="width: 100%; height: 100%;">`);
-                    }
-                }
-            };
-            reader.readAsDataURL(file);
-        }
-    });
-});
-
-function showToast(message) {
-    const toast = new bootstrap.Toast(document.getElementById('errorToast'));
-    $('#toastMessage').text(message);
-    toast.show();
-}
-</script>
+    function showToast(message) {
+        const toast = new bootstrap.Toast(document.getElementById('errorToast'));
+        $('#toastMessage').text(message);
+        toast.show();
+    }
+    </script>
+</div>
 </body>
 </html>

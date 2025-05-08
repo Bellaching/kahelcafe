@@ -1,6 +1,164 @@
 <?php
 include './../inc/topNav.php';
+include './../../connection/connection.php';
+
+
+
+// Handle backend processing first
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
+    header('Content-Type: application/json');
+    
+    $response = ['success' => false];
+    
+    switch ($_POST['action']) {
+        case 'create_user':
+            $response = handleCreateUser($conn);
+            break;
+            
+        case 'check_email':
+            $response = checkEmailExists($conn, $_POST['email']);
+            break;
+            
+        case 'check_username':
+            $response = checkUsernameExists($conn, $_POST['username']);
+            break;
+            
+        case 'update_user':
+            $response = updateUserRole($conn, $_POST['id'], $_POST['role']);
+            break;
+            
+        case 'delete_user':
+            $response = deleteUser($conn, $_POST['id']);
+            break;
+            
+        default:
+            $response['error'] = 'Invalid action';
+    }
+    
+    echo json_encode($response);
+    exit;
+}
+
+function handleCreateUser($conn) {
+    $response = ['success' => false, 'errors' => []];
+    $required = ['email', 'username', 'password', 'role'];
+    
+    // Validate required fields
+    foreach ($required as $field) {
+        if (empty($_POST[$field])) {
+            $response['errors'][$field] = ucfirst($field) . ' is required';
+        }
+    }
+
+    // Validate email format
+    if (!filter_var($_POST['email'], FILTER_VALIDATE_EMAIL)) {
+        $response['errors']['email'] = 'Invalid email format';
+    }
+
+    // Validate username length
+    if (strlen($_POST['username']) < 4) {
+        $response['errors']['username'] = 'Username must be at least 4 characters';
+    }
+
+    // Validate password strength
+    if (strlen($_POST['password']) < 8) {
+        $response['errors']['password'] = 'Password must be at least 8 characters';
+    } elseif (!preg_match('/[A-Z]/', $_POST['password']) || 
+             !preg_match('/[a-z]/', $_POST['password']) || 
+             !preg_match('/[0-9]/', $_POST['password'])) {
+        $response['errors']['password'] = 'Password must contain uppercase, lowercase letters and numbers';
+    }
+
+    // Validate role
+    if (!in_array($_POST['role'], ['owner', 'staff'])) {
+        $response['errors']['role'] = 'Invalid role selected';
+    }
+
+    if (!empty($response['errors'])) {
+        return $response;
+    }
+
+    // Check for existing email or username
+    $emailExists = checkEmailExists($conn, $_POST['email']);
+    $usernameExists = checkUsernameExists($conn, $_POST['username']);
+
+    if ($emailExists['exists']) {
+        $response['errors']['email'] = 'Email already exists';
+    }
+    if ($usernameExists['exists']) {
+        $response['errors']['username'] = 'Username already exists';
+    }
+
+    if (!empty($response['errors'])) {
+        return $response;
+    }
+
+    // Hash the password with bcrypt
+    $passwordHash = password_hash($_POST['password'], PASSWORD_BCRYPT);
+    if ($passwordHash === false) {
+        $response['error'] = 'Password hashing failed';
+        return $response;
+    }
+
+    // Insert new user
+    $stmt = $conn->prepare("INSERT INTO admin_list 
+                          (email, username, password, role, date_created) 
+                          VALUES (?, ?, ?, ?, NOW())");
+    if (!$stmt) {
+        $response['error'] = 'Prepare failed: ' . $conn->error;
+        return $response;
+    }
+    
+    $stmt->bind_param("ssss", $_POST['email'], $_POST['username'], $passwordHash, $_POST['role']);
+    $success = $stmt->execute();
+
+    if ($success) {
+        $response['success'] = true;
+        $response['message'] = 'User created successfully';
+        $response['user_id'] = $stmt->insert_id;
+    } else {
+        $response['error'] = 'Failed to create user: ' . $stmt->error;
+    }
+    $stmt->close();
+
+    return $response;
+}
+
+function checkEmailExists($conn, $email) {
+    $stmt = $conn->prepare("SELECT id FROM admin_list WHERE email = ?");
+    $stmt->bind_param("s", $email);
+    $stmt->execute();
+    $stmt->store_result();
+    return ['exists' => $stmt->num_rows > 0, 'success' => true];
+}
+
+function checkUsernameExists($conn, $username) {
+    $stmt = $conn->prepare("SELECT id FROM admin_list WHERE username = ?");
+    $stmt->bind_param("s", $username);
+    $stmt->execute();
+    $stmt->store_result();
+    return ['exists' => $stmt->num_rows > 0, 'success' => true];
+}
+
+function updateUserRole($conn, $id, $role) {
+    $stmt = $conn->prepare("UPDATE admin_list SET role = ? WHERE id = ?");
+    $stmt->bind_param("si", $role, $id);
+    $success = $stmt->execute();
+    $stmt->close();
+    return ['success' => $success, 'error' => $success ? null : 'Failed to update user: ' . $conn->error];
+}
+
+function deleteUser($conn, $id) {
+    $stmt = $conn->prepare("DELETE FROM admin_list WHERE id = ?");
+    $stmt->bind_param("i", $id);
+    $success = $stmt->execute();
+    $stmt->close();
+    return ['success' => $success, 'error' => $success ? null : 'Failed to delete user: ' . $conn->error];
+}
 ?>
+
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -12,11 +170,13 @@ include './../inc/topNav.php';
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.datatables.net/1.10.21/js/jquery.dataTables.min.js"></script>
-   
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/js-sha256/0.9.0/sha256.min.js"></script>
     <script src="./../js/accountManagement.js"></script>
 
     <style>
         body {
+            display: flex;
+            flex-direction: column;
             background-color: #FCFCFC;
         }
         .editBtn,
@@ -172,6 +332,18 @@ include './../inc/topNav.php';
                     </div>
 
                     <div class="mb-3">
+                        <label for="confirmPassword" class="form-label">Confirm Password</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-white border-0 border-bottom">
+                                <i class="fa-solid fa-lock"></i>
+                            </span>
+                            <input type="password" class="form-control border-0 border-bottom" id="confirmPassword" name="confirmPassword" placeholder="Confirm your password" required minlength="8">
+                        </div>
+                        <div class="invalid-feedback" id="confirmPasswordError">Passwords do not match.</div>
+                        <div class="valid-feedback">Passwords match!</div>
+                    </div>
+
+                    <div class="mb-3">
                         <label for="roleSelect" class="form-label">Select Role</label>
                         <div class="input-group">
                             <span class="input-group-text bg-white border-0 border-bottom">
@@ -212,7 +384,7 @@ include './../inc/topNav.php';
                                 <th>Employee</th>
                                 <th>Email</th>
                                 <th>Role</th>
-                                <th>Date</th>
+                                <th>Date Created</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -323,6 +495,7 @@ $(document).ready(function() {
     let isEmailValid = false;
     let isUsernameValid = false;
     let isPasswordValid = false;
+    let isConfirmPasswordValid = false;
     let isRoleValid = false;
 
     // Password strength indicator
@@ -362,6 +535,12 @@ $(document).ready(function() {
         
         // Validate password
         validatePassword();
+        validateConfirmPassword();
+    });
+
+    // Confirm password validation
+    $('#confirmPassword').on('input', function() {
+        validateConfirmPassword();
     });
 
     // Email validation (check if exists)
@@ -379,7 +558,7 @@ $(document).ready(function() {
         validateRole();
     });
 
-    // Form submission
+    // In the form submission handler, replace the password hashing part:
     $('#createUserForm').on('submit', function(e) {
         e.preventDefault();
         
@@ -387,45 +566,34 @@ $(document).ready(function() {
         validateEmail();
         validateUsername();
         validatePassword();
+        validateConfirmPassword();
         validateRole();
         
-        if (isEmailValid && isUsernameValid && isPasswordValid && isRoleValid) {
-            // Submit form via AJAX
-
-             // Highlight the first invalid field
-        if (!isEmailValid) $('#email').focus();
-        else if (!isUsernameValid) $('#username').focus();
-        else if (!isPasswordValid) $('#password').focus();
-        else if (!isRoleValid) $('#roleSelect').focus();
-        
-        return; // Prevent form submission
-
+        if (isEmailValid && isUsernameValid && isPasswordValid && isConfirmPasswordValid && isRoleValid) {
+            // Submit form via AJAX - send raw password (will be hashed server-side)
             $.ajax({
-                url: 'create_user.php', // Create this file to handle user creation
+                url: 'accountManagement.php', // Changed from create_user.php to self
                 method: 'POST',
                 data: {
+                    action: 'create_user', // Added action parameter
                     email: $('#email').val(),
                     username: $('#username').val(),
-                    password: $('#password').val(), // Note: Hash on server side!
-                    role: $('#roleSelect').val()
+                    password: $('#password').val(), // Send raw password (over HTTPS)
+                    role: $('#roleSelect').val(),
+                    date_created: new Date().toISOString().slice(0, 19).replace('T', ' ')
                 },
                 dataType: 'json',
                 success: function(response) {
                     if (response.success) {
-                        // Close modal and refresh table
                         $('#addAdminModal').modal('hide');
                         if ($.fn.DataTable.isDataTable('#userTable')) {
                             $('#userTable').DataTable().ajax.reload();
                         }
-                        // Reset form
                         $('#createUserForm')[0].reset();
                         $('#passwordStrength').text('');
-                        // Reset validation states
-                        isEmailValid = isUsernameValid = isPasswordValid = isRoleValid = false;
-                        // Show success message
+                        isEmailValid = isUsernameValid = isPasswordValid = isConfirmPasswordValid = isRoleValid = false;
                         alert('User created successfully!');
                     } else {
-                        // Show error messages from server
                         if (response.errors) {
                             if (response.errors.email) {
                                 $('#email').addClass('is-invalid');
@@ -450,109 +618,111 @@ $(document).ready(function() {
                     alert('Error creating user. Please try again.');
                 }
             });
+        } else {
+            // Highlight the first invalid field
+            if (!isEmailValid) $('#email').focus();
+            else if (!isUsernameValid) $('#username').focus();
+            else if (!isPasswordValid) $('#password').focus();
+            else if (!isConfirmPasswordValid) $('#confirmPassword').focus();
+            else if (!isRoleValid) $('#roleSelect').focus();
         }
     });
 
-   // In the validateEmail and validateUsername functions, ensure isEmailValid and isUsernameValid
-// are only set to true when the server confirms the email/username is available
-
-function validateEmail() {
-   const email = $('#email').val().trim();
-    const emailInput = $('#email');
-    const emailError = $('#emailError');
-    
-    if (!email) {
-        emailInput.removeClass('is-valid').addClass('is-invalid');
-        emailError.text('Email is required').show();
-        isEmailValid = false;
-        return;
-    }
-    
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-        emailInput.removeClass('is-valid').addClass('is-invalid');
-        emailError.text('Please enter a valid email address').show();
-        isEmailValid = false;
-        return;
-    }
-    
-    $.ajax({
-        url: 'check_email.php',
-        method: 'POST',
-        dataType: 'json',
-        data: { email: email },
-        success: function(response) {
-            if (response.error) {
-                emailInput.removeClass('is-valid').addClass('is-invalid');
-                emailError.text(response.error).show();
-                isEmailValid = false;
-            } else if (response.exists) {
-                emailInput.removeClass('is-valid').addClass('is-invalid');
-                emailError.text('Email already exists').show();
-                isEmailValid = false;
-            } else {
-                emailInput.removeClass('is-invalid').addClass('is-valid');
-                emailError.hide();
-                $('.valid-feedback', emailInput.closest('.mb-3')).show();
-                isEmailValid = true;
-            }
-        },
-        error: function(xhr, status, error) {
-            console.error('Error checking email:', error);
-            emailInput.removeClass('is-valid is-invalid');
-            emailError.text('Error checking email. Please try again.').show();
+    function validateEmail() {
+        const email = $('#email').val().trim();
+        const emailInput = $('#email');
+        const emailError = $('#emailError');
+        
+        if (!email) {
+            emailInput.removeClass('is-valid').addClass('is-invalid');
+            emailError.text('Email is required').show();
             isEmailValid = false;
+            return;
         }
-    });
-}
-
-function validateUsername() {
-    const username = $('#username').val();
-    const usernameInput = $('#username');
-    const usernameError = $('#usernameError');
-    
-    if (!username) {
-        usernameInput.removeClass('is-valid').addClass('is-invalid');
-        usernameError.text('Username is required').show();
-        isUsernameValid = false;
-        return;
-    }
-    
-    if (username.length < 4) {
-        usernameInput.removeClass('is-valid').addClass('is-invalid');
-        usernameError.text('Username must be at least 4 characters').show();
-        isUsernameValid = false;
-        return;
-    }
-    
-    $.ajax({
-        url: 'check_username.php',
-        method: 'POST',
-        dataType: 'json',
-        data: { username: username },
-        success: function(response) {
-            if (response.error) {
-                usernameInput.removeClass('is-valid').addClass('is-invalid');
-                usernameError.text(response.error).show();
-                isUsernameValid = false;
-            } else if (response.exists) {
-                usernameInput.removeClass('is-valid').addClass('is-invalid');
-                usernameError.text('Username already exists').show();
-                isUsernameValid = false;
-            } else {
-                usernameInput.removeClass('is-invalid').addClass('is-valid');
-                usernameError.hide();
-                $('.valid-feedback', usernameInput.closest('.mb-3')).show();
-                isUsernameValid = true;
+        
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            emailInput.removeClass('is-valid').addClass('is-invalid');
+            emailError.text('Please enter a valid email address').show();
+            isEmailValid = false;
+            return;
+        }
+        
+        // Check if email already exists
+        $.ajax({
+            url: 'accountManagement.php',
+            method: 'POST',
+            data: { 
+                action: 'check_email',
+                email: email 
+            },
+            dataType: 'json',
+            success: function(response) {
+                if (response.exists) {
+                    emailInput.removeClass('is-valid').addClass('is-invalid');
+                    emailError.text('Email already exists').show();
+                    isEmailValid = false;
+                } else {
+                    emailInput.removeClass('is-invalid').addClass('is-valid');
+                    emailError.hide();
+                    $('.valid-feedback', emailInput.closest('.mb-3')).show();
+                    isEmailValid = true;
+                }
+            },
+            error: function() {
+                emailInput.removeClass('is-valid is-invalid');
+                emailError.text('Error checking email availability').show();
+                isEmailValid = false;
             }
-        },
-        error: function(xhr, status, error) {
-            console.error('Error checking username:', error);
-            usernameInput.removeClass('is-valid is-invalid');
-            usernameError.text('Error checking username. Please try again.').show();
+        });
+    }
+
+    function validateUsername() {
+        const username = $('#username').val();
+        const usernameInput = $('#username');
+        const usernameError = $('#usernameError');
+        
+        if (!username) {
+            usernameInput.removeClass('is-valid').addClass('is-invalid');
+            usernameError.text('Username is required').show();
             isUsernameValid = false;
+            return;
         }
-    });
-}
+        
+        if (username.length < 4) {
+            usernameInput.removeClass('is-valid').addClass('is-invalid');
+            usernameError.text('Username must be at least 4 characters').show();
+            isUsernameValid = false;
+            return;
+        }
+        
+        // Check if username already exists
+        $.ajax({
+            url: 'accountManagement.php',
+            method: 'POST',
+            data: { 
+                action: 'check_username',
+                username: username 
+            },
+            dataType: 'json',
+            success: function(response) {
+                if (response.exists) {
+                    usernameInput.removeClass('is-valid').addClass('is-invalid');
+                    usernameError.text('Username already exists').show();
+                    isUsernameValid = false;
+                } else {
+                    usernameInput.removeClass('is-invalid').addClass('is-valid');
+                    usernameError.hide();
+                    $('.valid-feedback', usernameInput.closest('.mb-3')).show();
+                    isUsernameValid = true;
+                }
+            },
+            error: function() {
+                usernameInput.removeClass('is-valid is-invalid');
+                usernameError.text('Error checking username availability').show();
+                isUsernameValid = false;
+            }
+        });
+    }
 
     function validatePassword() {
         const password = $('#password').val();
@@ -579,6 +749,32 @@ function validateUsername() {
         isPasswordValid = true;
     }
 
+    function validateConfirmPassword() {
+        const password = $('#password').val();
+        const confirmPassword = $('#confirmPassword').val();
+        const confirmPasswordInput = $('#confirmPassword');
+        const confirmPasswordError = $('#confirmPasswordError');
+        
+        if (!confirmPassword) {
+            confirmPasswordInput.removeClass('is-valid').addClass('is-invalid');
+            confirmPasswordError.text('Please confirm your password').show();
+            isConfirmPasswordValid = false;
+            return;
+        }
+        
+        if (password !== confirmPassword) {
+            confirmPasswordInput.removeClass('is-valid').addClass('is-invalid');
+            confirmPasswordError.text('Passwords do not match').show();
+            isConfirmPasswordValid = false;
+            return;
+        }
+        
+        confirmPasswordInput.removeClass('is-invalid').addClass('is-valid');
+        confirmPasswordError.hide();
+        $('.valid-feedback', confirmPasswordInput.closest('.mb-3')).show();
+        isConfirmPasswordValid = true;
+    }
+
     function validateRole() {
         const role = $('#roleSelect').val();
         const roleInput = $('#roleSelect');
@@ -598,7 +794,7 @@ function validateUsername() {
         $('.is-invalid, .is-valid').removeClass('is-invalid is-valid');
         $('.invalid-feedback, .valid-feedback').hide();
         $('#passwordStrength').text('');
-        isEmailValid = isUsernameValid = isPasswordValid = isRoleValid = false;
+        isEmailValid = isUsernameValid = isPasswordValid = isConfirmPasswordValid = isRoleValid = false;
     });
 
     // Example: Handle edit button click
@@ -623,10 +819,11 @@ function validateUsername() {
         const role = $('#updateRoleSelect').val();
         
         $.ajax({
-            url: 'update_user.php',
+            url: 'accountManagement.php',
             method: 'POST',
             dataType: 'json',
             data: {
+                action: 'update_user',
                 id: userId,
                 role: role
             },
@@ -660,10 +857,13 @@ function validateUsername() {
         const userId = $(this).data('id');
         // Perform the delete action using AJAX
         $.ajax({
-            url: 'delete_user.php',
+            url: 'accountManagement.php',
             method: 'POST',
             dataType: 'json',
-            data: { id: userId },
+            data: { 
+                action: 'delete_user',
+                id: userId 
+            },
             success: function(response) {
                 if (response.success) {
                     $('#deleteUserModal').modal('hide');
@@ -684,5 +884,150 @@ function validateUsername() {
 });
 </script>
 
+<?php
+// PHP Backend Processing
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    header('Content-Type: application/json');
+    include './../../connection/connection.php';
+    
+    $response = ['success' => false];
+    
+    // Handle different actions
+    switch ($_POST['action'] ?? '') {
+        case 'create_user':
+            // Create user logic from create_user.php
+            $response = ['success' => false, 'errors' => []];
+
+            // Validate required fields
+            $required = ['email', 'username', 'password', 'role'];
+            foreach ($required as $field) {
+                if (empty($_POST[$field])) {
+                    $response['errors'][$field] = ucfirst($field) . ' is required';
+                }
+            }
+
+            // Validate email format
+            if (!filter_var($_POST['email'], FILTER_VALIDATE_EMAIL)) {
+                $response['errors']['email'] = 'Invalid email format';
+            }
+
+            // Validate username length
+            if (strlen($_POST['username']) < 4) {
+                $response['errors']['username'] = 'Username must be at least 4 characters';
+            }
+
+            // Validate password strength
+            if (strlen($_POST['password']) < 8) {
+                $response['errors']['password'] = 'Password must be at least 8 characters';
+            } elseif (!preg_match('/[A-Z]/', $_POST['password']) || 
+                     !preg_match('/[a-z]/', $_POST['password']) || 
+                     !preg_match('/[0-9]/', $_POST['password'])) {
+                $response['errors']['password'] = 'Password must contain uppercase, lowercase letters and numbers';
+            }
+
+            // Validate role
+            if (!in_array($_POST['role'], ['owner', 'staff'])) {
+                $response['errors']['role'] = 'Invalid role selected';
+            }
+
+            // Only proceed if no validation errors
+            if (empty($response['errors'])) {
+                try {
+                    // Check for existing email or username
+                    $stmt = $pdo->prepare("SELECT id FROM admin_list WHERE email = ? OR username = ?");
+                    $stmt->execute([$_POST['email'], $_POST['username']]);
+                    
+                    if ($stmt->fetch()) {
+                        // Check which one exists
+                        $stmt = $pdo->prepare("SELECT id FROM admin_list WHERE email = ?");
+                        $stmt->execute([$_POST['email']]);
+                        if ($stmt->fetch()) {
+                            $response['errors']['email'] = 'Email already exists';
+                        }
+                        
+                        $stmt = $pdo->prepare("SELECT id FROM admin_list WHERE username = ?");
+                        $stmt->execute([$_POST['username']]);
+                        if ($stmt->fetch()) {
+                            $response['errors']['username'] = 'Username already exists';
+                        }
+                    } else {
+                        // Hash the password with bcrypt
+                        $passwordHash = password_hash($_POST['password'], PASSWORD_BCRYPT);
+                        
+                        if ($passwordHash === false) {
+                            throw new Exception('Password hashing failed');
+                        }
+                        
+                        // Insert new user
+                        $stmt = $pdo->prepare("INSERT INTO admin_list 
+                                            (email, username, password, role, date_created) 
+                                            VALUES (?, ?, ?, ?, NOW())");
+                        
+                        $success = $stmt->execute([
+                            $_POST['email'],
+                            $_POST['username'],
+                            $passwordHash,
+                            $_POST['role']
+                        ]);
+                        
+                        if ($success) {
+                            $response['success'] = true;
+                            $response['message'] = 'User created successfully';
+                            $response['user_id'] = $pdo->lastInsertId();
+                        } else {
+                            $response['error'] = 'Failed to create user';
+                        }
+                    }
+                } catch (PDOException $e) {
+                    error_log("Database error: " . $e->getMessage());
+                    $response['error'] = 'Database error occurred. Please try again.';
+                }
+            }
+            break;
+            
+        case 'check_email':
+            // Check if email exists
+            $stmt = $pdo->prepare("SELECT id FROM admin_list WHERE email = ?");
+            $stmt->execute([$_POST['email']]);
+            $response['exists'] = (bool)$stmt->fetch();
+            $response['success'] = true;
+            break;
+            
+        case 'check_username':
+            // Check if username exists
+            $stmt = $pdo->prepare("SELECT id FROM admin_list WHERE username = ?");
+            $stmt->execute([$_POST['username']]);
+            $response['exists'] = (bool)$stmt->fetch();
+            $response['success'] = true;
+            break;
+            
+        case 'update_user':
+            // Update user role
+            $stmt = $pdo->prepare("UPDATE admin_list SET role = ? WHERE id = ?");
+            $success = $stmt->execute([$_POST['role'], $_POST['id']]);
+            $response['success'] = $success;
+            if (!$success) {
+                $response['error'] = 'Failed to update user';
+            }
+            break;
+            
+        case 'delete_user':
+            // Delete user
+            $stmt = $pdo->prepare("DELETE FROM admin_list WHERE id = ?");
+            $success = $stmt->execute([$_POST['id']]);
+            $response['success'] = $success;
+            if (!$success) {
+                $response['error'] = 'Failed to delete user';
+            }
+            break;
+            
+        default:
+            $response['error'] = 'Invalid action';
+    }
+    
+    echo json_encode($response);
+    exit;
+}
+?>
 </body>
 </html>

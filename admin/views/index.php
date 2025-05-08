@@ -21,6 +21,10 @@ include './../inc/topNav.php';
 
 
 <style>
+body{
+    display: flex;
+    flex-direction: column;
+}
     /* Custom tooltip for truncated text */
 .text-truncate {
   position: relative;
@@ -68,7 +72,7 @@ include './../inc/topNav.php';
     New orders available. Updating...
 </div>
 
-<div class="d-flex justify-content-between align-items-center w-100 px-4  mt-5 ">
+<div class="d-flex justify-content-between align-items-center px-4  mt-5 mx-5">
     <div>
         <p class="account-text m-0">
             Order <span style="text-decoration: underline; text-decoration-color: #FF902B; text-underline-offset: 8px;">Management</span>
@@ -88,7 +92,7 @@ include './../inc/topNav.php';
 
 
 
-<div class="d-flex justify-content-center w-100 mb-5">
+<div class="d-flex justify-content-center mx-5 mb-5">
     <div class="container-fluid shadow p-3" style="margin: 0 1.5rem; background-color: #f8f9fa; border-radius: 5px;">
         <div class="table-responsive">
             <table id="ordersTable" class="display w-100">

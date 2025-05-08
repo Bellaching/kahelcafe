@@ -203,8 +203,8 @@ ob_end_flush();
                                     <h5 class="mb-0"><?php echo $item['name']; ?></h5>
                                 </div>
                                 <div class="price-info text-success">
-    <p class="mb-0">
-        <strong> P
+    <p class="mb-0"><strong>₱</strong>
+        <strong> 
             <?php
             // Extract just the numeric price (first price if multiple)
             $prices = explode(',', $item['price']);
@@ -292,7 +292,8 @@ ob_end_flush();
                                                     name="quantity">
                                             </div>
                                             <div class="mb-3">
-    <span class="price-display" id="priceDisplay<?php echo $item['id']; ?>">P
+                                            <strong class="price-display">₱</strong>
+    <span class="price-display" id="priceDisplay<?php echo $item['id']; ?>">
         <?php 
         // Display the first price by default (just the number)
         $prices = explode(',', $item['price']);

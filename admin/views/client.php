@@ -16,6 +16,8 @@ include './../inc/topNav.php';
 
     <style>
         body {
+            display: flex;
+            flex-direction: column;
             background-color: #FCFCFC;
         }
         .editBtn,
@@ -157,15 +159,15 @@ include './../inc/topNav.php';
 </div> -->
 
 
-<div class ="d-flex justify-content-center w-100">
-<div class="container-fluid shadow p-3 mx-5 bg-body-tertiary rounded">
+<div class ="d-flex justify-content-center  mx-5 ">
+<div class="container-fluid shadow p-3 mx-5 bg-body-tertiary rounded mx-5 mb-4">
 
         <!-- <div class="d-flex justify-content-end m-2 mb-5">
             <button type="button" class="btn btn_color btn-primary" data-bs-toggle="modal" data-bs-target="#addAdminModal">
                 + Add Account
             </button>
         </div> -->
-        <table id="userTable" class="display">
+        <table id="userTable" class="display table  w-100">
             <thead>
             <tr>
             <th>ID</th>

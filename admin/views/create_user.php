@@ -1,84 +1,96 @@
-<?php
+<?php 
 header('Content-Type: application/json');
 
 // Include your database connection
 include './../../connection/connection.php';
 
-$errors = [];
+$response = ['success' => false, 'errors' => []];
 
-$email = $_POST['email'] ?? '';
-$username = $_POST['username'] ?? '';
-$password = $_POST['password'] ?? '';
-$role = $_POST['role'] ?? '';
-
-// Validate inputs
-if (empty($email)) {
-    $errors['email'] = 'Email is required';
-} elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-    $errors['email'] = 'Invalid email format';
-}
-
-if (empty($username)) {
-    $errors['username'] = 'Username is required';
-} elseif (strlen($username) < 4) {
-    $errors['username'] = 'Username must be at least 4 characters';
-}
-
-if (empty($password)) {
-    $errors['password'] = 'Password is required';
-} elseif (strlen($password) < 8) {
-    $errors['password'] = 'Password must be at least 8 characters';
-}
-
-if (empty($role)) {
-    $errors['role'] = 'Role is required';
-}
-
-if (!empty($errors)) {
-    echo json_encode(['success' => false, 'errors' => $errors]);
-    exit;
-}
-
-// Check if email already exists
-$stmt = $pdo->prepare("SELECT id FROM users WHERE email = ?");
-$stmt->execute([$email]);
-if ($stmt->fetch()) {
-    $errors['email'] = 'Email already exists';
-}
-
-// Check if username already exists
-$stmt = $pdo->prepare("SELECT id FROM users WHERE username = ?");
-$stmt->execute([$username]);
-if ($stmt->fetch()) {
-    $errors['username'] = 'Username already exists';
-}
-
-if (!empty($errors)) {
-    echo json_encode(['success' => false, 'errors' => $errors]);
-    exit;
-}
-
-// Hash password
-$passwordHash = password_hash($password, PASSWORD_DEFAULT);
-
-// Insert new user
-try {
-    $stmt = $pdo->prepare("INSERT INTO admin_list (email, username, password, role) VALUES (?, ?, ?, ?)");
-    $success = $stmt->execute([$email, $username, $passwordHash, $role]);
-    
-    if ($success && $stmt->rowCount() > 0) {
-        echo json_encode(['success' => true]);
-    } else {
-        echo json_encode(['success' => false, 'error' => 'Failed to create user']);
-    }
-} catch (PDOException $e) {
-    // Handle duplicate entry in case of race condition
-    if ($e->errorInfo[1] == 1062) { // MySQL duplicate entry error code
-        echo json_encode(['success' => false, 'errors' => [
-            'email' => 'Email or username already exists'
-        ]]);
-    } else {
-        echo json_encode(['success' => false, 'error' => 'Database error: ' . $e->getMessage()]);
+// Validate required fields
+$required = ['email', 'username', 'password', 'role'];
+foreach ($required as $field) {
+    if (empty($_POST[$field])) {
+        $response['errors'][$field] = ucfirst($field) . ' is required';
     }
 }
+
+// Validate email format
+if (!filter_var($_POST['email'], FILTER_VALIDATE_EMAIL)) {
+    $response['errors']['email'] = 'Invalid email format';
+}
+
+// Validate username length
+if (strlen($_POST['username']) < 4) {
+    $response['errors']['username'] = 'Username must be at least 4 characters';
+}
+
+// Validate password strength
+if (strlen($_POST['password']) < 8) {
+    $response['errors']['password'] = 'Password must be at least 8 characters';
+} elseif (!preg_match('/[A-Z]/', $_POST['password']) || 
+           !preg_match('/[a-z]/', $_POST['password']) || 
+           !preg_match('/[0-9]/', $_POST['password'])) {
+    $response['errors']['password'] = 'Password must contain uppercase, lowercase letters and numbers';
+}
+
+// Validate role
+if (!in_array($_POST['role'], ['owner', 'staff'])) {
+    $response['errors']['role'] = 'Invalid role selected';
+}
+
+// Only proceed if no validation errors
+if (empty($response['errors'])) {
+    try {
+        // Check for existing email or username
+        $stmt = $pdo->prepare("SELECT id FROM admin_list WHERE email = ? OR username = ?");
+        $stmt->execute([$_POST['email'], $_POST['username']]);
+        
+        if ($stmt->fetch()) {
+            // Check which one exists
+            $stmt = $pdo->prepare("SELECT id FROM admin_list WHERE email = ?");
+            $stmt->execute([$_POST['email']]);
+            if ($stmt->fetch()) {
+                $response['errors']['email'] = 'Email already exists';
+            }
+            
+            $stmt = $pdo->prepare("SELECT id FROM admin_list WHERE username = ?");
+            $stmt->execute([$_POST['username']]);
+            if ($stmt->fetch()) {
+                $response['errors']['username'] = 'Username already exists';
+            }
+        } else {
+            // Hash the password with bcrypt
+            $passwordHash = password_hash($_POST['password'], PASSWORD_BCRYPT);
+            
+            if ($passwordHash === false) {
+                throw new Exception('Password hashing failed');
+            }
+            
+            // Insert new user
+            $stmt = $pdo->prepare("INSERT INTO admin_list 
+                                  (email, username, password, role, date_created) 
+                                  VALUES (?, ?, ?, ?, NOW())");
+            
+            $success = $stmt->execute([
+                $_POST['email'],
+                $_POST['username'],
+                $passwordHash,
+                $_POST['role']
+            ]);
+            
+            if ($success) {
+                $response['success'] = true;
+                $response['message'] = 'User created successfully';
+                $response['user_id'] = $pdo->lastInsertId();
+            } else {
+                $response['error'] = 'Failed to create user';
+            }
+        }
+    } catch (PDOException $e) {
+        error_log("Database error: " . $e->getMessage());
+        $response['error'] = 'Database error occurred. Please try again.';
+    }
+}
+
+echo json_encode($response);
 ?>
