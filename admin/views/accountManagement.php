@@ -367,7 +367,7 @@ function deleteUser($conn, $id) {
     </div>
 </div>
 
-<div class="container-fluid px-0 px-md-3">
+<div class="container-fluid px-0 px-md-3  mb-5">
     <div class="row justify-content-center mx-0">
         <div class="col-12 col-lg-10 px-0 px-md-3">
             <div class="shadow p-3 bg-body-tertiary rounded">

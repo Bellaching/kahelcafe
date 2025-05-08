@@ -79,110 +79,34 @@ include './../inc/topNav.php';
     </div>
 </div>
 
-<!-- Add Admin Modal -->
-<!-- <div class="modal fade" id="addAdminModal" tabindex="-1" aria-labelledby="addAdminModalLabel" aria-hidden="true">
-    <div class="modal-dialog p-3">
-        <div class="modal-content p-3">
-            Modal Header with no border
-            <div class="modal-header border-0">
-                <h5 class="modal-title" id="addAdminModalLabel">Create Admin</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-
-            <div class="modal-body">
-                <form action="" method="POST" id="createUserForm">
-
-                    <div class="mb-3">
-                        <label for="firstname" class="form-label">First Name</label>
-                        <div class="input-group">
-                            <span class="input-group-text bg-white border-0 border-bottom border-dark">
-                                <i class="fa-regular fa-user"></i>
-                            </span>
-                            <input type="text" class="form-control border-0 border-bottom border-dark" id="firstname" name="firstname" placeholder="Enter first name" required>
-                        </div>
-                        <p class="error text-danger"></p>
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="lastname" class="form-label">Last Name</label>
-                        <div class="input-group">
-                            <span class="input-group-text bg-white border-0 border-bottom border-dark">
-                                <i class="fa-regular fa-user"></i>
-                            </span>
-                            <input type="text" class="form-control border-0 border-bottom border-dark" id="lastname" name="lastname" placeholder="Enter last name" required>
-                        </div>
-                        <p class="error text-danger"></p>
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="email" class="form-label">Email</label>
-                        <div class="input-group">
-                            <span class="input-group-text bg-white border-0 border-bottom border-dark">
-                                <i class="fa-regular fa-envelope"></i>
-                            </span>
-                            <input type="email" class="form-control border-0 border-bottom border-dark" id="email" name="email" placeholder="Enter your email" required>
-                        </div>
-                        <p class="error text-danger"></p>
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="contact_number" class="form-label">Contact Number</label>
-                        <div class="input-group">
-                            <span class="input-group-text bg-white border-0 border-bottom border-dark">
-                                <i class="fa-regular fa-phone"></i>
-                            </span>
-                            <input type="text" class="form-control border-0 border-bottom border-dark" id="contact_number" name="contact_number" placeholder="Enter contact number" required>
-                        </div>
-                        <p class="error text-danger"></p> 
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="password" class="form-label">Password</label>
-                        <div class="input-group">
-                            <span class="input-group-text bg-white border-0 border-bottom border-dark">
-                                <i class="fa-solid fa-lock"></i>
-                            </span>
-                            <input type="password" class="form-control border-0 border-bottom border-dark" id="password" name="password" placeholder="Enter a password" required>
-                        </div>
-                        <p class="error text-danger"></p> 
-                    </div>
-
-             
-
-                    <button type="submit" name="submit" class="btn btn_color btn-primary mx-auto w-100 m-5 p-3" id="submitAdmin" style="background-color: #FF902B; border-radius: 30px; border: none;">
-                        Submit
-                    </button>
-                </form>
+<div class="px-5">
+    <div class="d-flex justify-content-center w-100">
+        <div class="container-fluid shadow p-3 mx-5 bg-body-tertiary rounded w-100 mb-4">
+            <!-- <div class="d-flex justify-content-end m-2 mb-5">
+                <button type="button" class="btn btn_color btn-primary" data-bs-toggle="modal" data-bs-target="#addAdminModal">
+                    + Add Account
+                </button>
+            </div> -->
+            
+            <!-- Make the table responsive and center it properly -->
+            <div class="table-responsive">
+                <table id="userTable" class="display table w-100 ">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Username</th> <!-- Change "Employee" to "Username" if that’s the intended display -->
+                            <th>Email</th>
+                            <th>Contact Number</th>
+                            <th>Date Created</th> <!-- Specify that this is the creation date -->
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Table data will be filled dynamically -->
+                    </tbody>
+                </table>
             </div>
         </div>
-    </div>
-</div> -->
-
-
-<div class ="d-flex justify-content-center  mx-5 ">
-<div class="container-fluid shadow p-3 mx-5 bg-body-tertiary rounded mx-5 mb-4">
-
-        <!-- <div class="d-flex justify-content-end m-2 mb-5">
-            <button type="button" class="btn btn_color btn-primary" data-bs-toggle="modal" data-bs-target="#addAdminModal">
-                + Add Account
-            </button>
-        </div> -->
-        <table id="userTable" class="display table  w-100">
-            <thead>
-            <tr>
-            <th>ID</th>
-            <th>Username</th> <!-- Change "Employee" to "Username" if that’s the intended display -->
-            <th>Email</th>
-            
-            <th>Contact Number</th>
-            <th>Date Created</th> <!-- Specify that this is the creation date -->
-            <th>Actions</th>
-        </tr>
-            </thead>
-            <tbody>
-                <!-- Table data will be filled dynamically -->
-            </tbody>
-        </table>
     </div>
 </div>
 

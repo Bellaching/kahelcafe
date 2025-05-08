@@ -22,7 +22,7 @@ include './../inc/topNav.php';
 
 <style>
 body{
-    display: flex;
+     display: flex;
     flex-direction: column;
 }
     /* Custom tooltip for truncated text */
@@ -66,33 +66,34 @@ body{
 </head>
 
 <body >
-
-<!-- Update notification -->
-<div class="position-fixed" style="bottom: 20px; right: 20px; background-color: #4CAF50; color: white; padding: 15px; border-radius: 5px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); z-index: 1000; display: none;" id="updateNotification">
+<div class="container-fluid px-3">
+  <!-- Update notification -->
+  <div class="position-fixed" style="bottom: 20px; right: 20px; background-color: #4CAF50; color: white; padding: 15px; border-radius: 5px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); z-index: 1000; display: none;" id="updateNotification">
     New orders available. Updating...
-</div>
+  </div>
 
-<div class="d-flex justify-content-between align-items-center px-4  mt-5 mx-5">
-    <div>
-        <p class="account-text m-0">
+  <!-- Responsive Layout with wider spread on desktop -->
+  <div class="row">
+    <div class="col-12 col-md-10 mx-auto">
+      <div class="d-flex flex-column flex-md-row justify-content-between align-items-center mt-5 text-center text-md-start gap-3">
+        <div>
+          <p class="account-text m-0">
             Order <span style="text-decoration: underline; text-decoration-color: #FF902B; text-underline-offset: 8px;">Management</span>
-        </p>
-    </div>
+          </p>
+        </div>
 
-    <div>
-        <?php include "./../../admin/views/qr_reader.php" ?>
+        <div>
+          <?php include "./../../admin/views/qr_reader.php" ?>
+        </div>
+      </div>
     </div>
+  </div>
 </div>
 
-       
-
-    </div>
-</div>
 
 
-
-
-<div class="d-flex justify-content-center mx-5 mb-5">
+<div class="px-5">
+<div class="d-flex justify-content-center w-100 mb-5 ">
     <div class="container-fluid shadow p-3" style="margin: 0 1.5rem; background-color: #f8f9fa; border-radius: 5px;">
         <div class="table-responsive">
             <table id="ordersTable" class="display w-100">
@@ -115,7 +116,7 @@ body{
         </div>
     </div>
 </div>
-
+</div>
 
 <!-- Modal for Update Status -->
 <!-- Modal for Update Status -->

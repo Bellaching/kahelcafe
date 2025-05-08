@@ -2,7 +2,7 @@
 include './../user/authenticate.php';
 include __DIR__ . '/../../connection/connection.php';
 
-$userId = $_SESSION['user_id'] ?? 0; // Adjust based on your session variable
+$userId = $_SESSION['user_id'] ?? 0;
 $username = $_SESSION['username'] ?? '';
 
 // Initialize all variables for profile change
@@ -35,18 +35,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) ){
     if (isset($_POST['action'])) {
         switch ($_POST['action']) {
             case 'updateProfile':
-                // Only validate when updating profile
                 $username = $_POST['username'];
                 $email = $_POST['email'];
                 $newPassword = $_POST['newPassword'] ?? '';
                 $confirmPassword = $_POST['confirmPassword'] ?? '';
 
-                // Validate username
                 if (empty($username)) {
                     $errorMessages[] = "Username is required.";
                 }
 
-                // Validate passwords only if they're provided
                 if (!empty($newPassword)) {
                     if (strlen($newPassword) < 8) {
                         $errorMessages[] = "The new password must be at least 8 characters long.";
@@ -69,7 +66,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) ){
                         }
                         
                         if ($stmt->execute()) {
-                            // Return JSON response for AJAX
                             header('Content-Type: application/json');
                             echo json_encode(['success' => true, 'message' => 'Profile updated successfully!']);
                             exit;
@@ -91,7 +87,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) ){
                 break;
                 
             case 'uploadProfilePicture':
-                // Only validate file upload
                 if (isset($_FILES['profile_picture']) && $_FILES['profile_picture']['error'] === UPLOAD_ERR_OK) {
                     $allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
                     $fileType = $_FILES['profile_picture']['type'];
@@ -156,7 +151,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) ){
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <!-- Bootstrap Bundle with Popper -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     
@@ -167,12 +161,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) ){
             padding: 0;
             display: flex;
             min-height: 100vh;
+            background-color: white;
         }
         
         .sidebar {
             width: 60px;
             min-height: 100vh;
-            background-color: #343a40;
+            background-color: #ffffff;
             transition: all 0.3s;
             position: fixed;
             z-index: 1000;
@@ -201,13 +196,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) ){
             display: flex;
             align-items: center;
             padding: 12px 15px;
-            color: rgba(255, 255, 255, 0.8);
+            color: #FF902B;
             text-decoration: none;
             transition: all 0.3s;
         }
         
         .sidebar-link:hover {
-            color: #fff;
+            color: #FF902B;
             background-color: rgba(255, 255, 255, 0.1);
         }
         
@@ -216,6 +211,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) ){
             margin-right: 15px;
             width: 20px;
             text-align: center;
+            color: #FF902B;
         }
         
         .nav-link-text {
@@ -223,32 +219,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) ){
             white-space: nowrap;
         }
         
-        .sidebar-dropdown {
-            list-style: none;
-            padding-left: 0;
-            background-color: rgba(0, 0, 0, 0.1);
-            display: none;
+        .main-content {
+            flex: 1;
+            margin-left: 60px;
+            transition: margin-left 0.3s;
         }
         
-        .sidebar-dropdown.show {
-            display: block;
-        }
-        
-        .sidebar-dropdown .sidebar-link {
-            padding-left: 45px;
-        }
-        
-        .sidebar .dropdown-toggle::after {
-            display: inline-block;
-            margin-left: auto;
-            transition: transform 0.3s;
-        }
-        
-        .sidebar .dropdown-toggle[aria-expanded="true"]::after {
-            transform: rotate(90deg);
-        }
-        
-      
         .sidebar:hover ~ .main-content {
             margin-left: 250px;
         }
@@ -384,7 +360,53 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) ){
         .password-fields {
             display: none;
         }
-        @media (max-width: 576px) {
+        
+        /* Sidebar toggle button */
+        .sidebar-toggle {
+            position: fixed;
+            left: 10px;
+            top: 10px;
+            z-index: 1100;
+            background-color: #ffffff;
+            color: #FF902B;
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+        
+        @media (max-width: 991.98px) {
+            .sidebar {
+                width: 250px;
+                transform: translateX(-100%);
+                z-index: 1050;
+            }
+            
+            .sidebar.show {
+                transform: translateX(0);
+            }
+            
+            .main-content {
+                margin-left: 0;
+            }
+            
+            .sidebar-toggle {
+                display: flex;
+            }
+            
+            .sidebar:hover {
+                width: 250px;
+            }
+            
+            .sidebar:hover .nav-link-text,
+            .sidebar.show .nav-link-text {
+                display: inline;
+            }
+            
             .profile-picture-container {
                 width: 120px;
                 height: 120px;
@@ -392,93 +414,83 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) ){
             .edit-profile-picture {
                 width: 35px;
                 height: 35px;
-                opacity: 1;
             }
         }
     </style>
     <title>Navigation</title>
 </head>
 <body>
+<!-- Sidebar Toggle Button -->
+<button class="sidebar-toggle" id="sidebarToggle">
+    <i class="fas fa-bars"></i>
+</button>
+
 <!-- Sidebar -->
-<nav class="sidebar">
+<nav class="sidebar" id="sidebar">
     <ul class="sidebar-nav">
         <?php if ($role === 'owner'): ?>
+            <!-- Direct links for owner -->
             <li class="sidebar-item">
-                <a href="#" class="sidebar-link dropdown-toggle" data-bs-toggle="collapse" data-bs-target="#adminDropdown" aria-expanded="false">
-                    <i class="sidebar-icon fas fa-user-shield"></i>
-                    <span class="nav-link-text">Admin Side</span>
+                <a href="./../views/accountManagement.php" class="sidebar-link">
+                    <i class="sidebar-icon fas fa-users-cog"></i>
+                    <span class="nav-link-text">Account Management</span>
                 </a>
-                <ul id="adminDropdown" class="sidebar-dropdown collapse">
-                    <li class="sidebar-item">
-                        <a href="./../views/accountManagement.php" class="sidebar-link">
-                            <i class="sidebar-icon fas fa-users-cog"></i>
-                            <span class="nav-link-text">Account Management</span>
-                        </a>
-                    </li>
-                    <li class="sidebar-item">
-                        <a href="./../views/client.php" class="sidebar-link">
-                            <i class="sidebar-icon fas fa-users"></i>
-                            <span class="nav-link-text">Client Management</span>
-                        </a>
-                    </li>
-                    <li class="sidebar-item">
-                        <a href="./../views/index.php" class="sidebar-link">
-                            <i class="sidebar-icon fas fa-shopping-cart"></i>
-                            <span class="nav-link-text">Order Management</span>
-                        </a>
-                    </li>
-                    <li class="sidebar-item">
-                        <a href="./../views/reservation.php" class="sidebar-link">
-                            <i class="sidebar-icon fas fa-calendar-alt"></i>
-                            <span class="nav-link-text">Reservation Management</span>
-                        </a>
-                    </li>
-                    <li class="sidebar-item">
-                        <a href="./../views/report.php" class="sidebar-link">
-                            <i class="sidebar-icon fas fa-chart-line"></i>
-                            <span class="nav-link-text">Performance Report</span>
-                        </a>
-                    </li>
-                    <li class="sidebar-item">
-                        <a href="../views/menuManagement.php" class="sidebar-link">
-                            <i class="sidebar-icon fas fa-utensils"></i>
-                            <span class="nav-link-text">Menu Management</span>
-                        </a>
-                    </li>
-                    <li class="sidebar-item">
-                        <a href="../views/content.php" class="sidebar-link">
-                            <i class="sidebar-icon fas fa-desktop"></i>
-                            <span class="nav-link-text">Virtual Management</span>
-                        </a>
-                    </li>
-                </ul>
+            </li>
+            <li class="sidebar-item">
+                <a href="./../views/client.php" class="sidebar-link">
+                    <i class="sidebar-icon fas fa-users"></i>
+                    <span class="nav-link-text">Client Management</span>
+                </a>
+            </li>
+            <li class="sidebar-item">
+                <a href="./../views/index.php" class="sidebar-link">
+                    <i class="sidebar-icon fas fa-shopping-cart"></i>
+                    <span class="nav-link-text">Order Management</span>
+                </a>
+            </li>
+            <li class="sidebar-item">
+                <a href="./../views/reservation.php" class="sidebar-link">
+                    <i class="sidebar-icon fas fa-calendar-alt"></i>
+                    <span class="nav-link-text">Reservation Management</span>
+                </a>
+            </li>
+            <li class="sidebar-item">
+                <a href="./../views/report.php" class="sidebar-link">
+                    <i class="sidebar-icon fas fa-chart-line"></i>
+                    <span class="nav-link-text">Performance Report</span>
+                </a>
+            </li>
+            <li class="sidebar-item">
+                <a href="../views/menuManagement.php" class="sidebar-link">
+                    <i class="sidebar-icon fas fa-utensils"></i>
+                    <span class="nav-link-text">Menu Management</span>
+                </a>
+            </li>
+            <li class="sidebar-item">
+                <a href="../views/content.php" class="sidebar-link">
+                    <i class="sidebar-icon fas fa-desktop"></i>
+                    <span class="nav-link-text">Virtual Management</span>
+                </a>
             </li>
         <?php elseif ($role === 'staff'): ?>
+            <!-- Direct links for staff -->
             <li class="sidebar-item">
-                <a href="#" class="sidebar-link dropdown-toggle" data-bs-toggle="collapse" data-bs-target="#staffDropdown" aria-expanded="false">
-                    <i class="sidebar-icon fas fa-user-shield"></i>
-                    <span class="nav-link-text">Admin Side</span>
+                <a href="./../views/accountManagement.php" class="sidebar-link">
+                    <i class="sidebar-icon fas fa-shopping-cart"></i>
+                    <span class="nav-link-text">Order Management</span>
                 </a>
-                <ul id="staffDropdown" class="sidebar-dropdown collapse">
-                    <li class="sidebar-item">
-                        <a href="./../views/accountManagement.php" class="sidebar-link">
-                            <i class="sidebar-icon fas fa-shopping-cart"></i>
-                            <span class="nav-link-text">Order Management</span>
-                        </a>
-                    </li>
-                    <li class="sidebar-item">
-                        <a href="./../views/reservation.php" class="sidebar-link">
-                            <i class="sidebar-icon fas fa-calendar-alt"></i>
-                            <span class="nav-link-text">Reservation Management</span>
-                        </a>
-                    </li>
-                    <li class="sidebar-item">
-                        <a href="../views/menuManagement.php" class="sidebar-link">
-                            <i class="sidebar-icon fas fa-utensils"></i>
-                            <span class="nav-link-text">Menu Management</span>
-                        </a>
-                    </li>
-                </ul>
+            </li>
+            <li class="sidebar-item">
+                <a href="./../views/reservation.php" class="sidebar-link">
+                    <i class="sidebar-icon fas fa-calendar-alt"></i>
+                    <span class="nav-link-text">Reservation Management</span>
+                </a>
+            </li>
+            <li class="sidebar-item">
+                <a href="../views/menuManagement.php" class="sidebar-link">
+                    <i class="sidebar-icon fas fa-utensils"></i>
+                    <span class="nav-link-text">Menu Management</span>
+                </a>
             </li>
         <?php endif; ?>
     </ul>
@@ -486,89 +498,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) ){
 
 <!-- Main Content -->
 <div class="main-content">
-    <nav class="navbar navbar-expand-lg navbar-default shadow-bottom">
-        <div class="container-fluid navbar-container">
-            <!-- Brand/logo on the left -->
-            <!-- <a class="navbar-brand me-auto" href="#">
-                <img src="./../../components/icon/kahel-cafe-logo.png" alt="MyWebsite" class="img-fluid" style="max-height: 60px;">
-            </a>
-             -->
-            <!-- Mobile toggle button -->
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-                <i class="fas fa-bars text-dark"></i>
-            </button>
-            
-            <!-- Navigation items - all pushed to the right -->
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <div class="d-flex align-items-center ms-auto">
-                    <!-- Notification Icon - properly aligned -->
-                    <li class="nav-item position-relative mx-2" style="top: -15px;">
-                        <?php include "noti.php" ?>
-                    </li>
+<nav class="navbar navbar-expand navbar-default shadow-bottom">
+    <div class="container-fluid navbar-container">
+        <!-- Brand/logo on the left -->
+        <a class="navbar-brand me-auto" href="#">
+            <img src="./../../components/icon/kahel-cafe-logo.png" alt="MyWebsite" class="img-fluid" style="max-height: 60px;">
+        </a>
 
-                    <div class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle text-black" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                            <?php echo htmlspecialchars($username); ?>(<?php echo htmlspecialchars($role); ?>)
-                        </a>
-                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
-                            <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#changeProfileModal"><i class="fa-regular fa-user me-2"></i>Change Profile</a></li>
-                            <li><a class="dropdown-item" href="./../views/login.php"><i class="fa-solid fa-power-off me-2"></i>Logout</a></li>
-                        </ul>
-                    </div>
-                </div>
+        <!-- Navigation items - all pushed to the right -->
+        <div class="d-flex align-items-center ms-auto">
+            <!-- Notification Icon -->
+            <li class="nav-item position-relative mx-2" style="list-style-type: none; padding-left: 0; margin: 0;">
+                <?php include "noti.php" ?>
+            </li>
+
+            <div class="nav-item dropdown">
+                <a class="nav-link dropdown-toggle text-black" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    <?php echo htmlspecialchars($username); ?>(<?php echo htmlspecialchars($role); ?>)
+                </a>
+                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                    <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#changeProfileModal"><i class="fa-regular fa-user me-2" style="color: #FF902B;"></i>Change Profile</a></li>
+                    <li><a class="dropdown-item" href="./../views/login.php"><i class="fa-solid fa-power-off me-2" style="color: #FF902B;"></i>Logout</a></li>
+                </ul>
             </div>
         </div>
-    </nav>
+    </div>
+</nav>
 
-    <style>
-        /* Additional CSS to ensure perfect alignment */
-        .navbar-nav, .d-flex.align-items-center {
-            gap: 0.5rem;
-        }
-        
-        .nav-item {
-            display: flex;
-            align-items: center;
-        }
-        
-        /* Ensure notification icon aligns perfectly */
-        #notificationDropdown {
-            padding: 0.5rem 1rem;
-        }
-        
-        /* Mobile view adjustments */
-        @media (max-width: 991.98px) {
-            .d-flex.align-items-center {
-                flex-direction: column;
-                align-items: flex-end !important;
-                width: 100%;
-                padding: 0.5rem 0;
-            }
-            
-            .nav-item {
-                width: 100%;
-                justify-content: flex-end;
-                padding: 0.25rem 0;
-            }
-            
-            .dropdown-menu {
-                position: static !important;
-                transform: none !important;
-                width: 100%;
-                border: none;
-                box-shadow: none;
-            }
-            
-            .sidebar {
-                width: 0;
-                overflow: hidden;
-            }
-            
-            .main-content {
-                margin-left: 0;
-            }
-        }
-    </style>
     <!-- Change Profile Modal -->
     <div class="modal fade" id="changeProfileModal" tabindex="-1" aria-labelledby="changeProfileModalLabel" aria-hidden="true">
         <div class="modal-dialog">
@@ -710,6 +666,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) ){
 
     <script>
     $(document).ready(function() {
+        // Toggle sidebar on mobile
+        $('#sidebarToggle').click(function() {
+            $('#sidebar').toggleClass('show');
+        });
+
+        // Close sidebar when clicking outside on mobile
+        $(document).click(function(event) {
+            if ($(window).width() < 992) {
+                if (!$(event.target).closest('#sidebar, #sidebarToggle').length) {
+                    $('#sidebar').removeClass('show');
+                }
+            }
+        });
+
         // Toggle password fields visibility
         $('#changePasswordCheckbox').change(function() {
             if (this.checked) {
@@ -754,18 +724,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) ){
                 dataType: 'json',
                 success: function(response) {
                     if (response.success) {
-                        // Show success message
                         $('#changeProfileModal .alert-danger').remove();
                         $('#changeProfileModal .modal-body').prepend(
                             '<div class="alert alert-success">Profile updated successfully!</div>'
                         );
                         
-                        // Reload page after 1.5 seconds
                         setTimeout(function() {
                             location.reload();
                         }, 1500);
                     } else {
-                        // Handle validation errors
                         let errorHtml = '';
                         if (response.errors) {
                             errorHtml = response.errors.map(error => `<div>${error}</div>`).join('');
@@ -798,7 +765,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) ){
                 processData: false,
                 contentType: false,
                 success: function(response) {
-                    // Reload the page to see changes
                     location.reload();
                 },
                 error: function(xhr, status, error) {

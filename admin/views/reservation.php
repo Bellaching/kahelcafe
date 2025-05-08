@@ -129,20 +129,22 @@ include './../inc/topNav.php';
 </head>
 
 <body>
-<div class="container-fluid px-5">
-    <div class="row  ms-5">
-        <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center w-100">
-                <p class="account-text m-0">
-                    Reservation <span class="management-underline">Management</span>
-                </p>
-                <div>
-                    <?php include "./../../admin/views/qr_reader.php" ?>
-                </div>
-            </div>
+    
+<div class="container-fluid px-3">
+  <div class="row justify-content-center">
+    <div class="col-12 col-md-10">
+      <div class="d-flex flex-column flex-md-row justify-content-between align-items-center text-center text-md-start gap-3 mt-4">
+        <p class="account-text m-0">
+          Reservation <span class="management-underline">Management</span>
+        </p>
+        <div>
+          <?php include "./../../admin/views/qr_reader.php" ?>
         </div>
+      </div>
     </div>
+  </div>
 </div>
+
 
     <div class="container-fluid px-3 px-md-5">
         <div class="row justify-content-center">
