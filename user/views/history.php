@@ -3,6 +3,10 @@ include './../inc/topNav.php';
 include './../../connection/connection.php';
 include './../../admin/user/profile_header.php';
 
+if (!isset($_SESSION['user_id'])) {
+    die("You must be logged in to view this page.");
+}
+
 $clientId = $_SESSION['user_id'] ?? 0;
 $activeTab = isset($_GET['tab']) ? $_GET['tab'] : 'orders';
 

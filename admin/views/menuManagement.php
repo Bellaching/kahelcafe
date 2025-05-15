@@ -392,13 +392,6 @@ ob_end_flush();
         .price-input {
             display: none;
         }
-       .food-price-input {
-    display: block; /* This should override any other display properties */
-}
-
-.price-input {
-    display: none; /* Hide by default, shown when needed */
-}
     </style>
 </head>
 <body>
@@ -453,15 +446,11 @@ function renderMenuItems($result) {
             $priceData = json_decode($row['price'], true);
             $priceStr = '';
             if ($priceData) {
-                if (isset($priceData['Regular'])) {
-                    $priceStr = '₱' . number_format($priceData['Regular'], 2);
-                } else {
-                    $prices = [];
-                    if (isset($priceData['Small'])) $prices[] = 'Small: ₱' . number_format($priceData['Small'], 2);
-                    if (isset($priceData['Medium'])) $prices[] = 'Medium: ₱' . number_format($priceData['Medium'], 2);
-                    if (isset($priceData['Large'])) $prices[] = 'Large: ₱' . number_format($priceData['Large'], 2);
-                    $priceStr = implode(' | ', $prices);
-                }
+                $prices = [];
+                if (isset($priceData['Small'])) $prices[] = 'Small: ₱' . number_format($priceData['Small'], 2);
+                if (isset($priceData['Medium'])) $prices[] = 'Medium: ₱' . number_format($priceData['Medium'], 2);
+                if (isset($priceData['Large'])) $prices[] = 'Large: ₱' . number_format($priceData['Large'], 2);
+                $priceStr = implode(' | ', $prices);
             }
             $image = htmlspecialchars($row['image'], ENT_QUOTES, 'UTF-8');
             $id = intval($row['id']);
@@ -575,8 +564,6 @@ echo renderMenuItems($result);
                                     <option value="Sandwich" <?php echo (isset($_POST['editMenuCategory']) && $_POST['editMenuCategory'] == 'Sandwich') ? 'selected' : '' ?>>Sandwich</option>
                                     <option value="Rice Meal" <?php echo (isset($_POST['editMenuCategory']) && $_POST['editMenuCategory'] == 'Rice Meal') ? 'selected' : '' ?>>Rice Meal</option>
                                     <option value="All Day Breakfast" <?php echo (isset($_POST['editMenuCategory']) && $_POST['editMenuCategory'] == 'All Day Breakfast') ? 'selected' : '' ?>>All Day Breakfast</option>
-                                    <option value="Add ons" <?php echo (isset($_POST['editMenuCategory']) && $_POST['editMenuCategory'] == 'Add ons') ? 'selected' : '' ?>>Add ons</option>
-                                    <option value="Upsize" <?php echo (isset($_POST['editMenuCategory']) && $_POST['editMenuCategory'] == 'Upsize') ? 'selected' : '' ?>>Upsize</option>
                                 </select>
                                 <?php if (!empty($errors['editMenuCategory'])): ?>
                                     <div class="error-message"><?php echo htmlspecialchars($errors['editMenuCategory']); ?></div>
@@ -587,7 +574,7 @@ echo renderMenuItems($result);
                                 <div class="container-fluid">
                                     <input type="checkbox" name="editMenuSize[]" value="Small" id="editSizeSmall" <?php echo (isset($_POST['editMenuSize']) && in_array('Small', $_POST['editMenuSize']) ? 'checked' : '' )?>>
                                     <label for="editSizeSmall" class="me-3">Small</label>
-                                    <input type="checkbox" name="editMenuSize[]" value="Medium" id="editSizeMedium" <?php echo (isset($_POST['editMenuSize']) && in_array('Medium', $_POST['editMenuSize']) ? 'checked' : '') ?>>
+                                    <input type="checkbox" name="editMenuSize[]" value="Medium" id="editSizeMedium" <?php echo (isset($_POST['editMenuSize']) && in_array('Medium', $_POST['editMenuSize']) ? 'checked' : '' )?>>
                                     <label for="editSizeMedium" class="me-3">Medium</label>
                                     <input type="checkbox" name="editMenuSize[]" value="Large" id="editSizeLarge" <?php echo (isset($_POST['editMenuSize']) && in_array('Large', $_POST['editMenuSize']) ? 'checked' : '' )?>>
                                     <label for="editSizeLarge">Large</label>
@@ -596,6 +583,8 @@ echo renderMenuItems($result);
                                     <div class="checkbox-error"><?php echo htmlspecialchars($errors['editMenuSize']); ?></div>
                                 <?php endif; ?>
                             </div>
+
+
                             <div class="mb-3 container-fluid" id="editMenuTemperatureContainer">
                                 <label for="editMenuTemperature" class="form-label">Temperature</label>
                                 <div class="container-fluid">
@@ -633,14 +622,11 @@ echo renderMenuItems($result);
                                         <div class="error-message"><?php echo htmlspecialchars($errors['editMenuPriceLarge']); ?></div>
                                     <?php endif; ?>
                                 </div>
-                                <div class="food-price-input" id="editPriceFoodContainer">
-                                    <label for="editMenuPriceFood" class="form-label">Price</label>
-                                    <input type="number" class="form-control <?php echo !empty($errors['editMenuPriceFood']) ? 'is-invalid' : '' ?>" id="editMenuPriceFood" name="editMenuPriceFood" min="0" step="0.01" value="<?php echo isset($_POST['editMenuPriceFood']) ? htmlspecialchars($_POST['editMenuPriceFood']) : '0' ?>">
-                                    <?php if (!empty($errors['editMenuPriceFood'])): ?>
-                                        <div class="error-message"><?php echo htmlspecialchars($errors['editMenuPriceFood']); ?></div>
-                                    <?php endif; ?>
-                                </div>
+
                             </div>
+
+                            
+                                  
                             <div class="mb-3">
                                 <label for="editMenuQuantity" class="form-label">Quantity</label>
                                 <input type="number" class="form-control <?php echo !empty($errors['editMenuQuantity']) ? 'is-invalid' : '' ?>" id="editMenuQuantity" name="editMenuQuantity" min="1" max="100" value="<?php echo isset($_POST['editMenuQuantity']) ? htmlspecialchars($_POST['editMenuQuantity']) : '1' ?>">
@@ -648,6 +634,32 @@ echo renderMenuItems($result);
                                     <div class="error-message"><?php echo htmlspecialchars($errors['editMenuQuantity']); ?></div>
                                 <?php endif; ?>
                             </div>
+
+                             <div class="food-price-input" id="editPriceFoodContainer">
+                                    <label for="editMenuPriceFood" class="form-label">Price</label>
+                                  <input type="number" 
+    class="form-control <?php echo !empty($errors['editMenuPriceFood']) ? 'is-invalid' : '' ?>" 
+    id="editMenuPriceFood" 
+    name="editMenuPriceFood" 
+    min="0" 
+    step="0.01" 
+    value="<?php 
+        if (isset($_POST['editMenuPriceFood'])) {
+            echo htmlspecialchars($_POST['editMenuPriceFood']);
+        } elseif (isset($fetchedMenuItem)) {
+            $priceArr = json_decode($fetchedMenuItem['price'], true);
+            echo htmlspecialchars($priceArr['Regular'] ?? 0);
+        } else {
+            echo '0';
+        }
+    ?>">
+
+
+                                    <?php if (!empty($errors['editMenuPriceFood'])): ?>
+                                        <div class="error-message"><?php echo htmlspecialchars($errors['editMenuPriceFood']); ?></div>
+                                    <?php endif; ?>
+                                </div>
+                           
                             <div class="mb-3">
                                 <label for="editProductStatus" class="form-label">Status</label>
                                 <select class="form-select <?php echo !empty($errors['editProductStatus']) ? 'is-invalid' : '' ?>" id="editProductStatus" name="editProductStatus">
@@ -717,14 +729,13 @@ echo renderMenuItems($result);
                                     <option value="Espresso" <?php echo (isset($_POST['menuCategory']) && $_POST['menuCategory'] == 'Espresso') ? 'selected' : '' ?>>Espresso</option>
                                     <option value="Non-Coffee" <?php echo (isset($_POST['menuCategory']) && $_POST['menuCategory'] == 'Non-Coffee') ? 'selected' : '' ?>>Non-Coffee</option>
                                     <option value="Signatures" <?php echo (isset($_POST['menuCategory']) && $_POST['menuCategory'] == 'Signatures') ? 'selected' : '' ?>>Signatures</option>
+                                  
                                     <option value="Frappe" <?php echo (isset($_POST['menuCategory']) && $_POST['menuCategory'] == 'Frappe') ? 'selected' : '' ?>>Frappe</option>
                                     <option value="Starters" <?php echo (isset($_POST['menuCategory']) && $_POST['menuCategory'] == 'Starters') ? 'selected' : '' ?>>Starters</option>
                                     <option value="Pasta" <?php echo (isset($_POST['menuCategory']) && $_POST['menuCategory'] == 'Pasta') ? 'selected' : '' ?>>Pasta</option>
                                     <option value="Sandwich" <?php echo (isset($_POST['menuCategory']) && $_POST['menuCategory'] == 'Sandwich') ? 'selected' : '' ?>>Sandwich</option>
                                     <option value="Rice Meal" <?php echo (isset($_POST['menuCategory']) && $_POST['menuCategory'] == 'Rice Meal') ? 'selected' : '' ?>>Rice Meal</option>
                                     <option value="All Day Breakfast" <?php echo (isset($_POST['menuCategory']) && $_POST['menuCategory'] == 'All Day Breakfast') ? 'selected' : '' ?>>All Day Breakfast</option>
-                                    <option value="Add ons" <?php echo (isset($_POST['menuCategory']) && $_POST['menuCategory'] == 'Add ons') ? 'selected' : '' ?>>Add ons</option>
-                                    <option value="Upsize" <?php echo (isset($_POST['menuCategory']) && $_POST['menuCategory'] == 'Upsize') ? 'selected' : '' ?>>Upsize</option>
                                 </select>
                                 <?php if (!empty($errors['menuCategory'])): ?>
                                     <div class="error-message"><?php echo htmlspecialchars($errors['menuCategory']); ?></div>
@@ -735,11 +746,11 @@ echo renderMenuItems($result);
 <div class="mb-3 container-fluid" id="menuSizeContainer">
     <label for="menuSize" class="form-label">Size</label>
     <div class="container-fluid">
-        <input type="checkbox" name="menuSize[]" value="Small" id="sizeSmall" <?php echo (isset($_POST['menuSize']) && in_array('Small', $_POST['menuSize']) ? 'checked' : '' )?>>
+        <input type="checkbox" name="menuSize[]" value="Small" id="sizeSmall" <?php echo (isset($_POST['menuSize']) && in_array('Small', $_POST['menuSize']) ? 'checked' : '') ?>>
         <label for="sizeSmall" class="me-3">Small</label>
         <input type="checkbox" name="menuSize[]" value="Medium" id="sizeMedium" <?php echo (isset($_POST['menuSize']) && in_array('Medium', $_POST['menuSize']) ? 'checked' : '' )?>>
         <label for="sizeMedium" class="me-3">Medium</label>
-        <input type="checkbox" name="menuSize[]" value="Large" id="sizeLarge" <?php echo (isset($_POST['menuSize']) && in_array('Large', $_POST['menuSize']) ? 'checked' : '') ?>>
+        <input type="checkbox" name="menuSize[]" value="Large" id="sizeLarge" <?php echo (isset($_POST['menuSize']) && in_array('Large', $_POST['menuSize']) ? 'checked' : '' )?>>
         <label for="sizeLarge">Large</label>
     </div>
     <?php if (!empty($errors['menuSize'])): ?>
@@ -749,11 +760,11 @@ echo renderMenuItems($result);
                             <div class="mb-3 container-fluid" id="menuTemperatureContainer">
                                 <label for="menuTemperature" class="form-label">Temperature</label>
                                 <div class="container-fluid">
-                                    <input type="checkbox" name="menuTemperature[]" value="Hot" id="temperatureHot" <?php echo (isset($_POST['menuTemperature']) && in_array('Hot', $_POST['menuTemperature']) ? 'checked' : '') ?>>
+                                    <input type="checkbox" name="menuTemperature[]" value="Hot" id="temperatureHot" <?php echo (isset($_POST['menuTemperature']) && in_array('Hot', $_POST['menuTemperature']) ? 'checked' : '' )?>>
                                     <label for="temperatureHot" class="me-3">Hot</label>
                                     <input type="checkbox" name="menuTemperature[]" value="Warm" id="temperatureWarm" <?php echo (isset($_POST['menuTemperature']) && in_array('Warm', $_POST['menuTemperature']) ? 'checked' : '' )?>>
                                     <label for="temperatureWarm" class="me-3">Warm</label>
-                                    <input type="checkbox" name="menuTemperature[]" value="Cold" id="temperatureCold" <?php echo (isset($_POST['menuTemperature']) && in_array('Cold', $_POST['menuTemperature']) ? 'checked' : '') ?>>
+                                    <input type="checkbox" name="menuTemperature[]" value="Cold" id="temperatureCold" <?php echo (isset($_POST['menuTemperature']) && in_array('Cold', $_POST['menuTemperature']) ? 'checked' : '' )?>>
                                     <label for="temperatureCold">Cold</label>
                                 </div>
                                 <?php if (!empty($errors['menuTemperature'])): ?>
@@ -783,18 +794,24 @@ echo renderMenuItems($result);
                                         <div class="error-message"><?php echo htmlspecialchars($errors['menuPriceLarge']); ?></div>
                                     <?php endif; ?>
                                 </div>
-                               <div class="food-price-input" id="priceFoodContainer">
-    <label for="menuPriceFood" class="form-label">Price</label>
-    <input type="number" class="form-control" id="menuPriceFood" name="menuPriceFood" min="0" step="0.01">
-</div>
+
+                                 
+
                             </div>
+
                             <div class="mb-3">
                                 <label for="menuQuantity" class="form-label">Quantity</label>
-                                <input type="number" class="form-control <?php echo !empty($errors['menuQuantity']) ? 'is-invalid' : '' ?>" id="menuQuantity" name="menuQuantity" min="1" max="100" value="<?php echo isset($_POST['menuQuantity']) ? htmlspecialchars($_POST['menuQuantity']) : '1' ?>">
+                                <input type="number" class="form-control <?php echo !empty($errors['menuQuantity']) ? 'is-invalid' : '' ?>" id="menuQuantity" name="menuQuantity" min="1" max="100" value="<?php echo isset($_POST['menuQuantity']) ? htmlspecialchars($_POST['menuQuantity']) : '1' ?> ">
                                 <?php if (!empty($errors['menuQuantity'])): ?>
                                     <div class="error-message"><?php echo htmlspecialchars($errors['menuQuantity']); ?></div>
                                 <?php endif; ?>
                             </div>
+
+                            
+                             <div class="food-price-input" id="priceFoodContainer" style="display: block;">
+    <label for="menuPriceFood" class="form-label">Price</label>
+    <input type="number" class="form-control" id="menuPriceFood" name="menuPriceFood" min="0" step="0.01" disabled>
+</div>
                             <div class="mb-3">
                                 <label for="productStatus" class="form-label">Status</label>
                                 <select class="form-select <?php echo !empty($errors['productStatus']) ? 'is-invalid' : '' ?>" id="productStatus" name="productStatus">
@@ -852,87 +869,108 @@ echo renderMenuItems($result);
 </div>
 
     <!-- jQuery, DataTable, and Bootstrap JS -->
+     <!-- jQuery -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+<!-- Bootstrap Bundle (with Popper) -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.1/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
- document.addEventListener('DOMContentLoaded', function () {
-    // Initialize both forms on page load
-    initializeForm('menuCategory', 'menuSizeContainer', 'menuTemperatureContainer', 'priceInputContainer', 'priceFoodContainer');
-    initializeForm('editMenuCategory', 'editMenuSizeContainer', 'editMenuTemperatureContainer', 'editPriceInputContainer', 'editPriceFoodContainer');
-    
-    // Set up event listeners for both forms
-    setupCategoryChangeListener('menuCategory', 'menuSizeContainer', 'menuTemperatureContainer', 'priceInputContainer', 'priceFoodContainer');
-    setupCategoryChangeListener('editMenuCategory', 'editMenuSizeContainer', 'editMenuTemperatureContainer', 'editPriceInputContainer', 'editPriceFoodContainer');
-    
-    // Handle size checkbox changes for both forms
-    handleSizeCheckboxChanges();
-    handleSizeCheckboxChanges('edit');
-});
+    document.addEventListener('DOMContentLoaded', function () {
+        // For Add Form
+        const addCategorySelect = document.getElementById('menuCategory');
+        const addSizeContainer = document.getElementById('menuSizeContainer');
+        const addTemperatureContainer = document.getElementById('menuTemperatureContainer');
+        const addPriceContainer = document.getElementById('priceInputContainer');
+        
+        // For Edit Form
+        const editCategorySelect = document.getElementById('editMenuCategory');
+        const editSizeContainer = document.getElementById('editMenuSizeContainer');
+        const editTemperatureContainer = document.getElementById('editMenuTemperatureContainer');
+        const editPriceContainer = document.getElementById('editPriceFoodContainer');
 
-function initializeForm(categoryId, sizeContainerId, tempContainerId, priceContainerId, foodPriceContainerId) {
-    const categorySelect = document.getElementById(categoryId);
-    const selectedCategory = categorySelect.value;
-    const isDrink = ['Espresso', 'Non-Coffee', 'Signatures', 'Frappe'].includes(selectedCategory);
-    
-    document.getElementById(sizeContainerId).style.display = isDrink ? 'block' : 'none';
-    document.getElementById(tempContainerId).style.display = isDrink ? 'block' : 'none';
-    document.getElementById(priceContainerId).style.display = isDrink ? 'block' : 'none';
-    document.getElementById(foodPriceContainerId).style.display = isDrink ? 'none' : 'block';
+
+      function toggleFields(selectElement, sizeContainer, tempContainer, priceContainer) {
+    const selectedCategory = selectElement.value;
+
+    const hasSizes = ['Espresso', 'Non-Coffee', 'Signatures', 'Frappe'].includes(selectedCategory);
+    const hasSinglePrice = ['Starters', 'Pasta', 'Sandwich', 'Rice Meal', 'All Day Breakfast', 'Add ons', 'Upsize'].includes(selectedCategory);
+
+    // Show/hide size and temperature sections
+    sizeContainer.style.display = hasSizes ? 'block' : 'none';
+    tempContainer.style.display = hasSizes ? 'block' : 'none';
+    priceContainer.style.display = hasSizes ? 'block' : 'none';
+
+    // Handle single price input
+    const priceFoodInput = document.getElementById('menuPriceFood');
+    const priceFoodContainer = document.getElementById('priceFoodContainer');
+
+    if (hasSinglePrice) {
+        priceFoodContainer.style.display = 'block';
+        priceFoodInput.disabled = false;
+    } else {
+        priceFoodContainer.style.display = 'none';
+        priceFoodInput.disabled = true;
+    }
 }
 
-function setupCategoryChangeListener(categoryId, sizeContainerId, tempContainerId, priceContainerId, foodPriceContainerId) {
-    document.getElementById(categoryId).addEventListener('change', function() {
-        const selectedCategory = this.value;
-        const isDrink = ['Espresso', 'Non-Coffee', 'Signatures', 'Frappe'].includes(selectedCategory);
+
+
+        // Initialize both forms
+        toggleFields(addCategorySelect, addSizeContainer, addTemperatureContainer, addPriceContainer);
+        toggleFields(editCategorySelect, editSizeContainer, editTemperatureContainer, editPriceContainer);
         
-        document.getElementById(sizeContainerId).style.display = isDrink ? 'block' : 'none';
-        document.getElementById(tempContainerId).style.display = isDrink ? 'block' : 'none';
-        document.getElementById(priceContainerId).style.display = isDrink ? 'block' : 'none';
-        document.getElementById(foodPriceContainerId).style.display = isDrink ? 'none' : 'block';
+        // Add event listeners for both forms
+        addCategorySelect.addEventListener('change', function() {
+            toggleFields(addCategorySelect, addSizeContainer, addTemperatureContainer, addPriceContainer);
+        });
+        
+        editCategorySelect.addEventListener('change', function() {
+            toggleFields(editCategorySelect, editSizeContainer, editTemperatureContainer, editPriceContainer);
+        });
+
+        function handleSizeCheckboxChanges(prefix = '') {
+            const smallCheckbox = document.getElementById(prefix + 'sizeSmall');
+            const mediumCheckbox = document.getElementById(prefix + 'sizeMedium');
+            const largeCheckbox = document.getElementById(prefix + 'sizeLarge');
+            
+            const smallPriceContainer = document.getElementById(prefix + 'priceSmallContainer');
+            const mediumPriceContainer = document.getElementById(prefix + 'priceMediumContainer');
+            const largePriceContainer = document.getElementById(prefix + 'priceLargeContainer');
+            
+            function updatePriceVisibility() {
+                smallPriceContainer.style.display = smallCheckbox.checked ? 'block' : 'none';
+                mediumPriceContainer.style.display = mediumCheckbox.checked ? 'block' : 'none';
+                largePriceContainer.style.display = largeCheckbox.checked ? 'block' : 'none';
+                
+                // Clear price value when unchecked
+                if (!smallCheckbox.checked) {
+                    document.getElementById(prefix + 'menuPriceSmall').value = '';
+                }
+                if (!mediumCheckbox.checked) {
+                    document.getElementById(prefix + 'menuPriceMedium').value = '';
+                }
+                if (!largeCheckbox.checked) {
+                    document.getElementById(prefix + 'menuPriceLarge').value = '';
+                }
+            }
+            
+            // Set initial state
+            updatePriceVisibility();
+            
+            // Add event listeners
+            smallCheckbox.addEventListener('change', updatePriceVisibility);
+            mediumCheckbox.addEventListener('change', updatePriceVisibility);
+            largeCheckbox.addEventListener('change', updatePriceVisibility);
+        }
+
+        // Initialize for both forms
+        handleSizeCheckboxChanges(); // Add form
+        handleSizeCheckboxChanges('edit'); // Edit form
     });
-}
-
-function handleSizeCheckboxChanges(prefix = '') {
-    const smallCheckbox = document.getElementById(prefix + 'sizeSmall');
-    const mediumCheckbox = document.getElementById(prefix + 'sizeMedium');
-    const largeCheckbox = document.getElementById(prefix + 'sizeLarge');
-    
-    const smallPriceContainer = document.getElementById(prefix + 'priceSmallContainer');
-    const mediumPriceContainer = document.getElementById(prefix + 'priceMediumContainer');
-    const largePriceContainer = document.getElementById(prefix + 'priceLargeContainer');
-    
-    function updatePriceVisibility() {
-        if (smallCheckbox) {
-            smallPriceContainer.style.display = smallCheckbox.checked ? 'block' : 'none';
-            if (!smallCheckbox.checked) {
-                document.getElementById(prefix + 'menuPriceSmall').value = '';
-            }
-        }
-        if (mediumCheckbox) {
-            mediumPriceContainer.style.display = mediumCheckbox.checked ? 'block' : 'none';
-            if (!mediumCheckbox.checked) {
-                document.getElementById(prefix + 'menuPriceMedium').value = '';
-            }
-        }
-        if (largeCheckbox) {
-            largePriceContainer.style.display = largeCheckbox.checked ? 'block' : 'none';
-            if (!largeCheckbox.checked) {
-                document.getElementById(prefix + 'menuPriceLarge').value = '';
-            }
-        }
-    }
-    
-    // Set initial state
-    if (smallCheckbox && mediumCheckbox && largeCheckbox) {
-        updatePriceVisibility();
-        
-        // Add event listeners
-        smallCheckbox.addEventListener('change', updatePriceVisibility);
-        mediumCheckbox.addEventListener('change', updatePriceVisibility);
-        largeCheckbox.addEventListener('change', updatePriceVisibility);
-    }
-}
 
     function openEditModal(id) {
     $.ajax({
@@ -961,9 +999,6 @@ function handleSizeCheckboxChanges(prefix = '') {
                 console.error('Error parsing price data:', e);
             }
 
-            // Determine if this is a food or drink item
-            const isDrink = ['Espresso', 'Non-Coffee', 'Signatures', 'Frappe'].includes(data.category);
-            
             // Handle size checkboxes and their corresponding price fields
             const sizes = data.size ? data.size.split(',') : [];
             
@@ -1006,11 +1041,6 @@ function handleSizeCheckboxChanges(prefix = '') {
                 document.getElementById('editMenuPriceLarge').value = '';
             }
 
-            // Handle food price
-            if (!isDrink && priceData.Regular) {
-                document.getElementById('editMenuPriceFood').value = priceData.Regular;
-            }
-
             // Handle temperature checkboxes
             const temperatureCheckboxes = document.querySelectorAll('input[name="editMenuTemperature[]"]');
             if (data.temperature) {
@@ -1020,22 +1050,31 @@ function handleSizeCheckboxChanges(prefix = '') {
                 });
             }
 
-            // Show/hide appropriate sections based on category
+            // Show/hide size and temperature sections based on category
+            const selectedCategory = data.category;
             const editSizeContainer = document.getElementById('editMenuSizeContainer');
             const editTemperatureContainer = document.getElementById('editMenuTemperatureContainer');
-            const editPriceContainer = document.getElementById('editPriceInputContainer');
-            const editFoodPriceContainer = document.getElementById('editPriceFoodContainer');
+            const editPriceContainer = document.getElementById('editPriceFoodContainer');
 
-            if (isDrink) {
+            if (selectedCategory === 'Espresso' || selectedCategory === 'Non-Coffee' || 
+                selectedCategory === 'Frappe') {
                 editSizeContainer.style.display = 'block';
                 editTemperatureContainer.style.display = 'block';
                 editPriceContainer.style.display = 'block';
-                editFoodPriceContainer.style.display = 'none';
+                foodPriceContainer.style.display = 'none';
+
+                document.getElementById('editPriceFoodContainer').style.display = 'none';
+document.getElementById('editMenuPriceFood').disabled = true;
+
             } else {
                 editSizeContainer.style.display = 'none';
                 editTemperatureContainer.style.display = 'none';
                 editPriceContainer.style.display = 'none';
-                editFoodPriceContainer.style.display = 'block';
+
+                editPriceContainer.style.display = 'none'; 
+document.getElementById('editPriceFoodContainer').style.display = 'block'; 
+document.getElementById('editMenuPriceFood').disabled = false;
+
             }
 
             // Add event listeners for size checkboxes to show/hide price fields
@@ -1147,6 +1186,34 @@ function handleSizeCheckboxChanges(prefix = '') {
             });
         }
     });
+
+
+    const foodPriceContainer = document.getElementById('priceFoodContainer');
+const allowedFoodCategories = ['Starters', 'Pasta', 'Sandwich', 'Rice Meal', 'All Day Breakfast', 'Add ons', 'Upsize'];
+
+function toggleFoodPriceContainer() {
+    const selected = addCategorySelect.value;
+   
+        foodPriceContainer.style.display = 'block';
+   
+}
+
+// Initialize and add listener
+toggleFoodPriceContainer();
+addCategorySelect.addEventListener('change', toggleFoodPriceContainer);
+
+const priceFoodInputEdit = document.getElementById('editMenuPriceFood');
+const priceFoodContainerEdit = document.getElementById('editPriceFoodContainer');
+
+if (hasSinglePrice) {
+    priceFoodContainerEdit.style.display = 'block';
+    priceFoodInputEdit.disabled = false;
+} else {
+    priceFoodContainerEdit.style.display = 'none';
+    priceFoodInputEdit.disabled = true;
+}
+
+
 </script>
 </body>
 </html>

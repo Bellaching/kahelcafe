@@ -3,14 +3,14 @@ session_start();
 
 include './../../connection/connection.php';    
 
-// Fetch cart from database if session expired
-if (!isset($_SESSION['cart']) && isset($_SESSION['user_id'])) {
+// Always fetch cart from database if user is logged in
+if (isset($_SESSION['user_id'])) {
     $clientId = $_SESSION['user_id'];
-    $query = "SELECT item_id, item_name, size, temperature, quantity, price , note FROM cart WHERE user_id = ?";
+    $query = "SELECT item_id, item_name, size, temperature, quantity, price FROM cart WHERE user_id = ?";
     $stmt = $conn->prepare($query);
 
     if (!$stmt) {
-        die("Prepare failed: " . $conn->error); // Debugging error
+        die("Prepare failed: " . $conn->error);
     }
  
     $stmt->bind_param("i", $clientId);
@@ -25,7 +25,7 @@ if (!isset($_SESSION['cart']) && isset($_SESSION['user_id'])) {
             'size' => $row['size'],
             'temperature' => $row['temperature'],
             'quantity' => $row['quantity'],
-            'note' => $row['note'],
+         
             'price' => $row['price'],
         ];
     }
@@ -47,6 +47,27 @@ if ($clientId) {
     }
     $stmt->close();
 }
+
+// In your connection.php or a new functions.php file
+function getPaymentSettings($conn) {
+    $sql = "SELECT gcash_number, gcash_name, reservation_fee FROM payment_settings LIMIT 1";
+    $result = $conn->query($sql);
+    
+    if ($result && $result->num_rows > 0) {
+        return $result->fetch_assoc();
+    }
+    
+    // Return default values if no settings exist
+    return [
+        'gcash_number' => 'Not set',
+        'gcash_name' => 'Not set',
+        'reservation_fee' => 0
+    ];
+}
+
+$paymentSettings = getPaymentSettings($conn);
+// Set default value
+
 
 function getAvailableTimes($conn, $user_id, $date = null) {
     $times = [];
@@ -109,8 +130,6 @@ if ($verified != 1) {
     exit();
 }
 
-// Set default value
-$reservation_fee = 50;
 
 // Try to get from database
 try {
@@ -186,6 +205,7 @@ foreach ($_SESSION['cart'] as $item) {
     $subtotal += $item['price'] * $item['quantity'];
 }
 
+$reservation_fee =  $paymentSettings['reservation_fee'];
 // Calculate total price (subtotal + reservation fee)
 $totalPrice = $subtotal + $reservation_fee;
 
@@ -565,7 +585,7 @@ function cancelOrderAndReturnQuantities($orderId, $conn) {
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <div class="p-1 text-white text-center" style="background-color: #E60000; border-radius: 5px;">
-                                        Fully Booked
+                                        Booked
                                     </div>
                                 </div>
                                 <div class="col-md-6 mb-3">
@@ -635,8 +655,8 @@ function cancelOrderAndReturnQuantities($orderId, $conn) {
 
                             <p class="d-flex justify-content-between">
                                 <strong>Reservation fee:</strong>
-                                <span>₱<?php echo number_format($reservation_fee, 2); ?></span>
-                            </p>
+                                <span>₱<?php echo number_format($paymentSettings['reservation_fee'], 2); ?></span>
+                            </p>  
                             
                             <div class="d-flex justify-content-between">
                                 <strong>Date:</strong>

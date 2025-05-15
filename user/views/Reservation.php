@@ -1,4 +1,5 @@
 <?php
+
 // Enable full error reporting
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
@@ -46,6 +47,25 @@ function formatTimeSlot($time) {
     
     return $time;
 }
+
+// In your connection.php or a new functions.php file
+function getPaymentSettings($conn) {
+    $sql = "SELECT gcash_number, gcash_name, reservation_fee FROM payment_settings LIMIT 1";
+    $result = $conn->query($sql);
+    
+    if ($result && $result->num_rows > 0) {
+        return $result->fetch_assoc();
+    }
+    
+    // Return default values if no settings exist
+    return [
+        'gcash_number' => 'Not set',
+        'gcash_name' => 'Not set',
+        'reservation_fee' => 0
+    ];
+}
+
+$paymentSettings = getPaymentSettings($conn);
 
 function getAvailableTimes($conn, $user_id, $date = null) {
     $times = [];
@@ -101,7 +121,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $reservation_date = $conn->real_escape_string($_POST['reservation_date']);
     $reservation_time_id = (int)$_POST['reservation_id'];
     $note = $conn->real_escape_string($_POST['note_area'] ?? '');
-    $amount = 50;
+    $amount = $paymentSettings['reservation_fee'];
     $transaction_code = 'RES-' . strtoupper(uniqid());
 
     try {
@@ -289,6 +309,21 @@ ob_end_flush();
 .time-slot-btn.selected {
     border: 2px solid #000 !important;
 }
+.login-prompt {
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    padding: 20px;
+    text-align: center;
+    margin-top: 20px;
+}
+.login-prompt a {
+    color: #FF902B;
+    font-weight: bold;
+    text-decoration: none;
+}
+.login-prompt a:hover {
+    text-decoration: underline;
+}
     </style>
 </head>
 <body class="border-0">
@@ -301,7 +336,7 @@ ob_end_flush();
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <p>You need to be logged in to add items to the cart. Please log in first.</p>
+                    <p>You need to be logged in to make a reservation. Please log in first.</p>
                 </div>
                 <div class="modal-footer">
                     <a href="login.php" class="btn text-light " style="background-color: #FF902B;" >Go to Login</a>
@@ -402,8 +437,6 @@ ob_end_flush();
                             <strong><h4 class="m-3 order-h4">Date Reservation</h4></strong> 
                             <div class="card-body">
                                 <div class="row">
-                                    
-                                   
                                     <div class="col-md-6 mb-3">
                                         <div class="p-1 text-white text-center" style="background-color: #07D090; border-radius: 5px;">
                                             Available
@@ -433,58 +466,66 @@ ob_end_flush();
     <div id="time-error" class="text-danger mt-2 d-none">Please select a time slot</div>
 </div>
             
-                        <div class="mb-4 d-flex align-items-center justify-content-between">
-                            <label class="form-label mb-0">Party Size</label>
-                            <div class="input-group" style="max-width: 150px;">
-                                <button class="btn btn-outline-secondary text-light border-0" type="button"  style="background-color: #FF902B;" id="button-minus">-</button>
-                                <input type="number" class="form-control text-center" value="1" id="number-input" min="1" max="20">
-                                <button class="btn btn-outline-secondary text-light border-0" type="button"  style="background-color: #FF902B;" id="button-plus">+</button>
+                        <?php if ($isLoggedIn): ?>
+                            <div class="mb-4 d-flex align-items-center justify-content-between">
+                                <label class="form-label mb-0">Party Size</label>
+                                <div class="input-group" style="max-width: 150px;">
+                                    <button class="btn btn-outline-secondary text-light border-0" type="button"  style="background-color: #FF902B;" id="button-minus">-</button>
+                                    <input type="number" class="form-control text-center" value="1" id="number-input" min="1" max="20">
+                                    <button class="btn btn-outline-secondary text-light border-0" type="button"  style="background-color: #FF902B;" id="button-plus">+</button>
+                                </div>
                             </div>
-                        </div>
 
-                        <div class="card border-0">
-                            <div class="card-body">
-                                <h4 class="mb-3 order-h4">Reservation Summary</h4>
-                                <form action="" method="POST" id="reservation-form">
-                                    <input type="hidden" name="client_id" value="<?php echo htmlspecialchars($user_id); ?>">
+                            <div class="card border-0">
+                                <div class="card-body">
+                                    <h4 class="mb-3 order-h4">Reservation Summary</h4>
+                                    <form action="" method="POST" id="reservation-form">
+                                        <input type="hidden" name="client_id" value="<?php echo htmlspecialchars($user_id); ?>">
 
-                                    <div class="d-flex justify-content-between mb-2">
-                                        <span class="fw-bold">Name</span>
-                                        <span class="name-result"><?php echo htmlspecialchars($clientFullName) ?></span>
-                                    </div>
+                                        <div class="d-flex justify-content-between mb-2">
+                                            <span class="fw-bold">Name</span>
+                                            <span class="name-result"><?php echo htmlspecialchars($clientFullName) ?></span>
+                                        </div>
 
-                                    <div class="d-flex justify-content-between mb-2">
-                                        <span class="fw-bold">Party Size</span>
-                                        <span class="party-size-result">1</span>
-                                        <input type="hidden" name="party_size" id="party_size_input" value="1">
-                                    </div>
+                                        <div class="d-flex justify-content-between mb-2">
+                                            <span class="fw-bold">Party Size</span>
+                                            <span class="party-size-result">1</span>
+                                            <input type="hidden" name="party_size" id="party_size_input" value="1">
+                                        </div>
 
-                                    <div class="d-flex justify-content-between mb-2">
-                                        <span class="fw-bold">Date</span>
-                                        <span class="date-result" id="date-result">Not selected</span>
-                                        <input type="hidden" name="reservation_date" id="reservation_date_input">
-                                    </div>
+                                        <div class="d-flex justify-content-between mb-2">
+                                            <span class="fw-bold">Date</span>
+                                            <span class="date-result" id="date-result">Not selected</span>
+                                            <input type="hidden" name="reservation_date" id="reservation_date_input">
+                                        </div>
 
-                                    <div class="d-flex justify-content-between mb-2">
-                                        <span class="fw-bold">Time</span>
-                                        <span class="time-result" id="time-result">Not selected</span>
-                                        <input type="hidden" name="reservation_id" id="reservation_time_input">
-                                    </div>
+                                        <div class="d-flex justify-content-between mb-2">
+                                            <span class="fw-bold">Time</span>
+                                            <span class="time-result" id="time-result">Not selected</span>
+                                            <input type="hidden" name="reservation_id" id="reservation_time_input">
+                                        </div>
 
-                                    <div class="d-flex justify-content-between mb-3">
-                                        <span class="fw-bold">Reservation Fee</span>
-                                        <span class="reservation-fee-result">₱ 50</span>
-                                        <input type="hidden" name="amount" value="50">
-                                    </div>
+                                        <div class="d-flex justify-content-between mb-3">
+                                            <span class="fw-bold">Reservation Fee</span>
+                                            <span class="reservation-fee-result">₱ <?php echo number_format($paymentSettings['reservation_fee'], 2); ?></span>
+                                            <input type="hidden" name="amount" value="50">
+                                        </div>
 
-                                    <div class="mb-3">
-                                        <label for="user-note" class="form-label"><strong>Notes</strong></label>
-                                        <textarea name="note_area" maxlength="500" class="form-control" rows="3" placeholder="Additional notes..."></textarea>
-                                    </div>
-                                    <button type="button" class="btn proceedBtn text-light text-center container-fluid bold-1" style="background-color: #FF902A;" id="confirm-order">Confirm Reservation</button>
-                                </form>
+                                        <div class="mb-3">
+                                            <label for="user-note" class="form-label"><strong>Notes</strong></label>
+                                            <textarea name="note_area" maxlength="500" class="form-control" rows="3" placeholder="Additional notes..."></textarea>
+                                        </div>
+                                        <button type="button" class="btn proceedBtn text-light text-center container-fluid bold-1" style="background-color: #FF902A;" id="confirm-order">Confirm Reservation</button>
+                                    </form>
+                                </div>
                             </div>
-                        </div>
+                        <?php else: ?>
+                            <div class="login-prompt">
+                                <h4 class="mb-3 order-h4">Login Required</h4>
+                                <p>You need to be logged in to make a reservation.</p>
+                                <a href="login.php" class="btn text-light" style="background-color: #FF902B;">Login Now</a>
+                            </div>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>
@@ -523,39 +564,49 @@ document.addEventListener('DOMContentLoaded', function() {
     const timeSlotsContainer = document.getElementById("time-slots-container");
     
     // Set initial values
-    numberInput.value = 1;
-    partySizeResult.textContent = numberInput.value;
-    partySizeInput.value = numberInput.value;
+    if (numberInput) {
+        numberInput.value = 1;
+        partySizeResult.textContent = numberInput.value;
+        partySizeInput.value = numberInput.value;
+    }
     
     // Check if user is logged in
     const isLoggedIn = <?php echo $isLoggedIn ? 'true' : 'false'; ?>;
     
     // Party size controls
-    document.getElementById("button-plus").addEventListener("click", function() {
-        if (parseInt(numberInput.value) < 20) {
-            numberInput.value = parseInt(numberInput.value) + 1;
-            updatePartySize();
-        }
-    });
+    if (document.getElementById("button-plus")) {
+        document.getElementById("button-plus").addEventListener("click", function() {
+            if (parseInt(numberInput.value) < 20) {
+                numberInput.value = parseInt(numberInput.value) + 1;
+                updatePartySize();
+            }
+        });
+    }
     
-    document.getElementById("button-minus").addEventListener("click", function() {
-        if (parseInt(numberInput.value) > 1) {
-            numberInput.value = parseInt(numberInput.value) - 1;
-            updatePartySize();
-        }
-    });
+    if (document.getElementById("button-minus")) {
+        document.getElementById("button-minus").addEventListener("click", function() {
+            if (parseInt(numberInput.value) > 1) {
+                numberInput.value = parseInt(numberInput.value) - 1;
+                updatePartySize();
+            }
+        });
+    }
     
-    numberInput.addEventListener("change", function() {
-        let value = parseInt(this.value);
-        if (isNaN(value) || value < 1) value = 1;
-        if (value > 20) value = 20;
-        this.value = value;
-        updatePartySize();
-    });
+    if (numberInput) {
+        numberInput.addEventListener("change", function() {
+            let value = parseInt(this.value);
+            if (isNaN(value) || value < 1) value = 1;
+            if (value > 20) value = 20;
+            this.value = value;
+            updatePartySize();
+        });
+    }
     
     function updatePartySize() {
-        partySizeResult.textContent = numberInput.value;
-        partySizeInput.value = numberInput.value;
+        if (partySizeResult && partySizeInput) {
+            partySizeResult.textContent = numberInput.value;
+            partySizeInput.value = numberInput.value;
+        }
     }
     
     // Load time slots for a specific date
@@ -626,9 +677,9 @@ switch(time.status) {
                             this.classList.add('selected');
                             
                             // Update form fields
-                            timeResult.textContent = time.time;
-                            reservationTimeInput.value = time.id;
-                            timeError.classList.add('d-none');
+                            if (timeResult) timeResult.textContent = time.time;
+                            if (reservationTimeInput) reservationTimeInput.value = time.id;
+                            if (timeError) timeError.classList.add('d-none');
                         });
                     }
                 });
@@ -643,19 +694,19 @@ switch(time.status) {
     window.addEventListener('message', function(event) {
         if (event.data && event.data.selectedDate) {
             const selectedDate = event.data.selectedDate;
-            reservationDateInput.value = selectedDate;
+            if (reservationDateInput) reservationDateInput.value = selectedDate;
             
             const today = new Date();
             const todayFormatted = today.toISOString().split('T')[0];
             
             if (selectedDate === todayFormatted) {
-                dateResult.textContent = "Select another date";
-                reservationDateInput.value = "";
+                if (dateResult) dateResult.textContent = "Select another date";
+                if (reservationDateInput) reservationDateInput.value = "";
                 timeSlotsContainer.innerHTML = '<div class="col-12 text-center py-3">Please select a future date</div>';
             } else {
-                dateResult.textContent = selectedDate;
-                timeResult.textContent = 'Not selected';
-                reservationTimeInput.value = "";
+                if (dateResult) dateResult.textContent = selectedDate;
+                if (timeResult) timeResult.textContent = 'Not selected';
+                if (reservationTimeInput) reservationTimeInput.value = "";
                 
                 // Load time slots for selected date
                 loadTimeSlots(selectedDate);
@@ -664,96 +715,104 @@ switch(time.status) {
     });
     
     // Form validation and submission
-    confirmOrderBtn.addEventListener('click', function() {
-        let isValid = true;
-        
-        if (!reservationDateInput.value) {
-            alert('Please select a date');
-            isValid = false;
-        }
-        
-        if (!reservationTimeInput.value) {
-            timeError.classList.remove('d-none');
-            isValid = false;
-        }
-        
-        if (isValid) {
-            if (!isLoggedIn) {
-                // Show login required modal
-                loginRequiredModal.show();
-            } else {
-                // Check if selected time is available (green)
-                const selectedButton = document.querySelector('.time-slot-btn.selected');
-                if (!selectedButton) {
-                    alert('Please select a time slot');
-                    return;
-                }
-                
-                const isAvailable = selectedButton.style.backgroundColor === 'rgb(7, 208, 144)';
-                if (!isAvailable) {
-                    alert('Please select an available time slot (green)');
-                    return;
-                }
-                
-                // Show confirmation modal
-                confirmationModal.show();
+    if (confirmOrderBtn) {
+        confirmOrderBtn.addEventListener('click', function() {
+            let isValid = true;
+            
+            if (!reservationDateInput.value) {
+                alert('Please select a date');
+                isValid = false;
             }
-        }
-    });
+            
+            if (!reservationTimeInput.value) {
+                if (timeError) timeError.classList.remove('d-none');
+                isValid = false;
+            }
+            
+            if (isValid) {
+                if (!isLoggedIn) {
+                    // Show login required modal
+                    loginRequiredModal.show();
+                } else {
+                    // Check if selected time is available (green)
+                    const selectedButton = document.querySelector('.time-slot-btn.selected');
+                    if (!selectedButton) {
+                        alert('Please select a time slot');
+                        return;
+                    }
+                    
+                    const isAvailable = selectedButton.style.backgroundColor === 'rgb(7, 208, 144)';
+                    if (!isAvailable) {
+                        alert('Please select an available time slot (green)');
+                        return;
+                    }
+                    
+                    // Show confirmation modal
+                    confirmationModal.show();
+                }
+            }
+        });
+    }
     
     // Confirm reservation button in modal
-    document.getElementById('confirmReservation').addEventListener('click', function() {
-        confirmationModal.hide();
-        
-        // Submit form via AJAX
-        const formData = new FormData(reservationForm);
-        
-        fetch('', {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.status === 'success') {
-                // Show success modal
-                successModal.show();
-                
-                // Refresh the time slots after reservation
-                const selectedDate = document.getElementById('reservation_date_input').value;
-                if (selectedDate) {
-                    loadTimeSlots(selectedDate);
-                }
-                
-                // Start countdown
-                let seconds = 3;
-                const countdownElement = document.getElementById("countdown");
-                const countdown = setInterval(() => {
-                    seconds--;
-                    countdownElement.textContent = seconds;
-                    if (seconds <= 0) {
-                        clearInterval(countdown);
-                        window.location.href = "reservation_track.php?reservation_id=" + data.reservation_id;
+    if (document.getElementById('confirmReservation')) {
+        document.getElementById('confirmReservation').addEventListener('click', function() {
+            confirmationModal.hide();
+            
+            // Submit form via AJAX
+            const formData = new FormData(reservationForm);
+            
+            fetch('', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    // Show success modal
+                    successModal.show();
+                    
+                    // Refresh the time slots after reservation
+                    const selectedDate = document.getElementById('reservation_date_input').value;
+                    if (selectedDate) {
+                        loadTimeSlots(selectedDate);
                     }
-                }, 1000);
-            } else {
-                alert('Error: ' + data.message);
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('An error occurred while processing your reservation.');
+                    
+                    // Start countdown
+                    let seconds = 3;
+                    const countdownElement = document.getElementById("countdown");
+                    const countdown = setInterval(() => {
+                        seconds--;
+                        countdownElement.textContent = seconds;
+                        if (seconds <= 0) {
+                            clearInterval(countdown);
+                            window.location.href = "reservation_track.php?reservation_id=" + data.reservation_id;
+                        }
+                    }, 1000);
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while processing your reservation.');
+            });
         });
-    });
+    }
     
     // Timer expired modal buttons
-    document.getElementById('continueReservation').addEventListener('click', function() {
-        timerExpiredModal.hide();
-        confirmationModal.show();
-    });
+    if (document.getElementById('continueReservation')) {
+        document.getElementById('continueReservation').addEventListener('click', function() {
+            timerExpiredModal.hide();
+            confirmationModal.show();
+        });
+    }
     
-    document.getElementById('cancelExpiredReservation').addEventListener('click', function() {
-        timerExpiredModal.hide();
-    });
+    if (document.getElementById('cancelExpiredReservation')) {
+        document.getElementById('cancelExpiredReservation').addEventListener('click', function() {
+            timerExpiredModal.hide();
+        });
+    }
     
     // Initial load - show message to select a date
     timeSlotsContainer.innerHTML = '<div class="col-12 text-center py-3">Please select a date from the calendar</div>';

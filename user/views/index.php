@@ -3,6 +3,7 @@
 ob_start();
 
 include './../inc/topNav.php';
+
 include './../../connection/connection.php';
 
 // Modified query to check both quantity and status
@@ -139,6 +140,7 @@ $sql = "SELECT * FROM menu1 $whereClause ORDER BY name ASC LIMIT $offset, $items
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="icon" type="kahelcafe-icon" href="./../asset/img/logo.jpg" >
     <style>
         body{
             display: flex;

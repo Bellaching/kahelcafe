@@ -8,12 +8,9 @@ use Endroid\QrCode\Encoding\Encoding;
 use Endroid\QrCode\Writer\PngWriter;
 use Endroid\QrCode\Label\Label;
 
-// Check if user is logged in
 if (!isset($_SESSION['user_id'])) {
-    header("Location: login.php");
-    exit();
+    die("You must be logged in to view this page.");
 }
-
 $userId = $_SESSION['user_id']; // Fetch the user ID from the session
 
 // profile
@@ -31,6 +28,25 @@ if (!$userId) {
         'profile_picture' => ''
     ];
 }
+
+
+function getPaymentSettings($conn) {
+    $sql = "SELECT gcash_number, gcash_name, reservation_fee FROM payment_settings LIMIT 1";
+    $result = $conn->query($sql);
+    
+    if ($result && $result->num_rows > 0) {
+        return $result->fetch_assoc();
+    }
+    
+    // Return default values if no settings exist
+    return [
+        'gcash_number' => 'Not set',
+        'gcash_name' => 'Not set',
+        'reservation_fee' => 0
+    ];
+}
+
+$paymentSettings = getPaymentSettings($conn);
 
 $clientFullName = htmlspecialchars($client['firstname'] . ' ' . $client['lastname']);
 $email = htmlspecialchars($client['email']);
@@ -742,6 +758,21 @@ $note = $orderItems[0]['note'] ?? 'No notes available.';
                     <form method="POST" enctype="multipart/form-data" class="mt-3" id="receiptForm">
                         <input type="hidden" name="order_id" value="<?php echo htmlspecialchars($order['order_id']); ?>">
                         <input type="hidden" name="upload_receipt" value="1">
+
+                           <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <div class="p-3 bg-light rounded">
+                                    <h6 class="text-muted small">GCash Number</h6>
+                                    <p class="h5"><?php echo htmlspecialchars($paymentSettings['gcash_number']); ?></p>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <div class="p-3 bg-light rounded">
+                                    <h6 class="text-muted small">Account Name</h6>
+                                    <p class="h5"><?php echo htmlspecialchars($paymentSettings['gcash_name']); ?></p>
+                                </div>
+                            </div>
+                        </div>
                         
                         <!-- Timer Section -->
                         <div class="mb-3 text-center">

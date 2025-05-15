@@ -17,11 +17,6 @@ require 'PHPMailer/src/Exception.php';
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
-// Ensure the user is logged in
-if (!isset($_SESSION['user_id'])) {
-    die("You must be logged in to view this page.");
-}
-
 
 // Initialize variables with safe defaults
 $verificationSuccess = false;

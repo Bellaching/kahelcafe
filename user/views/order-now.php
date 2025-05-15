@@ -30,7 +30,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['add_to_cart'])) {
     $size = isset($_POST['size']) ? $conn->real_escape_string($_POST['size']) : '';
     $temperature = isset($_POST['temperature']) ? $conn->real_escape_string($_POST['temperature']) : '';
     $price = isset($_POST['price']) ? floatval($_POST['price']) : 0; // Changed to floatval for price
- 
+
     // Fetch item from the database
     $sql = "SELECT * FROM menu1 WHERE id = $item_id";
     $result = $conn->query($sql);
@@ -38,6 +38,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['add_to_cart'])) {
 
     if ($item) {
         $user_id = $_SESSION['user_id'];
+        $item_name = $item['name']; // <-- Get item_name from menu1 table's 'name' column
 
         // Check if the item already exists in the cart
         $checkSql = "SELECT * FROM cart WHERE user_id = '$user_id' AND item_id = '$item_id' AND size = '$size' AND temperature = '$temperature'";
@@ -56,8 +57,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['add_to_cart'])) {
             }
         } else {
             // Item does not exist, insert new row
-            $insertSql = "INSERT INTO cart (user_id, item_id, quantity, size, temperature, price) 
-                          VALUES ('$user_id', '$item_id', '$quantity', '$size', '$temperature', '$price')";
+            $insertSql = "INSERT INTO cart (user_id, item_id, quantity, size, temperature, price, item_name) 
+                          VALUES ('$user_id', '$item_id', '$quantity', '$size', '$temperature', '$price', '$item_name')";
             if ($conn->query($insertSql) === TRUE) {
                 $_SESSION['cart_success'] = "Item added to cart successfully!";
             } else {
@@ -117,6 +118,7 @@ $result = $conn->query($sql);
 
 ob_end_flush();
 ?>
+
 <!DOCTYPE html> 
 <html lang="en">
 <head>

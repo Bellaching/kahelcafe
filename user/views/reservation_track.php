@@ -64,6 +64,25 @@ if (!$userId) {
     ];
 }
 
+// In your connection.php or a new functions.php file
+function getPaymentSettings($conn) {
+    $sql = "SELECT gcash_number, gcash_name, reservation_fee FROM payment_settings LIMIT 1";
+    $result = $conn->query($sql);
+    
+    if ($result && $result->num_rows > 0) {
+        return $result->fetch_assoc();
+    }
+    
+    // Return default values if no settings exist
+    return [
+        'gcash_number' => 'Not set',
+        'gcash_name' => 'Not set',
+        'reservation_fee' => 0
+    ];
+}
+
+$paymentSettings = getPaymentSettings($conn);
+
 $clientFullName = htmlspecialchars($client['firstname'] . ' ' . $client['lastname']);
 $email = htmlspecialchars($client['email']);
 $clientProfilePicture = htmlspecialchars($client['profile_picture']);
@@ -889,7 +908,7 @@ $note = $reservation['note_area'] ?? 'No notes available.';
                                 </div>
                                 <div class="d-flex justify-content-between w-100">
                                     <p><strong>Reservation Fee:</strong></p>
-                                    <p><?php echo htmlspecialchars($reservation['clientFullName']); ?></p>
+                                    <p>₱<?php echo number_format($paymentSettings['reservation_fee'], 2); ?>
                                 </div>
                             </div>
                         </div>
@@ -930,6 +949,21 @@ $note = $reservation['note_area'] ?? 'No notes available.';
                         <form method="POST" enctype="multipart/form-data" class="mt-3" id="receiptForm">
                             <input type="hidden" name="reservation_id" value="<?php echo htmlspecialchars($reservation['id']); ?>">
                             <input type="hidden" name="upload_receipt" value="1">
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <div class="p-3 bg-light rounded">
+                                    <h6 class="text-muted small">GCash Number</h6>
+                                    <p class="h5"><?php echo htmlspecialchars($paymentSettings['gcash_number']); ?></p>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <div class="p-3 bg-light rounded">
+                                    <h6 class="text-muted small">Account Name</h6>
+                                    <p class="h5"><?php echo htmlspecialchars($paymentSettings['gcash_name']); ?></p>
+                                </div>
+                            </div>
+                        </div>
                             
                             <!-- Timer Section -->
                             <div class="mb-3 text-center">
@@ -1319,3 +1353,4 @@ $('#receiptForm').on('submit', function(e) {
     </script>
 </body>
 </html>
+"
