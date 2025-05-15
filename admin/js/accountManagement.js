@@ -6,7 +6,7 @@ $(document).ready(function() {
             type: 'POST',
             data: { action: 'read' },
             dataSrc: ''
-        },
+        }, 
         "paging": true,
         "lengthChange": true,
         "searching": true,

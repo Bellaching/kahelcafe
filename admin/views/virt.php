@@ -108,7 +108,7 @@ $result = $conn->query("SELECT * FROM virt");
 </head>
 <body>
 
-<div id="carouselExampleIndicators" class="carousel slide" data-ride="carousel">
+<div id="carouselExampleIndicators " class="carousel slide " data-ride="carousel">
   <div class="carousel-inner">
     <?php $active = true; ?>
     <?php while ($row = $result->fetch_assoc()): ?>

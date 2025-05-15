@@ -7,8 +7,7 @@
                         <option value="Espresso">Espresso</option>
                         <option value="Non-Coffee">Non-Coffee</option>
                         <option value="Signatures">Signatures</option>
-                        <option value="Frappe (espresso base)">Frappe (espresso base)</option>
-                        <option value="Frappe (cream base)">Frappe (cream base)</option>
+                        <option value="Frappe">Frappe</option>
                         <option value="Starters">Starters</option>
                         <option value="Pasta">Pasta</option>
                         <option value="Sandwich">Sandwich</option>
@@ -39,11 +38,7 @@
         <i class="fas fa-star me-2"></i> Signatures
     </a>
 </div>
-<div class="me-3">
-    <a href="?category=Frappe (espresso base)" class="btn btn-light border-0 <?php echo $selectedCategory == 'Frappe (espresso base)' ? 'active' : ''; ?>">
-        <i class="fas fa-ice-cream me-2"></i> Frappe (espresso)
-    </a>
-</div>
+
 <div class="me-3">
     <a href="?category=Frappe (cream base)" class="btn btn-light border-0 <?php echo $selectedCategory == 'Frappe (cream base)' ? 'active' : ''; ?>">
         <i class="fas fa-ice-cream me-2"></i> Frappe (cream)

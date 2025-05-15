@@ -184,31 +184,29 @@ if ($eveningCount > 0) {
     $timeLabels[] = 'Evening';
     $timeData[] = $eveningPercentage;
 }
-
-// Fetch data from `menu1`, `order_items`, and `orders` tables
+// Fetch counts of food and drink orders by month
 $query = "
     SELECT 
         DATE_FORMAT(o.created_at, '%Y-%m') AS month,
         m.type, 
-        COUNT(oi.item_id) AS count
+        COUNT(*) AS count
     FROM 
-        menu1 m
+        orders o
     JOIN 
-        order_items oi ON m.id = oi.item_id
+        order_items oi ON o.order_id = oi.order_id
     JOIN 
-        orders o ON oi.order_id = o.order_id
+        menu1 m ON oi.item_id = m.id
     WHERE 
         o.status = 'rate us'
         AND o.created_at BETWEEN ? AND ?
+        AND m.type IN ('food', 'drink')
     GROUP BY 
         month, m.type
     ORDER BY 
         month;
 ";
+
 $stmt = $conn->prepare($query);
-if (!$stmt) {
-    die("SQL Error: " . $conn->error);
-}
 $stmt->bind_param("ss", $dateFrom, $dateTo);
 $stmt->execute();
 $result = $stmt->get_result();
@@ -228,20 +226,23 @@ while ($row = $result->fetch_assoc()) {
         $drinkData[$month] = $row['count'];
     }
 }
+
 $stmt->close();
 
-// Prepare data for the chart
+// Ensure the chart gets 0 for months with no orders for that type
 $foodCounts = [];
 $drinkCounts = [];
+
 foreach ($labelsFoodDrink as $month) {
-    $foodCounts[] = $foodData[$month] ?? 0;
-    $drinkCounts[] = $drinkData[$month] ?? 0;
+    $foodCounts[] = isset($foodData[$month]) ? $foodData[$month] : 0;
+    $drinkCounts[] = isset($drinkData[$month]) ? $drinkData[$month] : 0;
 }
+
 
 // Initialize date range variables
 $dateFrom = isset($_GET['date_from']) ? $_GET['date_from'] : date('Y-m-01'); // Default: Start of the current month
 $dateTo = isset($_GET['date_to']) ? $_GET['date_to'] : date('Y-m-t'); // Default: End of the current month
-
+// Fetch top 4 most ordered food items
 $topFoodQuery = "
     SELECT 
         m.name, 
@@ -253,12 +254,13 @@ $topFoodQuery = "
         menu1 m ON oi.item_id = m.id
     JOIN 
         orders o ON oi.order_id = o.order_id
-    WHERE 
-        o.status = 'rate us'
-        AND o.created_at BETWEEN ? AND ?
-        AND m.type = 'food'
+   WHERE 
+    o.status = 'rate us'
+    AND o.created_at BETWEEN ? AND ?
+    AND m.type IN ('food', 'drink')
+
     GROUP BY 
-        oi.item_id
+        m.id, m.name, m.price
     ORDER BY 
         order_count DESC
     LIMIT 4;
@@ -277,41 +279,42 @@ while ($row = $topFoodResult->fetch_assoc()) {
 }
 $stmtTopFood->close();
 
-//orders
-// 
-// Fetch data for the last 6 days
-$last6DaysCount = 0;
-for ($i = 1; $i <= 6; $i++) {
-    $date = date('Y-m-d', strtotime("-$i days"));
-    $query = "SELECT COUNT(*) as count FROM orders 
-              WHERE status = 'rate us' 
-              AND DATE(created_at) = ?";
-    $stmt = $conn->prepare($query);
-    $stmt->bind_param("s", $date);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $last6DaysCount += $result->fetch_assoc()['count'];
-    $stmt->close();
+// Fetch order count for the selected date range
+$orderCountQuery = "SELECT COUNT(*) as count FROM orders 
+                   WHERE status = 'rate us' 
+                   AND created_at BETWEEN ? AND ?";
+$stmtOrderCount = $conn->prepare($orderCountQuery);
+if (!$stmtOrderCount) {
+    die("SQL Error (Order Count): " . $conn->error);
 }
+$stmtOrderCount->bind_param("ss", $dateFrom, $dateTo);
+$stmtOrderCount->execute();
+$orderCountResult = $stmtOrderCount->get_result();
+$orderCount = $orderCountResult->fetch_assoc()['count'];
+$stmtOrderCount->close();
 
-// Fetch data for last week (7 days ago)
-$lastWeekDate = date('Y-m-d', strtotime('-1 week'));
-$lastWeekQuery = "SELECT COUNT(*) as count FROM orders 
-                  WHERE status = 'rate us' 
-                  AND DATE(created_at) = ?";
-$stmtLastWeek = $conn->prepare($lastWeekQuery);
-$stmtLastWeek->bind_param("s", $lastWeekDate);
-$stmtLastWeek->execute();
-$lastWeekResult = $stmtLastWeek->get_result();
-$lastWeekCount = $lastWeekResult->fetch_assoc()['count'];
-$stmtLastWeek->close();
+// Fetch order count for the previous comparable period (same duration before dateFrom)
+$prevDateFrom = date('Y-m-d', strtotime($dateFrom . ' -' . (strtotime($dateTo) - strtotime($dateFrom) . ' seconds')));
+$prevDateTo = date('Y-m-d', strtotime($dateFrom . ' -1 day'));
 
-// Calculate percentage change compared to last week
+$prevOrderCountQuery = "SELECT COUNT(*) as count FROM orders 
+                       WHERE status = 'rate us' 
+                       AND created_at BETWEEN ? AND ?";
+$stmtPrevOrderCount = $conn->prepare($prevOrderCountQuery);
+if (!$stmtPrevOrderCount) {
+    die("SQL Error (Previous Order Count): " . $conn->error);
+}
+$stmtPrevOrderCount->bind_param("ss", $prevDateFrom, $prevDateTo);
+$stmtPrevOrderCount->execute();
+$prevOrderCountResult = $stmtPrevOrderCount->get_result();
+$prevOrderCount = $prevOrderCountResult->fetch_assoc()['count'] ?? 0;
+$stmtPrevOrderCount->close();
+
+// Calculate percentage change compared to previous period
 $percentageChange = 0;
-if ($lastWeekCount > 0) {
-    $percentageChange = (($last6DaysCount - $lastWeekCount) / $lastWeekCount) * 100;
+if ($prevOrderCount > 0) {
+    $percentageChange = (($orderCount - $prevOrderCount) / $prevOrderCount) * 100;
 }
-
 //cards
 // Fetch total sales for today
 $today = date('Y-m-d');
@@ -424,414 +427,355 @@ $conn->close();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reservation, Time, Revenue, and Food/Drinks Charts</title>
+    <title>Performance Report</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <script src="https://kit.fontawesome.com/a076d05399.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         body {
-         
             display: flex;
             flex-direction: column;
-        
             font-family: 'Poppins', sans-serif;
+            background-color: #f8f9fa;
         }
         .chart-container {
             border: 1px solid #dee2e6;
             border-radius: 10px;
             padding: 20px;
             margin-bottom: 20px;
+            background-color: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
         }
-
-      
-        .chart-container {
+        .card-stat {
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+            border: none;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+        .stat-label {
+            font-size: 0.9rem;
+            color: #6c757d;
+        }
+        .stat-change {
+            font-size: 0.85rem;
+        }
+        .stat-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 10px;
+        }
+        .page-title {
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+        }
+        .page-title span {
+            position: relative;
+        }
+        .page-title span:after {
+            content: '';
+            position: absolute;
+            bottom: -5px;
+            left: 0;
             width: 100%;
-            max-width: 500px;
-            margin: auto;
+            height: 3px;
+            background-color: #FF902B;
         }
-      
-        .card {
-            height: 100%;
+        @media (max-width: 768px) {
+            .stat-cards {
+                flex-direction: column;
+            }
+            .stat-card {
+                width: 100%;
+                margin-bottom: 15px;
+            }
+            .chart-row {
+                flex-direction: column;
+            }
+            .chart-col {
+                margin-bottom: 15px;
+            }
         }
-        .row-equal-height {
-            display: flex;
-            flex-wrap: wrap;
-        }
-        .row-equal-height > [class*='col-'] {
-            display: flex;
-            flex-direction: column;
-        }
-
-        .chart-container {
-    width: 100%; /* Ensure full width */
-    height: 400px; /* Set a fixed height or use min-height */
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-}
-   
     </style>
 </head>
-
-
 <body>
-<div class="container-fluid d-flex flex-column p-5">
-<h2 class="m-4" style="color: black;">
-    Performance <span style="border-bottom: 3px solid #FF902B;" >Report</span>
-</h2>
-    <!-- Date Filter at Top Right -->
-    <div class="d-flex justify-content-end mb-4">
-    <form method="GET" action="" class="d-flex align-items-center gap-3 p-3 rounded ">
-        <div class="d-flex align-items-center gap-2">
-            <label for="date_from" class="form-label mb-0">From:</label>
-            <input type="date" id="date_from" name="date_from" value="<?php echo $dateFrom; ?>" required class="form-control form-control-sm">
-        </div>
-        <div class="d-flex align-items-center gap-2">
-            <label for="date_to" class="form-label mb-0">To:</label>
-            <input type="date" id="date_to" name="date_to" value="<?php echo $dateTo; ?>" required class="form-control form-control-sm">
-        </div>
-        <button type="submit" class="btn btn-primary btn-sm">Apply Filter</button>
-    </form>
-</div>
-    <!-- Display Selected Date Range -->
-    <!-- <div class="date-range mb-4 text-center">
-        Showing data from <strong><?php echo $dateFrom; ?></strong> to <strong><?php echo $dateTo; ?></strong> -->
-    <!-- </div> -->
+<div class="px-5 mx-3">
 
- <!-- Section 1: Cards -->
-<div class="row mb-4 ">
+
+<div class="container-fluid py-4 ">
+<div class="row mb-4">
     <div class="col-12">
-        <div class="d-flex flex-row gap-3 px-5 " >
-            <!-- Total Sales Card -->
-            <div class="card p-3" style="width: 200px; background-color: #FFE2E5; outline: none; border: none; box-shadow: none;">
-                <div class="symbol mb-2" style="width: 40px; height: 40px; background-color: #FA5A7D; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
-                    <i class="fas fa-dollar-sign text-white"></i>
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-center text-center text-md-left">
+            <h2 class="page-title m-0 mb-2 mb-md-0">Performance <span>Report</span></h2>
+            <form method="GET" action="" class="d-flex flex-column flex-sm-row align-items-center gap-2">
+                <div class="input-group input-group-sm mb-2 mb-sm-0 mr-sm-2">
+                    <span class="input-group-text">From</span>
+                    <input type="date" id="date_from" name="date_from" value="<?php echo $dateFrom; ?>" class="form-control">
                 </div>
-                <div class="total fs-4 fw-bold"><?php echo number_format($totalSalesToday, 2); ?></div>
-                <div class="label text-muted">Total Sales</div>
-                <div class="percentage fs-6" style="color: <?php echo ($salesPercentageDifference >= 0) ? '#4079ED' : 'red'; ?>;">
-                    <?php echo ($salesPercentageDifference >= 0) ? '▲' : '▼'; ?> <?php echo number_format(abs($salesPercentageDifference), 2); ?>% from yesterday
+                <div class="input-group input-group-sm mb-2 mb-sm-0 mr-sm-2">
+                    <span class="input-group-text">To</span>
+                    <input type="date" id="date_to" name="date_to" value="<?php echo $dateTo; ?>" class="form-control">
                 </div>
-            </div>
-
-            <!-- Total Orders Card -->
-            <div class="card p-3" style="width: 200px; background-color: #FFF4DE; outline: none; border: none; box-shadow: none;">
-                <div class="symbol mb-2" style="width: 40px; height: 40px; background-color: #FF947A; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
-                    <i class="fas fa-shopping-cart text-white"></i>
-                </div>
-                <div class="total fs-4 fw-bold"><?php echo $totalOrdersToday; ?></div>
-                <div class="label text-muted">Total Orders</div>
-                <div class="percentage fs-6" style="color: <?php echo ($ordersPercentageDifference >= 0) ? '#4079ED' : 'red'; ?>;">
-                    <?php echo ($ordersPercentageDifference >= 0) ? '▲' : '▼'; ?> <?php echo number_format(abs($ordersPercentageDifference), 2); ?>% from yesterday
-                </div>
-            </div>
-
-            <!-- Products Sold Card -->
-            <div class="card p-3"style="width: 200px; background-color: #DCFCE7; outline: none; border: none; box-shadow: none;">
-                <div class="symbol mb-2" style="width: 40px; height: 40px; background-color: #3CD856; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
-                    <i class="fas fa-box text-white"></i>
-                </div>
-                <div class="total fs-4 fw-bold"><?php echo $totalProductsSoldToday; ?></div>
-                <div class="label text-muted">Products Sold</div>
-                <div class="percentage fs-6" style="color: <?php echo ($productsSoldPercentageDifference >= 0) ? '#4079ED' : 'red'; ?>;">
-                    <?php echo ($productsSoldPercentageDifference >= 0) ? '▲' : '▼'; ?> <?php echo number_format(abs($productsSoldPercentageDifference), 2); ?>% from yesterday
-                </div>
-            </div>
-
-            <!-- New Customers Card -->
-            <div class="card p-3" style="width: 200px; background-color: #F3E8FF; outline: none; border: none; box-shadow: none;">
-                <div class="symbol mb-2" style="width: 40px; height: 40px; background-color: #BF83FF; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
-                    <i class="fas fa-users text-white"></i>
-                </div>
-                <div class="total fs-4 fw-bold"><?php echo $newCustomersToday; ?></div>
-                <div class="label text-muted">New Customers</div>
-                <div class="percentage fs-6" style="color: <?php echo ($newCustomersPercentageDifference >= 0) ? '#4079ED' : 'red'; ?>;">
-                    <?php echo ($newCustomersPercentageDifference >= 0) ? '▲' : '▼'; ?> <?php echo number_format(abs($newCustomersPercentageDifference), 2); ?>% from yesterday
-                </div>
-            </div>
+                <button type="submit" class="btn btn-primary btn-sm">Apply</button>
+            </form>
         </div>
     </div>
 </div>
 
-    <!-- Section 2: Revenue, Food and Drink, Orders -->
+    <!-- Stat Cards -->
     <div class="row mb-4">
         <div class="col-12">
-            <div class="d-flex flex-row gap-3">
-    <!-- Revenue Chart -->
-<div class="chart-container border border-2 flex-fill p-3" style="min-width: 0;">
-    <h5 class="text-dark">Revenue</h5>
-    <p class="text-dark fs-3">Total <?php echo number_format($currentRevenue, 2); ?></p>
-    <div style="color: <?php echo ($percentageChange >= 0) ? 'green' : 'red'; ?>;">
-        <?php echo ($percentageChange >= 0) ? '▲' : '▼'; ?> <?php echo number_format(abs($percentageChange), 2); ?>% <span class="text-muted">vs last month</span>
-    </div>
-    <canvas id="revenueChart"></canvas>
-</div>
+            <div class="row stat-cards">
+                <!-- Total Sales Card -->
+                <div class="col-md-3 col-sm-6 mb-3">
+                    <div class="card-stat" style="background-color: #FFE2E5;">
+                        <div class="stat-icon" style="background-color: #FA5A7D;">
+                            <i class="fas fa-dollar-sign text-white"></i>
+                        </div>
+                        <div class="stat-value"><?php echo number_format($totalSalesToday, 2); ?></div>
+                        <div class="stat-label">Total Sales</div>
+                        <div class="stat-change" style="color: <?php echo ($salesPercentageDifference >= 0) ? '#4079ED' : 'red'; ?>;">
+                            <?php echo ($salesPercentageDifference >= 0) ? '▲' : '▼'; ?> <?php echo number_format(abs($salesPercentageDifference), 2); ?>% from yesterday
+                        </div>
+                    </div>
+                </div>
 
-                <!-- Food and Drinks Line Chart -->
-                <div class="chart-container border border-2 flex-fill p-3" style="min-width: 0;">
-    <h2 class="p-1 fs-6">Food and Drinks Line Chart</h2>
-    <?php if (count($labelsFoodDrink) > 0): ?>
-        <canvas id="foodDrinksChart"></canvas>
-        <!-- Custom Legend Below the Chart -->
-        <div class="d-flex justify-content-center gap-3 mt-3 p-2">
-            <div>
-                <span style="display: inline-block; width: 10px; height: 10px; background-color: #EF4444; "></span>
-                Food
-            </div>
-            <div>
-                <span style="display: inline-block; width: 10px; height: 10px; background-color: #A700FF; "></span>
-                Drinks
+                <!-- Total Orders Card -->
+                <div class="col-md-3 col-sm-6 mb-3">
+                    <div class="card-stat" style="background-color: #FFF4DE;">
+                        <div class="stat-icon" style="background-color: #FF947A;">
+                            <i class="fas fa-shopping-cart text-white"></i>
+                        </div>
+                        <div class="stat-value"><?php echo $totalOrdersToday; ?></div>
+                        <div class="stat-label">Total Orders</div>
+                        <div class="stat-change" style="color: <?php echo ($ordersPercentageDifference >= 0) ? '#4079ED' : 'red'; ?>;">
+                            <?php echo ($ordersPercentageDifference >= 0) ? '▲' : '▼'; ?> <?php echo number_format(abs($ordersPercentageDifference), 2); ?>% from yesterday
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Products Sold Card -->
+                <div class="col-md-3 col-sm-6 mb-3">
+                    <div class="card-stat" style="background-color: #DCFCE7;">
+                        <div class="stat-icon" style="background-color: #3CD856;">
+                            <i class="fas fa-box text-white"></i>
+                        </div>
+                        <div class="stat-value"><?php echo $totalProductsSoldToday; ?></div>
+                        <div class="stat-label">Products Sold</div>
+                        <div class="stat-change" style="color: <?php echo ($productsSoldPercentageDifference >= 0) ? '#4079ED' : 'red'; ?>;">
+                            <?php echo ($productsSoldPercentageDifference >= 0) ? '▲' : '▼'; ?> <?php echo number_format(abs($productsSoldPercentageDifference), 2); ?>% from yesterday
+                        </div>
+                    </div>
+                </div>
+
+                <!-- New Customers Card -->
+                <div class="col-md-3 col-sm-6 mb-3">
+                    <div class="card-stat" style="background-color: #F3E8FF;">
+                        <div class="stat-icon" style="background-color: #BF83FF;">
+                            <i class="fas fa-users text-white"></i>
+                        </div>
+                        <div class="stat-value"><?php echo $newCustomersToday; ?></div>
+                        <div class="stat-label">New Customers</div>
+                        <div class="stat-change" style="color: <?php echo ($newCustomersPercentageDifference >= 0) ? '#4079ED' : 'red'; ?>;">
+                            <?php echo ($newCustomersPercentageDifference >= 0) ? '▲' : '▼'; ?> <?php echo number_format(abs($newCustomersPercentageDifference), 2); ?>% from yesterday
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
-    <?php else: ?>
-        <div class="text-center text-muted">No data available</div>
-    <?php endif; ?>
-</div>
-                <!-- Orders Chart -->
-                <div class="chart-container border border-2 flex-fill p-3" style="min-width: 0;">
-                    <h2 class="fs-6">Order</h2>
-                    <p class="fs-4 bold"><?php echo $last6DaysCount + $lastWeekCount; ?></p>
-                    <div class="" style="color: <?php echo ($percentageChange >= 0) ? 'green' : 'red'; ?>;">
-                        <?php echo ($percentageChange >= 0) ? '▲' : '▼'; ?> <?php echo number_format(abs($percentageChange), 2); ?>% vs  <span class="text-muted">last week</span>
+    </div>
+
+    <!-- Main Charts Row 1 -->
+    <div class="row mb-4 chart-row">
+        <!-- Revenue Chart -->
+        <div class="col-lg-4 col-md-6 mb-3 chart-col">
+            <div class="chart-container h-100">
+                <h5 class="text-dark">Revenue</h5>
+                <p class="text-dark fs-3">Total <?php echo number_format($currentRevenue, 2); ?></p>
+                <div style="color: <?php echo ($percentageChange >= 0) ? 'green' : 'red'; ?>;">
+                    <?php echo ($percentageChange >= 0) ? '▲' : '▼'; ?> <?php echo number_format(abs($percentageChange), 2); ?>% <span class="text-muted">vs last month</span>
+                </div>
+                <div class="chart-wrapper" style="height: 200px;">
+                    <canvas id="revenueChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Food and Drinks Line Chart -->
+        <div class="col-lg-4 col-md-6 mb-3 chart-col">
+            <div class="chart-container h-100">
+                <h5 class="mb-2">Food and Drinks</h5>
+                <?php if (count($labelsFoodDrink) > 0): ?>
+                    <div class="chart-wrapper" style="height: 200px;">
+                        <canvas id="foodDrinksChart"></canvas>
                     </div>
-                    <canvas id="orderComparisonChart"></canvas>
                     <div class="d-flex justify-content-center gap-3 mt-3">
-                        <div>
-                            <span style="display: inline-block; width: 12px; height: 12px; background-color: #FF902B; border-radius: 50%;"></span>
-                            Last 6 Days
+                        <div class="d-flex align-items-center">
+                            <span style="display: inline-block; width: 10px; height: 10px; background-color: #EF4444; margin-right: 5px;"></span>
+                            <small>Food</small>
                         </div>
-                        <div>
-                            <span style="display: inline-block; width: 12px; height: 12px; background-color: #D8D9DB; border-radius: 50%;"></span>
-                            Last Week
+                        <div class="d-flex align-items-center">
+                            <span style="display: inline-block; width: 10px; height: 10px; background-color: #A700FF; margin-right: 5px;"></span>
+                            <small>Drinks</small>
                         </div>
                     </div>
+                <?php else: ?>
+                    <div class="text-center text-muted my-5">No data available</div>
+                <?php endif; ?>
+            </div>
+        </div>
+
+       <!-- Orders Chart -->
+<div class="col-lg-4 col-md-6 mb-3 chart-col">
+    <div class="chart-container h-100">
+        <h5 class="mb-2">Orders</h5>
+        <p class="fs-3 fw-bold"><?php echo $orderCount; ?></p>
+        <div style="color: <?php echo ($percentageChange >= 0) ? 'green' : 'red'; ?>;">
+            <?php echo ($percentageChange >= 0) ? '▲' : '▼'; ?> <?php echo number_format(abs($percentageChange), 2); ?>% <span class="text-muted">vs previous period</span>
+        </div>
+        <div class="chart-wrapper" style="height: 200px;">
+            <canvas id="orderComparisonChart"></canvas>
+        </div>
+        <div class="d-flex justify-content-center gap-3 mt-2">
+            <div class="d-flex align-items-center">
+                <span style="display: inline-block; width: 12px; height: 12px; background-color: #FF902B; border-radius: 50%; margin-right: 5px;"></span>
+                <small>Selected Period</small>
+            </div>
+            <div class="d-flex align-items-center">
+                <span style="display: inline-block; width: 12px; height: 12px; background-color: #D8D9DB; border-radius: 50%; margin-right: 5px;"></span>
+                <small>Previous Period</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+    <!-- Main Charts Row 2 -->
+    <div class="row mb-4 chart-row">
+        <!-- Most Ordered Food -->
+        <div class="col-lg-4 col-md-6 mb-3 chart-col">
+            <div class="chart-container h-100">
+                <h5 class="mb-3">Most Ordered Food</h5>
+                <p class="text-muted small mb-3">Best seller and crowd favorite!</p>
+                <?php if (count($topFoodItems) > 0): ?>
+                    <?php foreach ($topFoodItems as $item): ?>
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="fw-bold"><?php echo htmlspecialchars($item['name']); ?></span>
+                            <span class="text-muted">₱<?php echo htmlspecialchars($item['price']); ?></span>
+                        </div>
+                    <?php endforeach; ?>
+                <?php else: ?>
+                    <div class="text-center text-muted my-5">No data available</div>
+                <?php endif; ?>
+            </div>
+        </div>
+
+        <!-- Order Time Distribution -->
+        <div class="col-lg-4 col-md-6 mb-3 chart-col">
+            <div class="chart-container h-100">
+                <h5 class="mb-3">Order Time Distribution</h5>
+                <?php if (count($timeLabels) > 0): ?>
+                    <div class="chart-wrapper" style="height: 200px;">
+                        <canvas id="timeChart"></canvas>
+                    </div>
+                    <div class="d-flex justify-content-center flex-wrap gap-3 mt-3" id="timeChartLegend"></div>
+                <?php else: ?>
+                    <div class="text-center text-muted my-5">No data available</div>
+                <?php endif; ?>
+            </div>
+        </div>
+
+        <!-- Reservation/Order Type -->
+        <div class="col-lg-4 col-md-6 mb-3 chart-col">
+            <div class="chart-container h-100">
+                <h5 class="mb-3">Reservation/Order Type</h5>
+                <?php if ($totalCount == 0): ?>
+                    <div class="text-center text-muted my-5">No data available</div>
+                <?php else: ?>
+                    <div class="chart-wrapper" style="height: 200px;">
+                        <canvas id="reservationChart"></canvas>
+                    </div>
+                    <div class="d-flex justify-content-center flex-wrap gap-3 mt-3" id="chartLegend"></div>
+                <?php endif; ?>
+            </div>
+        </div>
                 </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Section 3: Most Ordered Food and Donut Charts -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="d-flex flex-row gap-3">
-                <!-- Most Ordered Food -->
-           
-<div class="chart-container border border-2 flex-fill p-3" style="min-width: 0;">
-    <h2 class="fs-6 mb-2 p-1">Most Ordered Food<br>
-        <span class="fs-7 text-muted">Best seller and crowd favorite!</span>
-    </h2>
-    <div>
-        <?php if (count($topFoodItems) > 0): ?>
-            <?php foreach ($topFoodItems as $item): ?>
-                <div class="d-flex justify-content-between align-items-center text-center">
-                    <span class="fw-bold"><?php echo htmlspecialchars($item['name']); ?></span>
-                    <span class="text-muted"><?php echo htmlspecialchars($item['price']); ?></span>
-                </div>
-            <?php endforeach; ?>
-        <?php else: ?>
-            <div class="text-center text-muted">No data available</div>
-        <?php endif; ?>
-    </div>
 </div>
-             <!-- Order Time Distribution -->
-<div class="chart-container border border-2 flex-fill p-3" style="min-width: 0;">
-    <h2 class=" p-1 fs-6 ">Order Time Distribution</h2>
-    <?php if (count($timeLabels) > 0): ?>
-        <div class="d-flex justify-content-center" style="height: 15rem; width: 100%;"> 
-            <canvas id="timeChart"  class="w-100 h-100"></canvas>
-        </div>
-        <div class="d-flex justify-content-center gap-3 mt-3 p-2" id="timeChartLegend"></div>
-    <?php else: ?>
-        <div class="text-center text-muted">No data available</div>
-    <?php endif; ?>
 </div>
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 
- 
-
-
-
-
-<div class="chart-container bordborder er-2 flex-fill p-3" style="min-width: 0;">
-    
-        <h2 class=" p-1 fs-6">Reservation/Order Type</h2>
-        <?php if ($totalCount == 0): ?>
-            <div class="text-center text-muted bg-light p-2">No data available</div>
-        <?php else: ?>
-            <div class="d-flex justify-content-center" style="height: 15rem; width: 100%;"> 
-                <canvas id="reservationChart" class="w-100 h-100"></canvas>
-            </div>
-            <div class="d-flex justify-content-center gap-3 mt-3 p-2" id="chartLegend"></div>
-        <?php endif; ?>
-   
-</div>
-
-
-            </div>
-        </div>
-    </div>
-</div>
-    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
-    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
-
-    <script>
-        // Frontend: Chart.js Line Chart for Order Comparison
-        const orderComparisonCtx = document.getElementById('orderComparisonChart').getContext('2d');
-        const orderComparisonChart = new Chart(orderComparisonCtx, {
-            type: 'line',
-            data: {
-                labels: ['Last 6 Days', 'Last Week'],
-                datasets: [{
-                    label: 'Number of Orders',
-                    data: [<?php echo $last6DaysCount; ?>, <?php echo $lastWeekCount; ?>],
-                    borderColor: ['#FF902B', '#D8D9DB'],
-                    backgroundColor: ['#FF902B', '#D8D9DB'],
-                    fill: false,
-                    pointRadius: 5,
-                    pointHoverRadius: 7
-                }]
-            },
-            options: {
-                responsive: true,
-                plugins: {
-                    tooltip: {
-                        enabled: false
-                    },
-                    legend: {
-                        display: false
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: {
-                            stepSize: 1
-                        }
+<script>
+  // Frontend: Chart.js Line Chart for Order Comparison
+const orderComparisonCtx = document.getElementById('orderComparisonChart').getContext('2d');
+const orderComparisonChart = new Chart(orderComparisonCtx, {
+    type: 'bar',
+    data: {
+        labels: ['Previous Period', 'Selected Period'],
+        datasets: [{
+            label: 'Number of Orders',
+            data: [<?php echo $prevOrderCount; ?>, <?php echo $orderCount; ?>],
+            backgroundColor: ['#D8D9DB', '#FF902B'],
+            borderColor: ['#D8D9DB', '#FF902B'],
+            borderWidth: 1
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            tooltip: {
+                enabled: true,
+                callbacks: {
+                    label: function(context) {
+                        return context.raw + ' orders';
                     }
                 }
-            }
-        });
-
-        // Frontend: Chart.js Donut Chart for Reservation Types
-        const ctx = document.getElementById('reservationChart').getContext('2d');
-        const reservationChart = new Chart(ctx, {
-            type: 'doughnut',
-            data: {
-                labels: <?php echo json_encode($labels); ?>,
-                datasets: [{
-                    label: 'Reservation Types',
-                    data: <?php echo json_encode($data); ?>,
-                    backgroundColor: <?php echo json_encode($colors); ?>,
-                    borderColor: <?php echo json_encode($colors); ?>,
-                    borderWidth: 1
-                }]
             },
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: {
-                        display: false,
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                let label = context.label || '';
-                                if (label) {
-                                    label += ': ';
-                                }
-                                label += context.raw.toFixed(2) + '%';
-                                return label;
-                            }
-                        }
-                    }
+            legend: {
+                display: false
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    stepSize: 1
                 }
             }
-        });
+        }
+    }
+});
 
-        // Custom Legend for Reservation Types
-        const chartLegend = document.getElementById('chartLegend');
-        const legendItems = <?php echo json_encode($labels); ?>;
-        const legendColors = <?php echo json_encode($colors); ?>;
-
-        legendItems.forEach((item, index) => {
-            const legendItem = document.createElement('div');
-            legendItem.innerHTML = `
-                <span style="display: inline-block; width: 12px; height: 12px; background-color: ${legendColors[index]}; border-radius: 50%;"></span>
-                ${item} (${reservationChart.data.datasets[0].data[index].toFixed(2)}%)
-            `;
-            chartLegend.appendChild(legendItem);
-        });
-
-        // Frontend: Chart.js Donut Chart for Time Periods
-        const timeCtx = document.getElementById('timeChart').getContext('2d');
-        const timeChart = new Chart(timeCtx, {
-            type: 'doughnut',
-            data: {
-                labels: <?php echo json_encode($timeLabels); ?>,
-                datasets: [{
-                    label: 'Order Time Periods',
-                    data: <?php echo json_encode($timeData); ?>,
-                    backgroundColor: <?php echo json_encode($timeColors); ?>,
-                    borderColor: <?php echo json_encode($timeColors); ?>,
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: {
-                        display: false,
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                let label = context.label || '';
-                                if (label) {
-                                    label += ': ';
-                                }
-                                label += context.raw.toFixed(2) + '%';
-                                return label;
-                            }
-                        }
-                    }
-                }
-            }
-        });
-
-        // Custom Legend for Time Periods
-        const timeChartLegend = document.getElementById('timeChartLegend');
-        const timeLegendItems = <?php echo json_encode($timeLabels); ?>;
-        const timeLegendColors = <?php echo json_encode($timeColors); ?>;
-
-        timeLegendItems.forEach((item, index) => {
-            const legendItem = document.createElement('div');
-            legendItem.innerHTML = `
-                <span style="display: inline-block; width: 12px; height: 12px; background-color: ${timeLegendColors[index]}; border-radius: 50%;"></span>
-                ${item} (${timeChart.data.datasets[0].data[index].toFixed(2)}%)
-            `;
-            timeChartLegend.appendChild(legendItem);
-        });
-
-       // Frontend: Chart.js Bar Chart for Total Revenue
-    const revenueCtx = document.getElementById('revenueChart').getContext('2d');
-    const revenueChart = new Chart(revenueCtx, {
-        type: 'bar',
+    // Frontend: Chart.js Donut Chart for Reservation Types
+    const ctx = document.getElementById('reservationChart').getContext('2d');
+    const reservationChart = new Chart(ctx, {
+        type: 'doughnut',
         data: {
-            labels: ['Last Month', 'Current Month'], // Labels for the bars
+            labels: <?php echo json_encode($labels); ?>,
             datasets: [{
-                label: 'Total Revenue',
-                data: [<?php echo $previousRevenue; ?>, <?php echo $currentRevenue; ?>], // Data for last month and current month
-                backgroundColor: ['#D8D9DB', '#FF902B'], // Colors for the bars
-                borderColor: ['#D8D9DB', '#FF902B'],
+                label: 'Reservation Types',
+                data: <?php echo json_encode($data); ?>,
+                backgroundColor: <?php echo json_encode($colors); ?>,
+                borderColor: <?php echo json_encode($colors); ?>,
                 borderWidth: 1
             }]
         },
         options: {
             responsive: true,
+            maintainAspectRatio: false,
             plugins: {
                 legend: {
-                    display: false, // Hide the legend
+                    display: false,
                 },
                 tooltip: {
                     callbacks: {
@@ -840,7 +784,111 @@ $conn->close();
                             if (label) {
                                 label += ': ';
                             }
-                            label += 'P' + context.raw.toFixed(2); // Display revenue in tooltip
+                            label += context.raw.toFixed(2) + '%';
+                            return label;
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // Custom Legend for Reservation Types
+    const chartLegend = document.getElementById('chartLegend');
+    const legendItems = <?php echo json_encode($labels); ?>;
+    const legendColors = <?php echo json_encode($colors); ?>;
+
+    legendItems.forEach((item, index) => {
+        const legendItem = document.createElement('div');
+        legendItem.className = 'd-flex align-items-center';
+        legendItem.innerHTML = `
+            <span style="display: inline-block; width: 12px; height: 12px; background-color: ${legendColors[index]}; border-radius: 50%; margin-right: 5px;"></span>
+            <small>${item} (${reservationChart.data.datasets[0].data[index].toFixed(2)}%)</small>
+        `;
+        chartLegend.appendChild(legendItem);
+    });
+
+    // Frontend: Chart.js Donut Chart for Time Periods
+    const timeCtx = document.getElementById('timeChart').getContext('2d');
+    const timeChart = new Chart(timeCtx, {
+        type: 'doughnut',
+        data: {
+            labels: <?php echo json_encode($timeLabels); ?>,
+            datasets: [{
+                label: 'Order Time Periods',
+                data: <?php echo json_encode($timeData); ?>,
+                backgroundColor: <?php echo json_encode($timeColors); ?>,
+                borderColor: <?php echo json_encode($timeColors); ?>,
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false,
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.label || '';
+                            if (label) {
+                                label += ': ';
+                            }
+                            label += context.raw.toFixed(2) + '%';
+                            return label;
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // Custom Legend for Time Periods
+    const timeChartLegend = document.getElementById('timeChartLegend');
+    const timeLegendItems = <?php echo json_encode($timeLabels); ?>;
+    const timeLegendColors = <?php echo json_encode($timeColors); ?>;
+
+    timeLegendItems.forEach((item, index) => {
+        const legendItem = document.createElement('div');
+        legendItem.className = 'd-flex align-items-center';
+        legendItem.innerHTML = `
+            <span style="display: inline-block; width: 12px; height: 12px; background-color: ${timeLegendColors[index]}; border-radius: 50%; margin-right: 5px;"></span>
+            <small>${item} (${timeChart.data.datasets[0].data[index].toFixed(2)}%)</small>
+        `;
+        timeChartLegend.appendChild(legendItem);
+    });
+
+    // Frontend: Chart.js Bar Chart for Total Revenue
+    const revenueCtx = document.getElementById('revenueChart').getContext('2d');
+    const revenueChart = new Chart(revenueCtx, {
+        type: 'bar',
+        data: {
+            labels: ['Last Month', 'Current Month'],
+            datasets: [{
+                label: 'Total Revenue',
+                data: [<?php echo $previousRevenue; ?>, <?php echo $currentRevenue; ?>],
+                backgroundColor: ['#D8D9DB', '#FF902B'],
+                borderColor: ['#D8D9DB', '#FF902B'],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false,
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.label || '';
+                            if (label) {
+                                label += ': ';
+                            }
+                            label += '₱' + context.raw.toFixed(2);
                             return label;
                         }
                     }
@@ -848,53 +896,55 @@ $conn->close();
             },
             scales: {
                 y: {
-                    beginAtZero: true // Start the y-axis from zero
+                    beginAtZero: true
                 }
             }
         }
     });
-// Frontend: Chart.js Line Chart for Food and Drinks
-const foodDrinksCtx = document.getElementById('foodDrinksChart').getContext('2d');
-const foodDrinksChart = new Chart(foodDrinksCtx, {
-    type: 'line',
-    data: {
-        labels: <?php echo json_encode($labelsFoodDrink); ?>,
-        datasets: [{
-            label: 'Food',
-            data: <?php echo json_encode($foodCounts); ?>,
-            borderColor: '#EF4444',
-            backgroundColor: '#EF4444',
-            fill: false,
-            pointRadius: 3,
-            pointHoverRadius: 7
+
+    // Frontend: Chart.js Line Chart for Food and Drinks
+    const foodDrinksCtx = document.getElementById('foodDrinksChart').getContext('2d');
+    const foodDrinksChart = new Chart(foodDrinksCtx, {
+        type: 'line',
+        data: {
+            labels: <?php echo json_encode($labelsFoodDrink); ?>,
+            datasets: [{
+                label: 'Food',
+                data: <?php echo json_encode($foodCounts); ?>,
+                borderColor: '#EF4444',
+                backgroundColor: '#EF4444',
+                fill: false,
+                pointRadius: 3,
+                pointHoverRadius: 7
+            },
+            {
+                label: 'Drinks',
+                data: <?php echo json_encode($drinkCounts); ?>,
+                borderColor: '#A700FF',
+                backgroundColor: '#A700FF',
+                fill: false,
+                pointRadius: 5,
+                pointHoverRadius: 7
+            }]
         },
-        {
-            label: 'Drinks',
-            data: <?php echo json_encode($drinkCounts); ?>,
-            borderColor: '#A700FF',
-            backgroundColor: '#A700FF',
-            fill: false,
-            pointRadius: 5,
-            pointHoverRadius: 7
-        }]
-    },
-   options: {
-    responsive: true,
-    plugins: {
-        legend: {
-            display: false // Disable the legend (labels)
-        },
-        tooltip: {
-            enabled: false // Disable tooltips
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    enabled: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
         }
-    },
-    scales: {
-        y: {
-            beginAtZero: true
-        }
-    }
-}
-});
-    </script>
+    });
+</script>
 </body>
 </html>

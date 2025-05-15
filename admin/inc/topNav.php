@@ -429,7 +429,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) ){
 <nav class="sidebar" id="sidebar">
     <ul class="sidebar-nav">
         <?php if ($role === 'owner'): ?>
+          
             <!-- Direct links for owner -->
+               <li class="sidebar-item">
+                <a href="./../views/index.php" class="sidebar-link">
+                  
+                    <span class="nav-link-text fs-5 fw-bold">Kahel Cafe</span>
+                </a>
+            </li>
             <li class="sidebar-item">
                 <a href="./../views/accountManagement.php" class="sidebar-link">
                     <i class="sidebar-icon fas fa-users-cog"></i>
@@ -472,10 +479,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) ){
                     <span class="nav-link-text">Virtual Management</span>
                 </a>
             </li>
+
+             <li class="sidebar-item">
+                <a href="../views/payment_settings.php" class="sidebar-link">
+                   <i class="sidebar-icon fas fa-money-check-alt"></i>
+
+                    <span class="nav-link-text">Payment Settings</span>
+                </a>
+            </li>
         <?php elseif ($role === 'staff'): ?>
             <!-- Direct links for staff -->
             <li class="sidebar-item">
-                <a href="./../views/accountManagement.php" class="sidebar-link">
+                <a href="./../views/index.php.php" class="sidebar-link">
                     <i class="sidebar-icon fas fa-shopping-cart"></i>
                     <span class="nav-link-text">Order Management</span>
                 </a>

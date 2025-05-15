@@ -26,5 +26,5 @@ if ($stmt->execute()) {
 
 echo json_encode($response);
 $stmt->close();
-$conn->close();
+$conn->close(); 
 ?>

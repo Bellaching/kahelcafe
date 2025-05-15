@@ -2,8 +2,6 @@
 include './../inc/topNav.php';
 include './../../connection/connection.php';
 
-
-
 // Handle backend processing first
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     header('Content-Type: application/json');
@@ -31,12 +29,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $response = deleteUser($conn, $_POST['id']);
             break;
             
+        case 'read':
+            $response = getUsers($conn);
+            break;
+            
         default:
             $response['error'] = 'Invalid action';
     }
     
     echo json_encode($response);
     exit;
+}
+
+function getUsers($conn) {
+    $query = "SELECT id, username, email, role, date_created FROM admin_list";
+    $result = $conn->query($query);
+    $users = [];
+
+    while ($row = $result->fetch_assoc()) {
+        $users[] = $row;
+    }
+
+    return ['success' => true, 'data' => $users];
 }
 
 function handleCreateUser($conn) {
@@ -156,8 +170,6 @@ function deleteUser($conn, $id) {
     return ['success' => $success, 'error' => $success ? null : 'Failed to delete user: ' . $conn->error];
 }
 ?>
-
-
 
 <!DOCTYPE html>
 <html lang="en">
@@ -837,11 +849,11 @@ $(document).ready(function() {
                 } else {
                     alert('Error updating user: ' + (response.error || 'Unknown error'));
                 }
-            },
-            error: function(xhr, status, error) {
-                console.error('Error updating user:', error);
-                alert('Error updating user. Please try again.');
             }
+            // error: function(xhr, status, error) {
+            //     console.error('Error updating user:', error);
+            //     alert('Error updating user. Please try again.');
+            // }
         });
     });
 
@@ -883,151 +895,5 @@ $(document).ready(function() {
     });
 });
 </script>
-
-<?php
-// PHP Backend Processing
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    header('Content-Type: application/json');
-    include './../../connection/connection.php';
-    
-    $response = ['success' => false];
-    
-    // Handle different actions
-    switch ($_POST['action'] ?? '') {
-        case 'create_user':
-            // Create user logic from create_user.php
-            $response = ['success' => false, 'errors' => []];
-
-            // Validate required fields
-            $required = ['email', 'username', 'password', 'role'];
-            foreach ($required as $field) {
-                if (empty($_POST[$field])) {
-                    $response['errors'][$field] = ucfirst($field) . ' is required';
-                }
-            }
-
-            // Validate email format
-            if (!filter_var($_POST['email'], FILTER_VALIDATE_EMAIL)) {
-                $response['errors']['email'] = 'Invalid email format';
-            }
-
-            // Validate username length
-            if (strlen($_POST['username']) < 4) {
-                $response['errors']['username'] = 'Username must be at least 4 characters';
-            }
-
-            // Validate password strength
-            if (strlen($_POST['password']) < 8) {
-                $response['errors']['password'] = 'Password must be at least 8 characters';
-            } elseif (!preg_match('/[A-Z]/', $_POST['password']) || 
-                     !preg_match('/[a-z]/', $_POST['password']) || 
-                     !preg_match('/[0-9]/', $_POST['password'])) {
-                $response['errors']['password'] = 'Password must contain uppercase, lowercase letters and numbers';
-            }
-
-            // Validate role
-            if (!in_array($_POST['role'], ['owner', 'staff'])) {
-                $response['errors']['role'] = 'Invalid role selected';
-            }
-
-            // Only proceed if no validation errors
-            if (empty($response['errors'])) {
-                try {
-                    // Check for existing email or username
-                    $stmt = $pdo->prepare("SELECT id FROM admin_list WHERE email = ? OR username = ?");
-                    $stmt->execute([$_POST['email'], $_POST['username']]);
-                    
-                    if ($stmt->fetch()) {
-                        // Check which one exists
-                        $stmt = $pdo->prepare("SELECT id FROM admin_list WHERE email = ?");
-                        $stmt->execute([$_POST['email']]);
-                        if ($stmt->fetch()) {
-                            $response['errors']['email'] = 'Email already exists';
-                        }
-                        
-                        $stmt = $pdo->prepare("SELECT id FROM admin_list WHERE username = ?");
-                        $stmt->execute([$_POST['username']]);
-                        if ($stmt->fetch()) {
-                            $response['errors']['username'] = 'Username already exists';
-                        }
-                    } else {
-                        // Hash the password with bcrypt
-                        $passwordHash = password_hash($_POST['password'], PASSWORD_BCRYPT);
-                        
-                        if ($passwordHash === false) {
-                            throw new Exception('Password hashing failed');
-                        }
-                        
-                        // Insert new user
-                        $stmt = $pdo->prepare("INSERT INTO admin_list 
-                                            (email, username, password, role, date_created) 
-                                            VALUES (?, ?, ?, ?, NOW())");
-                        
-                        $success = $stmt->execute([
-                            $_POST['email'],
-                            $_POST['username'],
-                            $passwordHash,
-                            $_POST['role']
-                        ]);
-                        
-                        if ($success) {
-                            $response['success'] = true;
-                            $response['message'] = 'User created successfully';
-                            $response['user_id'] = $pdo->lastInsertId();
-                        } else {
-                            $response['error'] = 'Failed to create user';
-                        }
-                    }
-                } catch (PDOException $e) {
-                    error_log("Database error: " . $e->getMessage());
-                    $response['error'] = 'Database error occurred. Please try again.';
-                }
-            }
-            break;
-            
-        case 'check_email':
-            // Check if email exists
-            $stmt = $pdo->prepare("SELECT id FROM admin_list WHERE email = ?");
-            $stmt->execute([$_POST['email']]);
-            $response['exists'] = (bool)$stmt->fetch();
-            $response['success'] = true;
-            break;
-            
-        case 'check_username':
-            // Check if username exists
-            $stmt = $pdo->prepare("SELECT id FROM admin_list WHERE username = ?");
-            $stmt->execute([$_POST['username']]);
-            $response['exists'] = (bool)$stmt->fetch();
-            $response['success'] = true;
-            break;
-            
-        case 'update_user':
-            // Update user role
-            $stmt = $pdo->prepare("UPDATE admin_list SET role = ? WHERE id = ?");
-            $success = $stmt->execute([$_POST['role'], $_POST['id']]);
-            $response['success'] = $success;
-            if (!$success) {
-                $response['error'] = 'Failed to update user';
-            }
-            break;
-            
-        case 'delete_user':
-            // Delete user
-            $stmt = $pdo->prepare("DELETE FROM admin_list WHERE id = ?");
-            $success = $stmt->execute([$_POST['id']]);
-            $response['success'] = $success;
-            if (!$success) {
-                $response['error'] = 'Failed to delete user';
-            }
-            break;
-            
-        default:
-            $response['error'] = 'Invalid action';
-    }
-    
-    echo json_encode($response);
-    exit;
-}
-?>
 </body>
 </html>

@@ -1,7 +1,7 @@
 
 <?php
 include './../../connection/connection.php';
-
+ 
 
 // Get the action
 $action = isset($_POST['action']) ? $_POST['action'] : '';
@@ -21,26 +21,27 @@ if ($action === 'read') {
 
 
 if ($action === 'create') {
-  
-    $username = $_POST['username'];
-      $email = $_POST['email'];
-    $password = $_POST['password'];
-    $role = $_POST['role'];
+  $username = $_POST['username'];
+$email = $_POST['email'];
+$password = $_POST['password'];
+$role = $_POST['role'];
 
-  
-    // error_log("Email: $email, Username: $username, Role: $role");
+// Hash the password
+$hashedPassword = password_hash($password, PASSWORD_DEFAULT);
 
-    // Prepare and execute the query
-    $query = $conn->prepare("INSERT INTO admin_list (username,email, password, role) VALUES (?,?,?,?)");
-    $query->bind_param('ssss', $username, $email, $password, $role);
+// Prepare and execute the query
+$query = $conn->prepare("INSERT INTO admin_list (username, email, password, role) VALUES (?, ?, ?, ?)");
+$query->bind_param('ssss', $username, $email, $hashedPassword, $role);
 
-    if ($query->execute()) {
-        echo json_encode(['success' => true]);
-    } else {
-        echo json_encode(['success' => false, 'message' => 'User creation failed: ' . $conn->error]);
-    }
-    $query->close();
-    exit();
+if ($query->execute()) {
+    echo json_encode(['success' => true]);
+} else {
+    echo json_encode(['success' => false, 'message' => 'User creation failed: ' . $conn->error]);
+}
+
+$query->close();
+exit();
+
 }
 
 
