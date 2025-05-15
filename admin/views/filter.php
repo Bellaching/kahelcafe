@@ -14,7 +14,7 @@
                         <option value="Rice Meal">Rice Meal</option>
                         <option value="All Day Breakfast">All Day Breakfast</option>
                         <option value="Add ons">Add ons</option>
-                        <option value="Upsize">Upsize</option>
+                       
                     </select>
                 </div>
                 
@@ -76,11 +76,7 @@
     </a>
 </div>
 
-<div class="me-3">
-    <a href="?category=Upsize" class="btn btn-light border-0 <?php echo $selectedCategory == 'Upsize' ? 'active' : ''; ?>">
-        <i class="fa-solid fa-arrow-up"></i> Upsize
-    </a>
-</div>
+
 
             </div>
         </div>

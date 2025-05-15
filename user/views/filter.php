@@ -22,7 +22,7 @@ $totalPages = ceil($totalItems / $itemsPerPage);
                 <option value="Rice Meal" <?php echo $selectedCategory == 'Rice Meal' ? 'selected' : ''; ?>>Rice Meal</option>
                 <option value="All Day Breakfast" <?php echo $selectedCategory == 'All Day Breakfast' ? 'selected' : ''; ?>>All Day Breakfast</option>
                 <option value="Add ons" <?php echo $selectedCategory == 'Add ons' ? 'selected' : ''; ?>>Add ons</option>
-                <option value="Upsize" <?php echo $selectedCategory == 'Upsize' ? 'selected' : ''; ?>>Upsize</option>
+               
             </select>
         </div>
     </div>
@@ -94,11 +94,7 @@ $totalPages = ceil($totalItems / $itemsPerPage);
                     <i class="fa-solid fa-square-plus"></i> Add ons
                 </a>
             </div>
-            <div class="me-3">
-                <a href="?category=Upsize" class="btn btn-light border-0 <?php echo $selectedCategory == 'Upsize' ? 'active' : ''; ?>">
-                    <i class="fa-solid fa-arrow-up"></i> Upsize
-                </a>
-            </div>
+            
         </div>
     </div>
 </div>
