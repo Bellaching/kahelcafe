@@ -3,7 +3,7 @@ include './../user/authenticate.php';
 include __DIR__ . '/../../connection/connection.php';
 
 $userId = $_SESSION['user_id'] ?? 0;
-$username = $_SESSION['username'] ?? '';
+$sessionUsername = $_SESSION['username'] ?? '';
 
 // Initialize all variables for profile change
 $successMessage = '';
@@ -12,6 +12,12 @@ $profile_picture = null;
 $role = '';
 $newPassword = '';
 $confirmPassword = '';
+$dbUsername = '';
+$email = '';
+
+// Debug output (remove in production)
+// echo "Session User ID: " . $userId . "<br>";
+// echo "Session Username: " . $sessionUsername . "<br>";
 
 // Get current user data from database including profile picture
 $sql = "SELECT username, email, profile_picture, role FROM admin_list WHERE id = ?";
@@ -19,16 +25,28 @@ $stmt = $conn->prepare($sql);
 $stmt->bind_param("i", $userId);
 $stmt->execute();
 $result = $stmt->get_result();
+
 if ($result->num_rows > 0) {
     $userData = $result->fetch_assoc();
-    $username = $userData['username'];
+    $dbUsername = $userData['username'];
     $email = $userData['email'];
     $profile_picture = $userData['profile_picture'];
     $role = $userData['role'];
+    
+    // Debug output (remove in production)
+    // echo "Database Username: " . $dbUsername . "<br>";
+    // echo "Database Role: " . $role . "<br>";
+    
+    // Use database username if available, otherwise fall back to session
+    $displayUsername = !empty($dbUsername) ? $dbUsername : $sessionUsername;
+} else {
+    $displayUsername = $sessionUsername;
+    // Debug output (remove in production)
+    // echo "No user found in database with ID: " . $userId . "<br>";
 }
 $stmt->close();
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) ){
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) ) {
     // Reset error messages for each request
     $errorMessages = [];
     
@@ -66,6 +84,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) ){
                         }
                         
                         if ($stmt->execute()) {
+                            // Update session username if it changed
+                            $_SESSION['username'] = $username;
+                            $displayUsername = $username;
+                            
                             header('Content-Type: application/json');
                             echo json_encode(['success' => true, 'message' => 'Profile updated successfully!']);
                             exit;
@@ -143,7 +165,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) ){
         }
     }
 }
-
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -529,7 +550,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) ){
 
             <div class="nav-item dropdown">
                 <a class="nav-link dropdown-toggle text-black" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                    <?php echo htmlspecialchars($username); ?>(<?php echo htmlspecialchars($role); ?>)
+                    <?php echo htmlspecialchars($displayUsername); ?>(<?php echo htmlspecialchars($role); ?>)
                 </a>
                 <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
                     <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#changeProfileModal"><i class="fa-regular fa-user me-2" style="color: #FF902B;"></i>Change Profile</a></li>

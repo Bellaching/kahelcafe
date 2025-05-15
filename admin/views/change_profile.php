@@ -1,442 +1,378 @@
 <?php
+// Start session and include files
+session_start();
 include './../../connection/connection.php';
 
-// Initialize all variables
+// Initialize variables
 $successMessage = '';
 $errorMessages = [];
-$username = '';
-$email = '';
-$role = '';
-$date_created = '';
-$profile_picture = '';
-$newPassword = '';
-$confirmPassword = '';
+$userData = [
+    'username' => '',
+    'email' => '',
+    'role' => '',
+    'date_created' => '',
+    'profile_picture' => ''
+];
 
+// Get user ID from session
 $userId = $_SESSION['user_id'] ?? 0;
 
-// Get current admin data from database
-$sql = "SELECT id, username, email, role, date_created, profile_picture FROM admin_list WHERE id = ?";
-$stmt = $conn->prepare($sql);
-$stmt->bind_param("i", $userId);
-$stmt->execute();
-$result = $stmt->get_result();
+// Debugging: Verify session and connection
+error_log("Session User ID: " . $userId);
+error_log("Database Connection: " . ($conn ? "Connected" : "Not connected"));
 
-if ($result->num_rows > 0) {
-    $adminData = $result->fetch_assoc();
-    $username = $adminData['username'] ?? '';
-    $email = $adminData['email'] ?? '';
-    $role = $adminData['role'] ?? '';
-    $date_created = $adminData['date_created'] ?? '';
-    $profile_picture = $adminData['profile_picture'] ?? '';
+// Only proceed if we have a valid user ID
+if ($userId > 0) {
+    // Get user data from database
+    $sql = "SELECT username, email, role, date_created, profile_picture 
+            FROM admin_list 
+            WHERE id = ?";
+    $stmt = $conn->prepare($sql);
+    
+    if ($stmt) {
+        $stmt->bind_param("i", $userId);
+        if ($stmt->execute()) {
+            $result = $stmt->get_result();
+            if ($result->num_rows > 0) {
+                $userData = $result->fetch_assoc();
+                error_log("Retrieved User Data: " . print_r($userData, true));
+                
+                // Ensure session username matches database
+                if (empty($_SESSION['username']) || $_SESSION['username'] !== $userData['username']) {
+                    $_SESSION['username'] = $userData['username'];
+                }
+            } else {
+                error_log("No user found with ID: " . $userId);
+                $errorMessages[] = "User account not found";
+            }
+        } else {
+            error_log("Query execution failed: " . $stmt->error);
+            $errorMessages[] = "Database error";
+        }
+        $stmt->close();
+    } else {
+        error_log("Prepare statement failed: " . $conn->error);
+        $errorMessages[] = "Database error";
+    }
+} else {
+    error_log("Invalid user ID in session");
+    $errorMessages[] = "Not logged in";
 }
-$stmt->close();
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (isset($_POST['action'])) {
-        switch ($_POST['action']) {
-            case 'updateProfile':
-                // Validate inputs
-                $username = trim($_POST['username'] ?? '');
-                $email = trim($_POST['email'] ?? '');
-                
-                if (empty($username)) {
-                    $errorMessages[] = "Username is required";
-                }
-                
-                if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
-                    $errorMessages[] = "Valid email is required";
-                }
+// Process form submissions
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
+    $errorMessages = []; // Reset errors for new request
+    
+    switch ($_POST['action']) {
+        case 'updateProfile':
+            $newUsername = trim($_POST['username'] ?? '');
+            $newEmail = trim($_POST['email'] ?? '');
+            $newPassword = $_POST['newPassword'] ?? '';
+            $confirmPassword = $_POST['confirmPassword'] ?? '';
+            
+            // Validation
+            if (empty($newUsername)) {
+                $errorMessages[] = "Username is required";
+            }
+            
+            if (empty($newEmail) || !filter_var($newEmail, FILTER_VALIDATE_EMAIL)) {
+                $errorMessages[] = "Valid email is required";
+            }
 
-                // Password change logic
-                $updatePassword = !empty($_POST['newPassword']) || !empty($_POST['confirmPassword']);
-                if ($updatePassword) {
-                    $newPassword = $_POST['newPassword'] ?? '';
-                    $confirmPassword = $_POST['confirmPassword'] ?? '';
-                    
-                    if ($newPassword !== $confirmPassword) {
-                        $errorMessages[] = "Passwords do not match";
-                    } elseif (strlen($newPassword) < 8) {
-                        $errorMessages[] = "Password must be at least 8 characters";
+            if (!empty($newPassword)) {
+                if (strlen($newPassword) < 8) {
+                    $errorMessages[] = "Password must be at least 8 characters";
+                } elseif ($newPassword !== $confirmPassword) {
+                    $errorMessages[] = "Passwords don't match";
+                }
+            }
+
+            // Update if validation passes
+            if (empty($errorMessages)) {
+                try {
+                    if (!empty($newPassword)) {
+                        $hashedPassword = password_hash($newPassword, PASSWORD_DEFAULT);
+                        $sql = "UPDATE admin_list 
+                                SET username = ?, email = ?, password = ? 
+                                WHERE id = ?";
+                        $stmt = $conn->prepare($sql);
+                        $stmt->bind_param("sssi", $newUsername, $newEmail, $hashedPassword, $userId);
+                    } else {
+                        $sql = "UPDATE admin_list 
+                                SET username = ?, email = ? 
+                                WHERE id = ?";
+                        $stmt = $conn->prepare($sql);
+                        $stmt->bind_param("ssi", $newUsername, $newEmail, $userId);
                     }
+
+                    if ($stmt->execute()) {
+                        // Update session and local data
+                        $_SESSION['username'] = $newUsername;
+                        $userData['username'] = $newUsername;
+                        $userData['email'] = $newEmail;
+                        
+                        $_SESSION['success'] = "Profile updated successfully!";
+                        header("Location: " . $_SERVER['PHP_SELF']);
+                        exit();
+                    } else {
+                        throw new Exception("Update failed: " . $stmt->error);
+                    }
+                } catch (Exception $e) {
+                    $errorMessages[] = "Database error: " . $e->getMessage();
+                } finally {
+                    if (isset($stmt)) $stmt->close();
                 }
+            }
+            break;
 
-                // Update database if no errors
-                if (empty($errorMessages)) {
-                    try {
-                        if ($updatePassword) {
-                            $hashedPassword = password_hash($newPassword, PASSWORD_DEFAULT);
-                            $sql = "UPDATE admin_list SET username=?, email=?, password=? WHERE id=?";
-                            $stmt = $conn->prepare($sql);
-                            $stmt->bind_param("sssi", $username, $email, $hashedPassword, $userId);
-                        } else {
-                            $sql = "UPDATE admin_list SET username=?, email=? WHERE id=?";
-                            $stmt = $conn->prepare($sql);
-                            $stmt->bind_param("ssi", $username, $email, $userId);
+        case 'uploadProfilePicture':
+            if (isset($_FILES['profile_picture']) && $_FILES['profile_picture']['error'] === UPLOAD_ERR_OK) {
+                $allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
+                $fileType = $_FILES['profile_picture']['type'];
+                
+                if (in_array($fileType, $allowedTypes)) {
+                    $uploadDir = './../../uploads/profile_pictures/';
+                    if (!is_dir($uploadDir)) {
+                        mkdir($uploadDir, 0755, true);
+                    }
+                    
+                    $fileName = 'user_' . $userId . '_' . time() . '.' . pathinfo($_FILES['profile_picture']['name'], PATHINFO_EXTENSION);
+                    $uploadPath = $uploadDir . $fileName;
+                    
+                    if (move_uploaded_file($_FILES['profile_picture']['tmp_name'], $uploadPath)) {
+                        // Delete old picture if exists
+                        if (!empty($userData['profile_picture']) && file_exists('./../../' . $userData['profile_picture'])) {
+                            unlink('./../../' . $userData['profile_picture']);
                         }
-
+                        
+                        $relativePath = 'uploads/profile_pictures/' . $fileName;
+                        $sql = "UPDATE admin_list SET profile_picture = ? WHERE id = ?";
+                        $stmt = $conn->prepare($sql);
+                        $stmt->bind_param("si", $relativePath, $userId);
+                        
                         if ($stmt->execute()) {
-                            $_SESSION['success'] = "Profile updated successfully!";
-                            // Refresh to show changes
-                            echo "<script>window.location.href=window.location.href;</script>";
+                            $userData['profile_picture'] = $relativePath;
+                            $_SESSION['success'] = "Profile picture updated!";
+                            header("Location: " . $_SERVER['PHP_SELF']);
                             exit();
                         } else {
-                            $errorMessages[] = "Database error: " . $stmt->error;
+                            $errorMessages[] = "Failed to update database";
                         }
-                    } catch (Exception $e) {
-                        $errorMessages[] = "Error: " . $e->getMessage();
-                    } finally {
-                        if (isset($stmt)) $stmt->close();
-                    }
-                }
-                break;
-                
-            case 'uploadProfilePicture':
-                if (isset($_FILES['profile_picture']) && $_FILES['profile_picture']['error'] === UPLOAD_ERR_OK) {
-                    $allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
-                    $fileType = $_FILES['profile_picture']['type'];
-                    
-                    if (in_array($fileType, $allowedTypes)) {
-                        $uploadDir = './../../uploads/';
-                        if (!is_dir($uploadDir)) {
-                            mkdir($uploadDir, 0755, true);
-                        }
-                        
-                        $fileName = uniqid('profile_') . '.' . pathinfo($_FILES['profile_picture']['name'], PATHINFO_EXTENSION);
-                        $uploadPath = $uploadDir . $fileName;
-                        
-                        if (move_uploaded_file($_FILES['profile_picture']['tmp_name'], $uploadPath)) {
-                            // Delete old picture if exists
-                            if (!empty($profile_picture) && file_exists('./../../' . $profile_picture)) {
-                                unlink('./../../' . $profile_picture);
-                            }
-                            
-                            $relativePath = 'uploads/' . $fileName;
-                            $sql = "UPDATE admin_list SET profile_picture=? WHERE id=?";
-                            $stmt = $conn->prepare($sql);
-                            $stmt->bind_param("si", $relativePath, $userId);
-                            
-                            if ($stmt->execute()) {
-                                $_SESSION['success'] = "Profile picture updated successfully!";
-                                echo "<script>window.location.href=window.location.href;</script>";
-                                exit();
-                            } else {
-                                $errorMessages[] = "Failed to update profile picture";
-                            }
-                            $stmt->close();
-                        } else {
-                            $errorMessages[] = "Failed to upload file";
-                        }
+                        $stmt->close();
                     } else {
-                        $errorMessages[] = "Only JPG, PNG, and GIF files are allowed";
+                        $errorMessages[] = "Failed to save file";
                     }
                 } else {
-                    $errorMessages[] = "No file selected or upload error";
+                    $errorMessages[] = "Only JPG, PNG, and GIF files are allowed";
                 }
-                break;
-                
-            case 'deleteProfilePicture':
-                if (!empty($profile_picture) && file_exists('./../../' . $profile_picture)) {
-                    unlink('./../../' . $profile_picture);
-                }
-                
-                $sql = "UPDATE admin_list SET profile_picture=NULL WHERE id=?";
-                $stmt = $conn->prepare($sql);
-                $stmt->bind_param("i", $userId);
-                
-                if ($stmt->execute()) {
-                    $_SESSION['success'] = "Profile picture removed successfully!";
-                    echo "<script>window.location.href=window.location.href;</script>";
-                    exit();
-                } else {
-                    $errorMessages[] = "Failed to remove profile picture";
-                }
-                $stmt->close();
-                break;
-        }
+            } else {
+                $errorMessages[] = "Please select a valid image file";
+            }
+            break;
+
+        case 'deleteProfilePicture':
+            if (!empty($userData['profile_picture']) && file_exists('./../../' . $userData['profile_picture'])) {
+                unlink('./../../' . $userData['profile_picture']);
+            }
+            
+            $sql = "UPDATE admin_list SET profile_picture = NULL WHERE id = ?";
+            $stmt = $conn->prepare($sql);
+            $stmt->bind_param("i", $userId);
+            
+            if ($stmt->execute()) {
+                $userData['profile_picture'] = '';
+                $_SESSION['success'] = "Profile picture removed!";
+                header("Location: " . $_SERVER['PHP_SELF']);
+                exit();
+            } else {
+                $errorMessages[] = "Failed to update database";
+            }
+            $stmt->close();
+            break;
     }
 }
 
-// Check for success message
+// Check for success messages
 if (isset($_SESSION['success'])) {
     $successMessage = $_SESSION['success'];
     unset($_SESSION['success']);
 }
 ?>
-<style>
-.profile-picture-container {
-    position: relative;
-    width: 150px;
-    height: 150px;
-    margin: 0 auto 20px;
-    cursor: pointer;
-}
-.profile-picture {
-    width: 100%;
-    height: 100%;
-    border-radius: 50%;
-    object-fit: cover;
-    border: 3px solid #FF902B;
-}
-.profile-picture-placeholder {
-    width: 100%;
-    height: 100%;
-    border-radius: 50%;
-    background-color: #f0f0f0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: 3px solid #FF902B;
-    color: #777;
-    font-size: 50px;
-}
-.edit-profile-picture {
-    position: absolute;
-    bottom: 0;
-    right: 0;
-    background-color: #FF902B;
-    color: white;
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-.password-strength {
-    font-size: 14px;
-}
-.password-strength.weak {
-    color: red;
-}
-.password-strength.medium {
-    color: orange;
-}
-.password-strength.strong {
-    color: green;
-}
-.password-fields {
-    display: none;
-}
-</style>
 
-<div class="modal-body">
-    <?php if ($successMessage): ?>
-        <div class="alert alert-success" role="alert" id="successMessage">
-            <?= htmlspecialchars($successMessage); ?>
-        </div>
-    <?php endif; ?>
-
-    <?php if (!empty($errorMessages)): ?>
-        <div class="alert alert-danger" role="alert">
-            <?php foreach ($errorMessages as $error): ?>
-                <div><?= htmlspecialchars($error); ?></div>
-            <?php endforeach; ?>
-        </div>
-    <?php endif; ?>
-
-    <form method="POST" id="profileForm">
-        <input type="hidden" name="action" value="updateProfile">
-        
-        <div class="text-center mb-4">
-            <div class="profile-picture-container" onclick="openProfilePictureModal()">
-                <?php if (!empty($profile_picture)): ?>
-                    <img src="<?= htmlspecialchars($profile_picture) ?>" alt="Profile Picture" class="profile-picture">
-                <?php else: ?>
-                    <div class="profile-picture-placeholder">
-                        <i class="fas fa-user"></i>
-                    </div>
-                <?php endif; ?>
-                <div class="edit-profile-picture">
-                    <i class="fas fa-pencil-alt"></i>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Profile</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        .profile-picture-container {
+            width: 150px;
+            height: 150px;
+            margin: 0 auto 20px;
+            position: relative;
+            cursor: pointer;
+        }
+        .profile-picture {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid #FF902B;
+        }
+        .profile-picture-placeholder {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: #f0f0f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 3px solid #FF902B;
+            color: #777;
+            font-size: 50px;
+        }
+        .edit-profile-picture {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            background: #FF902B;
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .password-fields {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">My Profile</h4>
                 </div>
-            </div>
-        </div>
-
-        <div class="mb-3">
-            <label for="username" class="form-label">Username</label>
-            <input type="text" class="form-control" name="username" id="username" value="<?= htmlspecialchars($username); ?>" required>
-        </div>
-        <div class="mb-3">
-            <label for="email" class="form-label">Email</label>
-            <input type="email" class="form-control" name="email" id="email" value="<?= htmlspecialchars($email); ?>" required>
-        </div>
-        <div class="mb-3">
-            <label class="form-label">Role</label>
-            <input type="text" class="form-control" value="<?= htmlspecialchars($role); ?>" readonly>
-        </div>
-        <div class="mb-3">
-            <label class="form-label">Date Created</label>
-            <input type="text" class="form-control" value="<?= htmlspecialchars($date_created); ?>" readonly>
-        </div>
-
-        <div class="mb-3 form-check">
-            <input type="checkbox" class="form-check-input" id="showPasswordCheckbox">
-            <label class="form-check-label" for="showPasswordCheckbox">Change Password</label>
-        </div>
-
-        <div class="password-fields">
-            <div class="mb-3">
-                <label for="newPassword" class="form-label">New Password</label>
-                <input type="password" class="form-control" name="newPassword" id="newPassword">
-                <div id="password-strength" class="password-strength"></div>
-            </div>
-            <div class="mb-3">
-                <label for="confirmPassword" class="form-label">Confirm Password</label>
-                <input type="password" class="form-control" name="confirmPassword" id="confirmPassword">
-            </div>
-        </div>
-
-        <div class="mb-3">
-            <button type="submit" class="btn w-100 text-white rounded-pill" style="background-color: #FF902B;">Update Profile</button>
-        </div>
-    </form>
-</div>
-
-<div class="modal fade" id="profilePictureModal" tabindex="-1" aria-labelledby="profilePictureModalLabel">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title" id="profilePictureModalLabel">Change Profile Picture</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <form method="POST" enctype="multipart/form-data" id="profilePictureForm">
-                    <input type="hidden" name="action" value="uploadProfilePicture">
-                    <div class="mb-3 text-center">
-                        <?php if (!empty($profile_picture)): ?>
-                            <img src="<?= htmlspecialchars($profile_picture) ?>" alt="Current Profile Picture" class="profile-picture mb-3" style="width: 200px; height: 200px;" id="profilePicturePreview">
-                        <?php else: ?>
-                            <div class="profile-picture-placeholder mb-3 mx-auto" style="width: 200px; height: 200px;">
-                                <i class="fas fa-user"></i>
-                            </div>
-                        <?php endif; ?>
-                        
-                        <input type="file" class="form-control" name="profile_picture" id="profilePictureInput" accept="image/jpeg,image/png,image/gif" required>
-                        <small class="text-muted">Max size: 2MB. Formats: JPG, PNG, GIF</small>
-                    </div>
+                
+                <div class="card-body">
+                    <?php if ($successMessage): ?>
+                        <div class="alert alert-success"><?= htmlspecialchars($successMessage) ?></div>
+                    <?php endif; ?>
                     
-                    <div class="d-flex justify-content-between">
-                        <?php if (!empty($profile_picture)): ?>
-                            <button type="submit" name="action" value="deleteProfilePicture" class="btn btn-danger rounded-pill" onclick="return confirm('Are you sure you want to delete your profile picture?')">
-                                <i class="fas fa-trash-alt me-1"></i> Delete Picture
-                            </button>
-                        <?php endif; ?>
-                        <div class="ms-auto">
-                            <button type="button" class="btn btn-secondary rounded-pill me-2" data-bs-dismiss="modal">
-                                <i class="fas fa-times me-1"></i> Cancel
-                            </button>
-                            <button type="submit" class="btn btn-primary rounded-pill">
-                                <i class="fas fa-save me-1"></i> Save Changes
-                            </button>
+                    <?php if (!empty($errorMessages)): ?>
+                        <div class="alert alert-danger">
+                            <?php foreach ($errorMessages as $error): ?>
+                                <div><?= htmlspecialchars($error) ?></div>
+                            <?php endforeach; ?>
                         </div>
-                    </div>
-                </form>
+                    <?php endif; ?>
+                    
+                    <form method="POST" enctype="multipart/form-data">
+                        <input type="hidden" name="action" value="updateProfile">
+                        
+                        <div class="text-center mb-4">
+                            <div class="profile-picture-container" onclick="document.getElementById('profilePictureInput').click()">
+                                <?php if (!empty($userData['profile_picture'])): ?>
+                                    <img src="<?= htmlspecialchars($userData['profile_picture']) ?>" 
+                                         alt="Profile Picture" 
+                                         class="profile-picture">
+                                <?php else: ?>
+                                    <div class="profile-picture-placeholder">
+                                        <i class="fas fa-user"></i>
+                                    </div>
+                                <?php endif; ?>
+                                <div class="edit-profile-picture">
+                                    <i class="fas fa-pencil-alt"></i>
+                                </div>
+                            </div>
+                            <input type="file" id="profilePictureInput" name="profile_picture" 
+                                   accept="image/jpeg,image/png,image/gif" 
+                                   style="display: none;"
+                                   onchange="document.getElementById('uploadForm').submit()">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Username</label>
+                            <input type="text" class="form-control" name="username" 
+                                   value="<?= htmlspecialchars($userData['username']) ?>" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Email</label>
+                            <input type="email" class="form-control" name="email" 
+                                   value="<?= htmlspecialchars($userData['email']) ?>" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Role</label>
+                            <input type="text" class="form-control" 
+                                   value="<?= htmlspecialchars($userData['role']) ?>" readonly>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Member Since</label>
+                            <input type="text" class="form-control" 
+                                   value="<?= htmlspecialchars($userData['date_created']) ?>" readonly>
+                        </div>
+                        
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="changePassword">
+                            <label class="form-check-label" for="changePassword">Change Password</label>
+                        </div>
+                        
+                        <div class="password-fields" id="passwordFields">
+                            <div class="mb-3">
+                                <label class="form-label">New Password</label>
+                                <input type="password" class="form-control" name="newPassword">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Confirm Password</label>
+                                <input type="password" class="form-control" name="confirmPassword">
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary">Update Profile</button>
+                        </div>
+                    </form>
+                    
+                    <form id="uploadForm" method="POST" enctype="multipart/form-data" style="display: none;">
+                        <input type="hidden" name="action" value="uploadProfilePicture">
+                    </form>
+                </div>
             </div>
         </div>
     </div>
 </div>
 
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-
-document.getElementById('profilePictureForm').addEventListener('submit', function(e) {
-    // Simple validation
-    const fileInput = document.getElementById('profilePictureInput');
-    if (fileInput.files.length === 0) {
-        alert('Please select a file to upload');
-        e.preventDefault();
-    }
-});
-
-function openProfilePictureModal() {
-    var modal = new bootstrap.Modal(document.getElementById('profilePictureModal'));
-    modal.show();
-}
-
-document.addEventListener('DOMContentLoaded', function() {
+$(document).ready(function() {
     // Toggle password fields
-    const passwordCheckbox = document.getElementById('showPasswordCheckbox');
-    if (passwordCheckbox) {
-        passwordCheckbox.addEventListener('change', function() {
-            const passwordFields = document.querySelector('.password-fields');
-            if (passwordFields) {
-                passwordFields.style.display = this.checked ? 'block' : 'none';
-            }
-        });
-    }
-
-    // Password strength indicator
-    const newPasswordInput = document.getElementById('newPassword');
-    if (newPasswordInput) {
-        newPasswordInput.addEventListener('input', function() {
-            const strengthElement = document.getElementById('password-strength');
-            if (!strengthElement) return;
-            
-            const password = this.value;
-            
-            if (password.length === 0) {
-                strengthElement.textContent = '';
-                return;
-            }
-            
-            if (password.length < 8) {
-                strengthElement.textContent = 'Weak';
-                strengthElement.className = 'password-strength weak';
-            } else if (/[A-Z]/.test(password) && /[0-9]/.test(password) && /[^A-Za-z0-9]/.test(password)) {
-                strengthElement.textContent = 'Strong';
-                strengthElement.className = 'password-strength strong';
-            } else if (/[A-Z]/.test(password) || /[0-9]/.test(password)) {
-                strengthElement.textContent = 'Medium';
-                strengthElement.className = 'password-strength medium';
-            } else {
-                strengthElement.textContent = 'Weak';
-                strengthElement.className = 'password-strength weak';
-            }
-        });
-    }
-
-    // Preview image before upload in the modal
-    const profilePictureInput = document.getElementById('profilePictureInput');
-    if (profilePictureInput) {
-        profilePictureInput.addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(event) {
-                    let preview = document.getElementById('profilePicturePreview');
-                    if (!preview) {
-                        const placeholder = document.querySelector('#profilePictureModal .profile-picture-placeholder');
-                        if (placeholder) {
-                            placeholder.innerHTML = '';
-                            placeholder.className = '';
-                            placeholder.style = '';
-                            placeholder.classList.add('profile-picture');
-                            preview = placeholder;
-                        }
-                    }
-                    if (preview) {
-                        preview.src = event.target.result;
-                        if (preview.tagName.toLowerCase() === 'div') {
-                            const img = document.createElement('img');
-                            img.src = event.target.result;
-                            img.className = 'profile-picture mb-3';
-                            img.style = 'width: 200px; height: 200px;';
-                            img.id = 'profilePicturePreview';
-                            preview.parentNode.replaceChild(img, preview);
-                            preview = img;
-                        }
-                    }
-                };
-                reader.readAsDataURL(file);
-            }
-        });
-    }
-
-    // Auto-hide success message after 5 seconds
-    const successMessage = document.getElementById('successMessage');
-    if (successMessage) {
-        setTimeout(() => {
-            successMessage.style.display = 'none';
-        }, 5000);
-    }
+    $('#changePassword').change(function() {
+        $('#passwordFields').toggle(this.checked);
+    });
+    
+    // Auto-submit profile picture when selected
+    $('#profilePictureInput').change(function() {
+        if (this.files.length > 0) {
+            $('#uploadForm').submit();
+        }
+    });
+    
+    // Hide alerts after 5 seconds
+    setTimeout(function() {
+        $('.alert').fadeOut();
+    }, 5000);
 });
 </script>
+</body>
+</html>

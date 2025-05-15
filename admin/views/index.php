@@ -4,7 +4,6 @@ include './../../connection/connection.php';
 // Get the action
 $action = isset($_POST['action']) ? $_POST['action'] : '';
 
-
 if ($action === 'check_updates') {
     $lastTimestamp = $_POST['last_timestamp'] ?? null;
     
@@ -140,6 +139,33 @@ if ($action === 'delete') {
         echo json_encode(['success' => false, 'message' => 'Delete failed: ' . $conn->error]);
     }
 
+    $stmt->close();
+    exit();
+}
+
+if ($action === 'check_qrcode') {
+    $orderId = $_POST['order_id'] ?? null;
+    
+    if (!$orderId) {
+        echo json_encode(['success' => false, 'message' => 'Order ID is missing']);
+        exit();
+    }
+    
+    $query = "SELECT order_id FROM orders WHERE order_id = ?";
+    $stmt = $conn->prepare($query);
+    $stmt->bind_param('i', $orderId);
+    
+    if ($stmt->execute()) {
+        $result = $stmt->get_result();
+        if ($result->num_rows > 0) {
+            echo json_encode(['success' => true, 'order_id' => $orderId]);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Order not found']);
+        }
+    } else {
+        echo json_encode(['success' => false, 'message' => 'Database error: ' . $conn->error]);
+    }
+    
     $stmt->close();
     exit();
 }
@@ -697,6 +723,57 @@ function deleteOrder(orderId, table) {
             alert('An error occurred while deleting the order: ' + error);
         }
     });
+}
+
+// QR Code Scanner Functionality
+function onScanSuccess(decodedText, decodedResult) {
+    // Check if the scanned text is a valid order ID
+    const orderId = decodedText.trim();
+    
+    $.ajax({
+        url: '',
+        type: 'POST',
+        data: {
+            action: 'check_qrcode',
+            order_id: orderId
+        },
+        success: function(response) {
+            try {
+                const result = JSON.parse(response);
+                if (result.success) {
+                    // Find the order in the table and trigger the edit button click
+                    const editButton = $(`.editBtn[data-id="${orderId}"]`);
+                    if (editButton.length) {
+                        editButton.click();
+                    } else {
+                        alert('Order found but not displayed in the current table view.');
+                    }
+                } else {
+                    alert('Order not found: ' + (result.message || 'Invalid QR code'));
+                }
+            } catch (e) {
+                console.error('Error parsing QR check response:', e);
+                alert('Error processing QR code. Please try again.');
+            }
+        },
+        error: function(xhr, status, error) {
+            alert('Error checking QR code: ' + error);
+        }
+    });
+}
+
+function onScanFailure(error) {
+    console.warn(`QR error = ${error}`);
+}
+
+// Initialize QR Scanner if the element exists
+if (document.getElementById('qr-reader')) {
+    const html5QrcodeScanner = new Html5QrcodeScanner(
+        "qr-reader", 
+        { fps: 10, qrbox: 250 },
+        /* verbose= */ false
+    );
+    html5QrcodeScanner.render(onScanSuccess, onScanFailure);
 }
 </script>
 
