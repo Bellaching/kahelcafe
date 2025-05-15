@@ -7,7 +7,7 @@ $(document).ready(function () {
 function initializeDataTable() {
     return $('#ordersTable').DataTable({
         ajax: {
-            url: './../user/index.php',
+            url: './../user/index.php', 
             type: 'POST',
             data: {
                 action: 'read',

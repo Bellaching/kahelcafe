@@ -115,8 +115,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['deleteMenuItem'])) {
         $errors['general'][] = "Invalid menu item ID.";
     }
 }
-
-// FETCH SINGLE ITEM
 if (isset($_GET['id'])) {
     $menuId = intval($_GET['id']);
     $sql = "SELECT * FROM menu1 WHERE id = $menuId";
@@ -126,6 +124,11 @@ if (isset($_GET['id'])) {
         $row = $result->fetch_assoc();
         ob_clean();
         header('Content-Type: application/json');
+        
+        // Decode the price JSON to get the food price if it exists
+        $priceData = json_decode($row['price'], true);
+        $foodPrice = isset($priceData['Regular']) ? $priceData['Regular'] : 0;
+        
         echo json_encode([
             'id' => $row['id'],
             'name' => $row['name'],
@@ -136,7 +139,8 @@ if (isset($_GET['id'])) {
             'quantity' => $row['quantity'],
             'price' => $row['price'],
             'status' => $row['status'],
-            'image' => $row['image']
+            'image' => $row['image'],
+            'foodPrice' => $foodPrice  // Make sure this is included
         ]);
         exit();
     } else {
@@ -146,6 +150,7 @@ if (isset($_GET['id'])) {
         exit();
     }
 }
+
 
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['editMenuItem'])) {
@@ -445,12 +450,22 @@ function renderMenuItems($result) {
             $name = htmlspecialchars($row['name'], ENT_QUOTES, 'UTF-8');
             $priceData = json_decode($row['price'], true);
             $priceStr = '';
+
+            // Determine if this is a food item
+            $isFood = in_array($row['category'], ['Starters', 'Pasta', 'Sandwich', 'Rice Meal', 'All Day Breakfast', 'Add ons', 'Upsize']);
+            
             if ($priceData) {
-                $prices = [];
-                if (isset($priceData['Small'])) $prices[] = 'Small: ₱' . number_format($priceData['Small'], 2);
-                if (isset($priceData['Medium'])) $prices[] = 'Medium: ₱' . number_format($priceData['Medium'], 2);
-                if (isset($priceData['Large'])) $prices[] = 'Large: ₱' . number_format($priceData['Large'], 2);
-                $priceStr = implode(' | ', $prices);
+                if ($isFood) {
+                    // For food items, just show the Regular price
+                    $priceStr = isset($priceData['Regular']) ? '₱' . number_format($priceData['Regular'], 2) : '₱0.00';
+                } else {
+                    // For drinks, show all sizes with prices
+                    $prices = [];
+                    if (isset($priceData['Small'])) $prices[] = 'Small: ₱' . number_format($priceData['Small'], 2);
+                    if (isset($priceData['Medium'])) $prices[] = 'Medium: ₱' . number_format($priceData['Medium'], 2);
+                    if (isset($priceData['Large'])) $prices[] = 'Large: ₱' . number_format($priceData['Large'], 2);
+                    $priceStr = implode(' | ', $prices);
+                }
             }
             $image = htmlspecialchars($row['image'], ENT_QUOTES, 'UTF-8');
             $id = intval($row['id']);
@@ -634,32 +649,19 @@ echo renderMenuItems($result);
                                     <div class="error-message"><?php echo htmlspecialchars($errors['editMenuQuantity']); ?></div>
                                 <?php endif; ?>
                             </div>
-
-                             <div class="food-price-input" id="editPriceFoodContainer">
-                                    <label for="editMenuPriceFood" class="form-label">Price</label>
-                                  <input type="number" 
-    class="form-control <?php echo !empty($errors['editMenuPriceFood']) ? 'is-invalid' : '' ?>" 
-    id="editMenuPriceFood" 
-    name="editMenuPriceFood" 
-    min="0" 
-    step="0.01" 
-    value="<?php 
-        if (isset($_POST['editMenuPriceFood'])) {
-            echo htmlspecialchars($_POST['editMenuPriceFood']);
-        } elseif (isset($fetchedMenuItem)) {
-            $priceArr = json_decode($fetchedMenuItem['price'], true);
-            echo htmlspecialchars($priceArr['Regular'] ?? 0);
-        } else {
-            echo '0';
-        }
-    ?>">
-
-
-                                    <?php if (!empty($errors['editMenuPriceFood'])): ?>
-                                        <div class="error-message"><?php echo htmlspecialchars($errors['editMenuPriceFood']); ?></div>
-                                    <?php endif; ?>
-                                </div>
-                           
+<div class="food-price-input" id="editPriceFoodContainer" style="display: none;">
+    <label for="editMenuPriceFood" class="form-label">Price</label>
+    <input type="number" 
+        class="form-control <?php echo !empty($errors['editMenuPriceFood']) ? 'is-invalid' : '' ?>" 
+        id="editMenuPriceFood" 
+        name="editMenuPriceFood" 
+        min="0" 
+        step="0.01" 
+        value="<?php echo isset($_POST['editMenuPriceFood']) ? htmlspecialchars($_POST['editMenuPriceFood']) : '0' ?>">
+    <?php if (!empty($errors['editMenuPriceFood'])): ?>
+        <div class="error-message"><?php echo htmlspecialchars($errors['editMenuPriceFood']); ?></div>
+    <?php endif; ?>
+</div>
                             <div class="mb-3">
                                 <label for="editProductStatus" class="form-label">Status</label>
                                 <select class="form-select <?php echo !empty($errors['editProductStatus']) ? 'is-invalid' : '' ?>" id="editProductStatus" name="editProductStatus">
@@ -972,7 +974,7 @@ echo renderMenuItems($result);
         handleSizeCheckboxChanges('edit'); // Edit form
     });
 
-    function openEditModal(id) {
+function openEditModal(id) {
     $.ajax({
         url: 'menuManagement.php?id=' + id,
         method: 'GET',
@@ -999,46 +1001,67 @@ echo renderMenuItems($result);
                 console.error('Error parsing price data:', e);
             }
 
-            // Handle size checkboxes and their corresponding price fields
-            const sizes = data.size ? data.size.split(',') : [];
+            // Determine if this is a food or drink item
+            const isFood = ['Starters', 'Pasta', 'Sandwich', 'Rice Meal', 'All Day Breakfast', 'Add ons', 'Upsize'].includes(data.category);
             
-            // Small size
-            const editSizeSmall = document.getElementById('editSizeSmall');
-            const editPriceSmallContainer = document.getElementById('editPriceSmallContainer');
-            if (sizes.includes('Small')) {
-                editSizeSmall.checked = true;
-                editPriceSmallContainer.style.display = 'block';
-                document.getElementById('editMenuPriceSmall').value = priceData.Small || '';
+            // Get references to the price containers
+            const editPriceInputContainer = document.getElementById('editPriceInputContainer');
+            const editPriceFoodContainer = document.getElementById('editPriceFoodContainer');
+            
+            // Show/hide appropriate price fields
+            if (isFood) {
+                // Hide drink price fields and show food price field
+                editPriceInputContainer.style.display = 'none';
+                editPriceFoodContainer.style.display = 'block';
+                
+                // Set the food price - use 'Regular' price from priceData
+                document.getElementById('editMenuPriceFood').value = priceData.Regular || 0;
             } else {
-                editSizeSmall.checked = false;
-                editPriceSmallContainer.style.display = 'none';
-                document.getElementById('editMenuPriceSmall').value = '';
-            }
+                // Hide food price field and show drink price fields
+                editPriceInputContainer.style.display = 'block';
+                editPriceFoodContainer.style.display = 'none';
+                
+                // Handle size checkboxes and their corresponding price fields
+                const sizes = data.size ? data.size.split(',') : [];
+                
+                // Small size
+                const editSizeSmall = document.getElementById('editSizeSmall');
+                const editPriceSmallContainer = document.getElementById('editPriceSmallContainer');
+                if (sizes.includes('Small')) {
+                    editSizeSmall.checked = true;
+                    editPriceSmallContainer.style.display = 'block';
+                    document.getElementById('editMenuPriceSmall').value = priceData.Small || '';
+                } else {
+                    editSizeSmall.checked = false;
+                    editPriceSmallContainer.style.display = 'none';
+                    document.getElementById('editMenuPriceSmall').value = '';
+                }
 
-            // Medium size
-            const editSizeMedium = document.getElementById('editSizeMedium');
-            const editPriceMediumContainer = document.getElementById('editPriceMediumContainer');
-            if (sizes.includes('Medium')) {
-                editSizeMedium.checked = true;
-                editPriceMediumContainer.style.display = 'block';
-                document.getElementById('editMenuPriceMedium').value = priceData.Medium || '';
-            } else {
-                editSizeMedium.checked = false;
-                editPriceMediumContainer.style.display = 'none';
-                document.getElementById('editMenuPriceMedium').value = '';
-            }
+                // Medium size
+                const editSizeMedium = document.getElementById('editSizeMedium');
+                const editPriceMediumContainer = document.getElementById('editPriceMediumContainer');
+                if (sizes.includes('Medium')) {
+                    editSizeMedium.checked = true;
+                    editPriceMediumContainer.style.display = 'block';
+                    document.getElementById('editMenuPriceMedium').value = priceData.Medium || '';
+                } else {
+                    editSizeMedium.checked = false;
+                    editPriceMediumContainer.style.display = 'none';
+                    document.getElementById('editMenuPriceMedium').value = '';
+                }
 
-            // Large size
-            const editSizeLarge = document.getElementById('editSizeLarge');
-            const editPriceLargeContainer = document.getElementById('editPriceLargeContainer');
-            if (sizes.includes('Large')) {
-                editSizeLarge.checked = true;
-                editPriceLargeContainer.style.display = 'block';
-                document.getElementById('editMenuPriceLarge').value = priceData.Large || '';
-            } else {
-                editSizeLarge.checked = false;
-                editPriceLargeContainer.style.display = 'none';
-                document.getElementById('editMenuPriceLarge').value = '';
+                // Large size
+                const editSizeLarge = document.getElementById('editSizeLarge');
+                const editPriceLargeContainer = document.getElementById('editPriceLargeContainer');
+                if (sizes.includes('Large')) {
+                    editSizeLarge.checked = true;
+                    editPriceLargeContainer.style.display = 'block';
+                    document.getElementById('editMenuPriceLarge').value = priceData.Large || '';
+                } else {
+                    editSizeLarge.checked = false;
+                    editPriceLargeContainer.style.display = 'none';
+                    document.getElementById('editMenuPriceLarge').value = '';
+                }
             }
 
             // Handle temperature checkboxes
@@ -1051,53 +1074,16 @@ echo renderMenuItems($result);
             }
 
             // Show/hide size and temperature sections based on category
-            const selectedCategory = data.category;
             const editSizeContainer = document.getElementById('editMenuSizeContainer');
             const editTemperatureContainer = document.getElementById('editMenuTemperatureContainer');
-            const editPriceContainer = document.getElementById('editPriceFoodContainer');
 
-            if (selectedCategory === 'Espresso' || selectedCategory === 'Non-Coffee' || 
-                selectedCategory === 'Frappe') {
-                editSizeContainer.style.display = 'block';
-                editTemperatureContainer.style.display = 'block';
-                editPriceContainer.style.display = 'block';
-                foodPriceContainer.style.display = 'none';
-
-                document.getElementById('editPriceFoodContainer').style.display = 'none';
-document.getElementById('editMenuPriceFood').disabled = true;
-
-            } else {
+            if (isFood) {
                 editSizeContainer.style.display = 'none';
                 editTemperatureContainer.style.display = 'none';
-                editPriceContainer.style.display = 'none';
-
-                editPriceContainer.style.display = 'none'; 
-document.getElementById('editPriceFoodContainer').style.display = 'block'; 
-document.getElementById('editMenuPriceFood').disabled = false;
-
+            } else {
+                editSizeContainer.style.display = 'block';
+                editTemperatureContainer.style.display = 'block';
             }
-
-            // Add event listeners for size checkboxes to show/hide price fields
-            editSizeSmall.addEventListener('change', function() {
-                editPriceSmallContainer.style.display = this.checked ? 'block' : 'none';
-                if (!this.checked) {
-                    document.getElementById('editMenuPriceSmall').value = '';
-                }
-            });
-
-            editSizeMedium.addEventListener('change', function() {
-                editPriceMediumContainer.style.display = this.checked ? 'block' : 'none';
-                if (!this.checked) {
-                    document.getElementById('editMenuPriceMedium').value = '';
-                }
-            });
-
-            editSizeLarge.addEventListener('change', function() {
-                editPriceLargeContainer.style.display = this.checked ? 'block' : 'none';
-                if (!this.checked) {
-                    document.getElementById('editMenuPriceLarge').value = '';
-                }
-            });
 
             // Show the modal
             var editModal = new bootstrap.Modal(document.getElementById('editMenuModal'));
