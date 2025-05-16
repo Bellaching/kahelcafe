@@ -254,11 +254,10 @@ $topFoodQuery = "
         menu1 m ON oi.item_id = m.id
     JOIN 
         orders o ON oi.order_id = o.order_id
-   WHERE 
-    o.status = 'rate us'
-    AND o.created_at BETWEEN ? AND ?
-    AND m.type IN ('food', 'drink')
-
+    WHERE 
+        o.status = 'rate us'
+        AND o.created_at BETWEEN ? AND ?
+        AND m.type IN ('food', 'drink')
     GROUP BY 
         m.id, m.name, m.price
     ORDER BY 
@@ -660,23 +659,27 @@ $conn->close();
 
     <!-- Main Charts Row 2 -->
     <div class="row mb-4 chart-row">
-        <!-- Most Ordered Food -->
-        <div class="col-lg-4 col-md-6 mb-3 chart-col">
-            <div class="chart-container h-100">
-                <h5 class="mb-3">Most Ordered Food</h5>
-                <p class="text-muted small mb-3">Best seller and crowd favorite!</p>
-                <?php if (count($topFoodItems) > 0): ?>
-                    <?php foreach ($topFoodItems as $item): ?>
-                        <div class="d-flex justify-content-between align-items-center mb-2">
-                            <span class="fw-bold"><?php echo htmlspecialchars($item['name']); ?></span>
-                            <span class="text-muted">₱<?php echo htmlspecialchars($item['price']); ?></span>
-                        </div>
-                    <?php endforeach; ?>
-                <?php else: ?>
-                    <div class="text-center text-muted my-5">No data available</div>
-                <?php endif; ?>
-            </div>
-        </div>
+<!-- Most Ordered Food -->
+<div class="col-lg-4 col-md-6 mb-3 chart-col">
+    <div class="chart-container h-100">
+        <h5 class="mb-3">Top Ordered Items</h5>
+        <p class="text-muted small mb-3">Best sellers and crowd favorites!</p>
+        <?php if (count($topFoodItems) > 0): ?>
+            <?php foreach ($topFoodItems as $item): 
+                // Decode the JSON price and get the first value
+                $priceData = json_decode($item['price'], true);
+                $price = is_array($priceData) ? reset($priceData) : $item['price'];
+            ?>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="fw-bold"><?php echo htmlspecialchars($item['name']); ?></span>
+                    <span class="text-muted">₱<?php echo is_numeric($price) ? number_format($price, 2) : $price; ?></span>
+                </div>
+            <?php endforeach; ?>
+        <?php else: ?>
+            <div class="text-center text-muted my-5">No data available</div>
+        <?php endif; ?>
+    </div>
+</div>
 
         <!-- Order Time Distribution -->
         <div class="col-lg-4 col-md-6 mb-3 chart-col">
