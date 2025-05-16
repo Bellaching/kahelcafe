@@ -1,13 +1,44 @@
 <?php
 session_start();
 
-// Initialize variables
-$firstName = ''; // Default value if not logged in
+// Set session timeout to 30 minutes (1800 seconds)
+$session_timeout = 1800;
+
+// Check if session has expired
+if (isset($_SESSION['LAST_ACTIVITY']) && (time() - $_SESSION['LAST_ACTIVITY'] > $session_timeout)) {
+    // Session expired - clear all session data
+    $_SESSION = array();
+    session_unset();
+    session_destroy();
+    
+    // Clear any cookies that might be related to the session
+    if (ini_get("session.use_cookies")) {
+        $params = session_get_cookie_params();
+        setcookie(session_name(), '', time() - 42000,
+            $params["path"], $params["domain"],
+            $params["secure"], $params["httponly"]
+        );
+    }
+    
+    // Force a page reload to ensure consistent UI state
+    header("Location: ".$_SERVER['PHP_SELF']."?session_expired=1");
+    exit();
+}
+
+// Update last activity time
+$_SESSION['LAST_ACTIVITY'] = time();
+
+// Initialize variables with default values (for non-logged in state)
+$firstName = '';
 $lastName = '';
 $email = '';
 $contactNumber = '';
+$cartCount = 0;
+$notificationCount = 0;
+$notifications = [];
+$isLoggedIn = false;
 
-// Check if the user is logged in and if they clicked the logout link
+// Check if the user clicked the logout link
 if (isset($_GET['logout'])) {
     session_unset();
     session_destroy();
@@ -17,8 +48,29 @@ if (isset($_GET['logout'])) {
 
 include './../../connection/connection.php';
 
+// Only proceed with database operations if we have a valid, verified session
 if (isset($_SESSION['user_id'])) {
+    // Verify the user is still valid and verified
     $userId = $_SESSION['user_id'];
+    $verificationCheck = $conn->prepare("SELECT verified FROM client WHERE id = ?");
+    $verificationCheck->bind_param("i", $userId);
+    $verificationCheck->execute();
+    $verificationCheck->bind_result($verifiedStatus);
+    $verificationCheck->fetch();
+    $verificationCheck->close();
+    
+    if ($verifiedStatus === 0) {
+        // User is not verified - clear session
+        session_unset();
+        session_destroy();
+        header("Location: login.php?error=unverified");
+        exit();
+    }
+
+    // At this point we have a valid, verified session
+    $isLoggedIn = true;
+    
+    // Get user profile data
     $sql = "SELECT firstname, lastname, email, contact_number FROM client WHERE id = ?";
     $stmt = $conn->prepare($sql);
     $stmt->bind_param("i", $userId);
@@ -27,6 +79,7 @@ if (isset($_SESSION['user_id'])) {
     $stmt->fetch();
     $stmt->close();
 
+    // Get cart count
     $sql = "SELECT COUNT(*) FROM cart WHERE user_id = ?";
     $stmt = $conn->prepare($sql);
     $stmt->bind_param("i", $userId);
@@ -34,40 +87,10 @@ if (isset($_SESSION['user_id'])) {
     $stmt->bind_result($cartCount);
     $stmt->fetch();
     $stmt->close();
-
-    // // Fetch the notification count (unread notifications)
-    // $sql = "SELECT COUNT(*) FROM notifications WHERE user_id = ? AND is_read = 0";
-    // $stmt = $conn->prepare($sql);
-    // $stmt->bind_param("i", $userId);
-    // $stmt->execute();
-    // $stmt->bind_result($notificationCount);
-    // $stmt->fetch();
-    // $stmt->close();
-
-    // Fetch all notifications for the user
-    // $sql = "SELECT id, message, created_at FROM notifications WHERE user_id = ? ORDER BY created_at DESC";
-    // $stmt = $conn->prepare($sql);
-    // $stmt->bind_param("i", $userId);
-    // $stmt->execute();
-    // $notifications = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-    // $stmt->close();
-} else {
-    $cartCount = 0; // Default if the user is not logged in
-    $notificationCount = 0; // Default if the user is not logged in
-    $notifications = []; // Empty array if the user is not logged in
 }
 
-// $sql = "SELECT id, message, created_at, is_read FROM notifications WHERE user_id = ? ORDER BY created_at DESC ";
-// $stmt = $conn->prepare($sql);
-// $stmt->bind_param("i", $userId);
-// $stmt->execute();
-// $notifications = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-// $stmt->close();
-
 include '../views/change_profile.php';
-
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -211,7 +234,6 @@ include '../views/change_profile.php';
         </button>
         
         <div class="collapse navbar-collapse" id="navbarNav">
-            <!-- All navigation items grouped on the right -->
             <ul class="navbar-nav ms-auto d-flex align-items-center">
                 <!-- Main navigation links -->
                 <li class="nav-item">
@@ -224,31 +246,27 @@ include '../views/change_profile.php';
                     <a class="nav-link" href="./../../user/views/order-now.php">Order Now</a>
                 </li>
 
-                <?php if (isset($_SESSION['user_id'])): ?>
+                <?php if ($isLoggedIn): ?>
                     <!-- Notification Icon -->
                     <li class="nav-item position-relative mx-2" style="top: -5px;">
-    <?php include "noti.php" ?>
-</li>
-
+                        <?php include "noti.php" ?>
+                    </li>
 
                     <!-- Cart Icon -->
                     <li class="nav-item position-relative mx-2">
                         <a class="nav-link" href="./../../user/views/cart.php">
-                          <!-- Orange Shopping Cart Icon (SVG) -->
-<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <path d="M6 2L3 6V20C3 20.5304 3.21071 21.0391 3.58579 21.4142C3.96086 21.7893 4.46957 22 5 22H19C19.5304 22 20.0391 21.7893 20.4142 21.4142C20.7893 21.0391 21 20.5304 21 20V6L18 2H6Z" fill="#FF902B" stroke="#FF902B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M3 6H21" stroke="#FF902B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M16 10C16 11.0609 15.5786 12.0783 14.8284 12.8284C14.0783 13.5786 13.0609 14 12 14C10.9391 14 9.92172 13.5786 9.17157 12.8284C8.42143 12.0783 8 11.0609 8 10" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-</svg>
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M6 2L3 6V20C3 20.5304 3.21071 21.0391 3.58579 21.4142C3.96086 21.7893 4.46957 22 5 22H19C19.5304 22 20.0391 21.7893 20.4142 21.4142C20.7893 21.0391 21 20.5304 21 20V6L18 2H6Z" fill="#FF902B" stroke="#FF902B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M3 6H21" stroke="#FF902B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M16 10C16 11.0609 15.5786 12.0783 14.8284 12.8284C14.0783 13.5786 13.0609 14 12 14C10.9391 14 9.92172 13.5786 9.17157 12.8284C8.42143 12.0783 8 11.0609 8 10" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
                             <?php if ($cartCount > 0): ?>
                                 <span class="cart-count"><?= $cartCount; ?></span>
                             <?php endif; ?>
                         </a>
                     </li>
-                <?php endif; ?>
 
-                <!-- User Menu -->
-                <?php if ($firstName): ?>
+                    <!-- User Menu -->
                     <li class="nav-item dropdown ms-2">
                         <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                             <span class="me-1"><?= htmlspecialchars($firstName); ?></span>
@@ -263,6 +281,7 @@ include '../views/change_profile.php';
                         </ul>
                     </li>
                 <?php else: ?>
+                    <!-- Show login button when not logged in -->
                     <li class="nav-item ms-2">
                         <a class="nav-link btn btn-outline px-3 py-1 text-light" style="background-color: #FF902B;" href="login.php">Login</a>
                     </li>

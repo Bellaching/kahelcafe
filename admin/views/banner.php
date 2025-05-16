@@ -4,6 +4,7 @@ include './../../connection/connection.php';
 
 // Define maximum file size (45MB in bytes)
 define('MAX_FILE_SIZE', 45 * 1024 * 1024); // 45MB
+define('MAX_FILENAME_LENGTH', 50); // Maximum filename length
 
 // Handle image upload
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
@@ -20,13 +21,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 continue; // Skip this file
             }
 
-            $target_file = $target_dir . basename($images["name"][$i]);
+            // Process filename
+            $original_filename = basename($images["name"][$i]);
+            $imageFileType = strtolower(pathinfo($original_filename, PATHINFO_EXTENSION));
             
-            // Check if file already exists
-            if (file_exists($target_file)) {
-                echo "<script>alert('Sorry, file already exists.');</script>";
-                continue;
-            }
+            // Sanitize and trim filename to max length
+            $basename = pathinfo($original_filename, PATHINFO_FILENAME);
+            $basename = preg_replace("/[^a-zA-Z0-9]/", "_", $basename); // Remove special chars
+            $basename = substr($basename, 0, MAX_FILENAME_LENGTH - strlen($imageFileType) - 1);
+            $filename = uniqid() . '_' . $basename . '.' . $imageFileType; // Add unique prefix
+            $target_file = $target_dir . $filename;
 
             // Check if it's an image
             $check = getimagesize($images["tmp_name"][$i]);
@@ -35,32 +39,70 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 continue;
             }
 
+            // Only allow certain file formats
+            $allowed_types = ['jpg', 'jpeg', 'png', 'gif'];
+            if (!in_array($imageFileType, $allowed_types)) {
+                echo "<script>alert('Sorry, only JPG, JPEG, PNG & GIF files are allowed.');</script>";
+                continue;
+            }
+
+            // Create upload directory if it doesn't exist
+            if (!file_exists($target_dir)) {
+                mkdir($target_dir, 0777, true);
+            }
+
             // Move the uploaded file to the target directory
             if (move_uploaded_file($images["tmp_name"][$i], $target_file)) {
                 // Insert into database
                 $description = $_POST['description'] ?? 'Uploaded Image';
                 $stmt = $conn->prepare("INSERT INTO banners (content, description) VALUES (?, ?)");
                 $stmt->bind_param("ss", $target_file, $description);
-                $stmt->execute();
+                if ($stmt->execute()) {
+                    echo "<script>alert('Image uploaded successfully.');</script>";
+                } else {
+                    // Delete the file if DB insert failed
+                    unlink($target_file);
+                    echo "<script>alert('Error saving image to database.');</script>";
+                }
                 $stmt->close();
             } else {
+                error_log("Upload failed: " . print_r(error_get_last(), true));
                 echo "<script>alert('Sorry, there was an error uploading your file.');</script>";
             }
         }
     } elseif (isset($_POST['delete_id'])) {
         // Handle image deletion
         $delete_id = $_POST['delete_id'];
-        $stmt = $conn->prepare("DELETE FROM banners WHERE id = ?");
+        
+        // First get the file path to delete the physical file
+        $stmt = $conn->prepare("SELECT content FROM banners WHERE id = ?");
         $stmt->bind_param("i", $delete_id);
         $stmt->execute();
+        $result = $stmt->get_result();
+        $row = $result->fetch_assoc();
         $stmt->close();
+        
+        if ($row) {
+            // Delete from database
+            $stmt = $conn->prepare("DELETE FROM banners WHERE id = ?");
+            $stmt->bind_param("i", $delete_id);
+            if ($stmt->execute()) {
+                // Delete the physical file
+                if (file_exists($row['content'])) {
+                    unlink($row['content']);
+                }
+                echo "<script>alert('Image deleted successfully.');</script>";
+            } else {
+                echo "<script>alert('Error deleting image.');</script>";
+            }
+            $stmt->close();
+        }
     }
 }
 
 // Fetch images from the database
-$result = $conn->query("SELECT * FROM banners");
+$result = $conn->query("SELECT * FROM banners ORDER BY id DESC"); // Newest first
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -175,6 +217,7 @@ $result = $conn->query("SELECT * FROM banners");
                         <p>- Maximum file size: 45MB</p>
                         <p>- Recommended banner dimensions: 1200px (width) × 400px (height)</p>
                         <p>- The carousel container has a fixed height of 300px</p>
+                        <p>The file name should not exceed 50 characters.</p>
                         <p>- Images will be automatically resized to fit the container</p>
                         <p>- For best results, use high-quality images in landscape orientation</p>
                     </div>

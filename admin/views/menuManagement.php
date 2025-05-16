@@ -579,6 +579,7 @@ echo renderMenuItems($result);
                                     <option value="Sandwich" <?php echo (isset($_POST['editMenuCategory']) && $_POST['editMenuCategory'] == 'Sandwich') ? 'selected' : '' ?>>Sandwich</option>
                                     <option value="Rice Meal" <?php echo (isset($_POST['editMenuCategory']) && $_POST['editMenuCategory'] == 'Rice Meal') ? 'selected' : '' ?>>Rice Meal</option>
                                     <option value="All Day Breakfast" <?php echo (isset($_POST['editMenuCategory']) && $_POST['editMenuCategory'] == 'All Day Breakfast') ? 'selected' : '' ?>>All Day Breakfast</option>
+                                     <option value="Add ons" <?php echo (isset($_POST['menuCategory']) && $_POST['menuCategory'] == 'Add ons') ? 'selected' : '' ?>>Add ons</option>
                                 </select>
                                 <?php if (!empty($errors['editMenuCategory'])): ?>
                                     <div class="error-message"><?php echo htmlspecialchars($errors['editMenuCategory']); ?></div>
@@ -738,6 +739,7 @@ echo renderMenuItems($result);
                                     <option value="Sandwich" <?php echo (isset($_POST['menuCategory']) && $_POST['menuCategory'] == 'Sandwich') ? 'selected' : '' ?>>Sandwich</option>
                                     <option value="Rice Meal" <?php echo (isset($_POST['menuCategory']) && $_POST['menuCategory'] == 'Rice Meal') ? 'selected' : '' ?>>Rice Meal</option>
                                     <option value="All Day Breakfast" <?php echo (isset($_POST['menuCategory']) && $_POST['menuCategory'] == 'All Day Breakfast') ? 'selected' : '' ?>>All Day Breakfast</option>
+                                     <option value="Add ons" <?php echo (isset($_POST['menuCategory']) && $_POST['menuCategory'] == 'Add ons') ? 'selected' : '' ?>>Add ons</option>
                                 </select>
                                 <?php if (!empty($errors['menuCategory'])): ?>
                                     <div class="error-message"><?php echo htmlspecialchars($errors['menuCategory']); ?></div>
