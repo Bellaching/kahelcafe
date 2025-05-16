@@ -40,7 +40,7 @@ $errors = [
 ];
 
 $drinkCategories = ['Espresso', 'Non-Coffee', 'Signatures', 'Frappe'];
-$foodCategories = ['Starters', 'Pasta', 'Sandwich', 'Rice Meal', 'All Day Breakfast', 'Add ons', 'Upsize'];
+$foodCategories = ['Starters', 'Pasta', 'Sandwich', 'Rice Meal','All Day Breakfast', 'Add ons', 'Upsize'];
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['addMenuItem'])) {
     $menuImage = '';
